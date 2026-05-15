@@ -15,6 +15,14 @@ A typical skill looks like this:
   └── scripts/          # Optional helper scripts the agent can execute
 ```
 
+## Prerequisites: Context7 MCP Server
+
+Several of the core skills in this repository (such as `development-swarm` and `systematic-debugging`) enforce a strict rule requiring the AI agent to query the latest framework documentation before writing code or assuming a bug is caused by custom logic.
+
+To fulfill this mandate, your agent environment **must** have the `context7` MCP server installed and configured. 
+
+If the Context7 MCP server is missing, the agent will fail to execute the required Pre-Flight Dependency Checks and the skill workflows will be blocked. Ensure this MCP is active in your agent's configuration file before invoking the execution swarms.
+
 ## Enforcing Skills via User Rules
 
 While skills define *how* an agent should behave, you must explicitly instruct the agent *when* to use them. The most robust way to enforce skill usage across your entire workflow is by adding **Global Custom Instructions** (or `user_rules` depending on your agent framework).
