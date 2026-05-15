@@ -37,7 +37,7 @@ When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 0. **Pre-Flight Context Map:** Identify all frameworks/versions in the target architecture.
 1. **Generation Pass:** The Creator Swarm outputs a complete draft of the Specification Document (Architecture, API Contracts, Data Models, Edge Cases).
 2. **Adversarial Pass:** The Critic Council viciously attacks the draft spec, identifying ambiguities, missing edge-case handling, and architectural flaws. 
-3. **Resolution:** The Creators modify the Specification Document based on the Critic attacks.
+3. **Resolution:** The Creators attempt to modify the Specification Document to resolve the Critic attacks. **ESCALATION RULE:** If resolving an attack requires making a business assumption, guessing user intent, or defining a UX/architecture flow that was not previously discussed, the Creators are FORBIDDEN from guessing. They must PAUSE the swarm, invoke the `brainstorming` skill to ask the user a clarifying question (or present a visual tradeoff mockup), and only resume the swarm once the user provides explicit direction.
 4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. 
 5. **Commit:** Output the finalized, battle-tested Specification Document. **Do NOT write implementation code.** 
 6. **Handoff:** Present the finalized Specification Document to the user for review. Explicitly ask for their confirmation and approval. If the user approves, THEN automatically invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
