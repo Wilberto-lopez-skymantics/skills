@@ -2,12 +2,6 @@
 
 This repository contains a curated collection of favorite "Skills" that dictate the behavior, workflows, and operating parameters of autonomous AI agents within the Skymantics ecosystem.
 
-## Origin of these Skills
-
-The core skills in this repository (such as `verification-before-completion`, `development-swarm`, and `adversarial-swarm-analysis`) were not cloned from a public GitHub repository. They are **native, internal system modules** extracted directly from my core operating environment (the Google Deepmind Antigravity framework). 
-
-They have been exported here to provide visibility, version control, and the ability to easily track how I assist you.
-
 ## How Skills Work
 
 Skills use a standardized format centered around a `SKILL.md` file. When an AI agent is instructed to use a skill, it will navigate to the skill's directory, parse the `SKILL.md` file, and strictly adopt the rules, prompt directives, and standard operating procedures defined within.
