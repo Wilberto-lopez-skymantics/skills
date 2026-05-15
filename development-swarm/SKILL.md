@@ -31,6 +31,36 @@ The base personas listed above are just the foundation. **The Swarm is dynamic.*
 Before beginning the Test-Driven loop, analyze the specific file or framework being edited. If highly specialized knowledge is required, automatically instantiate a temporary expert persona.
 *(Example: If editing a WebGL canvas, spawn a 'Graphics Shader Optimizer'. If writing a Kubernetes Helm chart, spawn a 'Cluster Network Architect').*
 
+## Anti-Simulation Enforcement
+
+### Mandatory Visible Iteration Logs
+You are FORBIDDEN from claiming you "internally looped" or "simulated the Red Team." Every attack and resolution iteration MUST be printed to the user in real-time in the following format:
+
+```
+## 🔄 Development Iteration N for [Filename]
+
+### Blue Team Draft/Fix
+[Summary of the code written]
+
+### Red Team Findings
+| Line/Function | Attacking Persona | Vulnerability / Bug / Flaw |
+|---------------|-------------------|----------------------------|
+| ...           | ...               | ...                        |
+
+### Verification Evidence
+[Paste output of terminal command used to test the code, e.g., pytest, npm test, or curl]
+
+### Verdict: PASS / FAIL
+```
+**HARD GATE:** If any iteration log is missing or summarized, the swarm run is invalid.
+
+### Minimum Iteration Count
+- **Minimum 2 documented iterations** per complex file or component. The first draft is never perfect.
+- If the Red Team issues a PASS on iteration 1, the PASS is overridden and the Red Team MUST attack harder (look for edge cases, performance, missing docs).
+
+### Mandatory Empirical Evidence
+The Red Team is forbidden from issuing a PASS based on visual inspection alone. They MUST use the `verification-before-completion` skill to actually run the code, tests, or build command, and they MUST include the terminal output in the Iteration Log to mathematically prove the code works.
+
 ## The Test-Driven Implementation Loop
 When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute this exact sequence for *every* file or component:
 
