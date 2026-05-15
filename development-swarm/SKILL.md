@@ -42,7 +42,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 5. **Document & Dockerize (CRITICAL MANDATE):** 
    - The Infrastructure Engineer MUST ensure a `docker-compose.yml` file is generated that can start the entire application and all dependencies with a single command.
    - The Technical Writer MUST generate or update the `README.md` to include explicit instructions on how to run the app locally using the Docker Compose setup. The README MUST also contain a comprehensive table detailing every environment variable and configuration value available.
-   - The DX Auditor verifies the onboarding experience.
+   - The DX Auditor MUST actively invoke the `verification-before-completion` skill to prove the Dockerization actually works. They must run `docker-compose up -d`, check the container logs to ensure there are no startup crashes or runtime errors, and then cleanly tear the environment down before reporting success.
 6. **Report:** Provide a brief summary to the user. The log MUST be a strict Markdown table with the following columns: `| File | Attacking Persona | Vulnerability Prevented | Severity | Blue Team Fix |`.
 
 ## Usage Triggers
