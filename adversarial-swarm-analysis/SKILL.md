@@ -31,14 +31,61 @@ The Red Team does not attack code syntax; they relentlessly attack the **Spec Co
 ## Dynamic Swarm Scaling (Context-Aware Personas)
 The base personas listed above are just the foundation. Analyze the user's specific tech stack and automatically instantiate highly specialized, temporary personas as needed to attack the specification.
 
+## Anti-Simulation Enforcement
+
+### Mandatory Completeness Checklist
+Before ANY Red Team pass is allowed to begin, the Blue Team draft MUST contain ALL of the following sections. If any section is missing or contains only a placeholder, the draft is automatically rejected.
+
+| # | Required Section | Responsible Persona | What MUST Be Defined |
+|---|---|---|---|
+| 1 | **System Architecture** | Core Architect | All services, how they communicate, protocol choices |
+| 2 | **API Contracts** | Core Architect | Every HTTP endpoint: method, path, request/response schema, error codes |
+| 3 | **Data Models & Persistence** | Data Specialist | Database choice, schema, relationships, retention/cleanup strategy |
+| 4 | **Authentication & Authorization** | Security Auditor | Auth mechanism, RBAC model, or explicit "none required" with justification |
+| 5 | **LLM/AI Configuration** | AI/MLOps Engineer | Provider, model, token limits, API key strategy, cost guardrails |
+| 6 | **Frontend Component Hierarchy** | UX/UI Lead | Named components, state management approach, layout specifications |
+| 7 | **Infrastructure & DevOps** | Core Architect | Docker services, networking, environment variables table, port mappings |
+| 8 | **Error Handling & Resilience** | Edge-Case Hunter | Timeout values, retry strategies, fallback behaviors for every integration point |
+
+**HARD GATE:** If the Blue Team draft is missing even ONE of these sections, the Critic Council MUST immediately reject the entire draft and send it back. Do NOT proceed to the adversarial pass with an incomplete draft.
+
+### Mandatory Visible Iteration Logs
+You are FORBIDDEN from claiming you "internally looped." Every iteration must be **printed to the user** in the following format:
+
+```
+## 🔄 Iteration N
+
+### Blue Team Draft Changes
+[What was added or modified in this pass]
+
+### Red Team Findings
+| Finding # | Attacking Persona | Section Attacked | Flaw/Ambiguity | Severity |
+|-----------|-------------------|------------------|----------------|----------|
+| ...       | ...               | ...              | ...            | ...      |
+
+### Resolution Actions
+| Finding # | Resolution | Escalation Required? |
+|-----------|------------|----------------------|
+| ...       | ...        | Yes/No               |
+
+### Verdict: PASS / FAIL (N findings remaining)
+```
+
+**HARD GATE:** If any iteration log is missing or summarized as "resolved internally," the entire swarm run is invalid.
+
+### Minimum Iteration Count
+- **Minimum 3 documented iterations** before a PASS verdict is allowed.
+- The first iteration is ALWAYS a FAIL (the initial draft always has gaps).
+- If the Red Team issues a PASS on iteration 1 or 2, the PASS is overridden and the Red Team MUST attack harder. A premature PASS indicates lazy analysis, not a perfect spec.
+
 ## The Iterative Workflow
 When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 
 0. **Pre-Flight Context Map:** Identify all frameworks/versions in the target architecture.
-1. **Generation Pass:** The Creator Swarm outputs a complete draft of the Specification Document (Architecture, API Contracts, Data Models, Edge Cases).
-2. **Adversarial Pass:** The Critic Council viciously attacks the draft spec, identifying ambiguities, missing edge-case handling, and architectural flaws. 
+1. **Generation Pass:** The Creator Swarm outputs a complete draft of the Specification Document. **The draft MUST pass the Completeness Checklist above before proceeding.** If it fails, loop back and fill the gaps before any Red Team pass begins.
+2. **Adversarial Pass:** The Critic Council viciously attacks the draft spec, identifying ambiguities, missing edge-case handling, and architectural flaws. **Each finding must be printed in the Iteration Log format above.**
 3. **Resolution:** The Creators attempt to modify the Specification Document to resolve the Critic attacks. **ESCALATION RULE:** If resolving an attack requires making a business assumption, guessing user intent, or defining a UX/architecture flow that was not previously discussed, the Creators are FORBIDDEN from guessing. They must PAUSE the swarm, invoke the `brainstorming` skill to ask the user a clarifying question (or present a visual tradeoff mockup), and only resume the swarm once the user provides explicit direction.
-4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. 
+4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Minimum 3 documented iterations required.**
 5. **Commit & Save (CRITICAL MANDATE):** Output the finalized, battle-tested Specification Document. You MUST save this document, along with any related artifacts (visual mockups, color palettes, data models), into a dedicated `specs/` directory within the target project repository (e.g., `specs/ARCHITECTURE_SPEC.md`). This ensures the specification and all its supporting assets are cleanly grouped and tracked in version control for traceability. **Do NOT write implementation code.**
 6. **Handoff:** Present the finalized Specification Document to the user for review. Explicitly ask for their confirmation and approval. If the user approves, THEN automatically invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
 7. **Report:** Output a "Swarm Log" detailing the exact attacks the Red Team executed against the spec and how the Blue Team resolved them. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
