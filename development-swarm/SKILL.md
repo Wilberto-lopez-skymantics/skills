@@ -39,7 +39,10 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version.*
 3. **Refine (Blue Team):** The Builder fixes the code based on the Red Team's findings. 
 4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
-5. **Document:** The Technical Writer generates or updates the `README.md` and inline documentation reflecting the finalized code. The DX Auditor verifies it.
+5. **Document & Dockerize (CRITICAL MANDATE):** 
+   - The Infrastructure Engineer MUST ensure a `docker-compose.yml` file is generated that can start the entire application and all dependencies with a single command.
+   - The Technical Writer MUST generate or update the `README.md` to include explicit instructions on how to run the app locally using the Docker Compose setup. The README MUST also contain a comprehensive table detailing every environment variable and configuration value available.
+   - The DX Auditor verifies the onboarding experience.
 6. **Report:** Provide a brief summary to the user. The log MUST be a strict Markdown table with the following columns: `| File | Attacking Persona | Vulnerability Prevented | Severity | Blue Team Fix |`.
 
 ## Usage Triggers
