@@ -40,7 +40,7 @@ When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 3. **Resolution:** The Creators modify the Specification Document based on the Critic attacks.
 4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. 
 5. **Commit:** Output the finalized, battle-tested Specification Document. **Do NOT write implementation code.** 
-6. **Handoff:** Explicitly instruct the user to invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
+6. **Handoff:** Present the finalized Specification Document to the user for review. Explicitly ask for their confirmation and approval. If the user approves, THEN automatically invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
 7. **Report:** Output a "Swarm Log" detailing the exact attacks the Red Team executed against the spec and how the Blue Team resolved them. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 
 ## Usage Triggers
