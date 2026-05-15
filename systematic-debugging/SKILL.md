@@ -69,7 +69,12 @@ You MUST complete each phase before proceeding to the next.
    - New dependencies, config changes
    - Environmental differences
 
-4. **Gather Evidence in Multi-Component Systems**
+4. **Query Documentation via Context7**
+   - BEFORE assuming custom logic is broken, verify if a library dependency or framework syntax changed.
+   - Use the Context7 MCP server to check the absolute latest documentation for the frameworks involved.
+   - Look for known issues, deprecations, or migration guides that explain the behavior.
+
+5. **Gather Evidence in Multi-Component Systems**
 
    **WHEN system has multiple components (CI → build → signing, API → service → database):**
 
