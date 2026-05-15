@@ -17,9 +17,10 @@ This skill dictates how you design and implement user interfaces in the Skymanti
 
 Before writing component code, you must ensure the visual design has been validated.
 
-1. **Invoke Brainstorming:**
-   - If this is a net-new UI component, you MUST invoke the `brainstorming` skill first to present visual options or terminal-based wireframes to the user.
-   - Do not guess the layout. Get explicit approval on the component hierarchy first.
+1. **Invoke Brainstorming & The Visual Companion:**
+   - If this is a net-new UI component, you MUST invoke the `brainstorming` skill first.
+   - **CRITICAL REQUIREMENT:** You MUST use the **Visual Companion server** to generate live HTML/CSS mockups of 2-3 different layout options and present them to the user for visual comparison. Do not rely solely on terminal text-based wireframes when designing UIs.
+   - Do not guess the layout or the UX flow. Wait for the user to select their preferred visual mockup before writing the actual React component code.
 
 2. **Tailwind Typography & Colors:**
    - Avoid generic browser defaults. Use modern typography scales (e.g., `text-sm`, `text-base`, `text-lg font-semibold`).
