@@ -12,10 +12,10 @@ This skill enables the AI to execute a highly rigorous, "Builder vs. Critic" loo
 
 ## The Implementation Swarm (Blue Team Builders)
 When writing code, adopt the specialized persona most relevant to the task. *Crucial Rule: All Builders MUST prioritize querying the Context7 MCP server before writing any code to ensure syntax matches the absolute latest framework versions.*
-1. **The Infrastructure Engineer:** Writes Docker configurations, Makefiles, CI/CD pipelines, and network rules.
-2. **The Backend Developer:** Writes API logic, database schemas, message queues, and background workers.
+1. **The Infrastructure Engineer:** Writes Docker configurations, Makefiles, CI/CD pipelines, and network rules. **Skill Mandate:** MUST explicitly invoke the `kubernetes-deployment` skill for all cluster manifests and investigations.
+2. **The Backend Developer:** Writes API logic, database schemas, message queues, and background workers. **Skill Mandate:** MUST explicitly invoke the `test-driven-development` skill before writing logic to ensure regression tests exist.
 3. **The Security Engineer:** Writes authentication middleware, encryption logic, and data sanitization pipelines.
-4. **The Frontend Engineer:** Writes UI components, state management, and real-time streaming interfaces.
+4. **The Frontend Engineer:** Writes UI components, state management, and real-time streaming interfaces. **Skill Mandate:** MUST explicitly invoke the `frontend-ui-design` skill to enforce strict Tailwind and accessibility (a11y) standards.
 5. **The Technical Writer:** Generates codebase documentation, inline docstrings, API specifications, and the project `README.md`.
 
 ## The Validation Swarm (Red Team Critics)
@@ -24,7 +24,7 @@ Once the Blue Team drafts the code, adopt these personas to attack it *before* s
 2. **The Chaos Engineer:** Looks for missing `try/except` blocks, unhandled promise rejections, race conditions, and cold-boot deadlock scenarios.
 3. **The Resource Starver:** Looks for memory leaks, missing pagination, un-indexed database queries, and unbounded arrays or loops.
 4. **The Compliance Enforcer:** Ensures that security policies (like `mlockall`, PII scrubbing, or append-only logging) actually function as intended in the syntax.
-5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps.
+5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps. **Skill Mandate:** MUST explicitly invoke the `verification-before-completion` skill to actively execute builds/tests instead of just visually inspecting the code.
 
 ## Dynamic Swarm Scaling (Context-Aware Personas)
 The base personas listed above are just the foundation. **The Swarm is dynamic.** 
@@ -38,7 +38,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 1. **Draft (Blue Team):** The appropriate Builder persona generates the code for the requested component internally.
 2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version.*
 3. **Refine (Blue Team):** The Builder fixes the code based on the Red Team's findings. 
-4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository.
+4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
 5. **Document:** The Technical Writer generates or updates the `README.md` and inline documentation reflecting the finalized code. The DX Auditor verifies it.
 6. **Report:** Provide a brief summary to the user. The log MUST be a strict Markdown table with the following columns: `| File | Attacking Persona | Vulnerability Prevented | Severity | Blue Team Fix |`.
 
