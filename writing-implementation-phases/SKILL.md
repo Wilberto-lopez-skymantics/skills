@@ -17,6 +17,7 @@ When invoked to plan the execution of an architecture spec, follow this exact se
 1. **Ingest the Spec:** Read the `specs/ARCHITECTURE_SPEC.md` in its entirety.
 2. **Deconstruct into Phases:** Break the system down into logical, dependency-ordered phases. 
    - *Rule:* Infrastructure and Database schemas must always be Phase 1 and 2. Frontend UIs must always be the final phases.
+   - *Data-Flow Traceability Rule (CRITICAL):* Every REST endpoint, UI component, or API listed in the checklist MUST explicitly state its data source (e.g., `Database Table X` or `Configuration File Y`). If a configuration file like `agents.yaml` is defined in the spec, you MUST explicitly create a checklist item stating exactly which module or endpoint parses and consumes it. Do not leave "wiring" implicit.
 3. **Mandate Verifications:** For EVERY phase, you MUST define a strict, empirical `Verification` step. A phase cannot be marked complete by the Development Swarm unless this verification command (e.g., `pytest`, `docker-compose up`, or `curl`) passes.
 4. **Write the Checklist:** Output the resulting checklist to `specs/IMPLEMENTATION_PHASES.md` using standard markdown task lists (`- [ ]`).
 5. **Handoff:** Instruct the user or the orchestrator to pass this checklist directly into the `development-swarm` skill.
