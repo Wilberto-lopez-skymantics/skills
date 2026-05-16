@@ -27,6 +27,7 @@ The Red Team does not attack code syntax; they relentlessly attack the **Spec Co
 2. **The Chaos Engineer:** "The spec assumes the message queue is perfectly ordered. What happens during a split-brain scenario? Define the resolution in the contract. Reject."
 3. **The Resource Starver:** "The database schema defined here has unbounded growth potential. The spec is missing pagination constraints. Reject."
 4. **The DX Auditor:** "This API contract is ambiguous. A developer reading this spec wouldn't know if the ID is a string or a UUID. Clarify the contract. Reject."
+5. **The Reconciler:** Cross-references the spec against the **actual codebase and running infrastructure**. <anti_hallucination>The Reconciler is FORBIDDEN from assuming the spec is correct. They MUST use file-reading tools to inspect existing source files (schemas, docker-compose, route handlers, component files) and flag ANY discrepancy between the spec and reality.</anti_hallucination> Examples: "The spec says port 3000 but `docker-compose.yml` maps to 3001. Reject." / "The spec defines field `message` but `schemas.py` uses `content`. Reject." / "The spec lists `<AgentHeader>` component but no such file exists in `frontend/components/`. Reject."
 
 ## Dynamic Swarm Scaling (Context-Aware Personas)
 The base personas listed above are just the foundation. Analyze the user's specific tech stack and automatically instantiate highly specialized, temporary personas as needed to attack the specification.
@@ -46,8 +47,16 @@ Before ANY Red Team pass is allowed to begin, the Blue Team draft MUST contain A
 | 6 | **Frontend Component Hierarchy** | UX/UI Lead | Named components, state management approach, layout specifications |
 | 7 | **Infrastructure & DevOps** | Core Architect | Docker services, networking, environment variables table, port mappings |
 | 8 | **Error Handling & Resilience** | Edge-Case Hunter | Timeout values, retry strategies, fallback behaviors for every integration point |
+| 9 | **Cross-Section Consistency** | Reconciler | Field names, types, port mappings, and env vars MUST be identical across all sections |
 
 **HARD GATE:** If the Blue Team draft is missing even ONE of these sections, the Critic Council MUST immediately reject the entire draft and send it back. Do NOT proceed to the adversarial pass with an incomplete draft.
+
+### Cross-Section Consistency Gate
+Before any iteration can receive a PASS verdict, The Reconciler MUST execute this verification:
+1. **Field Name Consistency:** Every field name referenced in API Contracts (Section 2) MUST exactly match the Data Models (Section 3). Example: if the API says `message`, the schema must say `message`, not `content`.
+2. **Port Mapping Consistency:** Every port in the Docker Compose (Section 7) MUST match the System Architecture diagram (Section 1) and the Environment Variables table.
+3. **Component Existence Consistency:** Every component listed in the Frontend Hierarchy (Section 6) MUST either already exist in the codebase OR be explicitly marked as `[NEW]` to indicate it needs to be created.
+4. **Schema Boundary Consistency:** The spec MUST explicitly define which data model fields are returned to the frontend (public) versus kept backend-only (private). API response schemas and internal config schemas MUST NOT be conflated.
 
 ### Mandatory Visible Iteration Logs
 You are FORBIDDEN from claiming you "internally looped." Every iteration must be **printed to the user** in the following format:
@@ -82,6 +91,12 @@ You are FORBIDDEN from claiming you "internally looped." Every iteration must be
 When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 
 0. **Pre-Flight Context Map:** Identify all frameworks/versions in the target architecture.
+0b. **Pre-Flight Codebase Grounding (CRITICAL for Incremental Updates):** If this swarm is modifying an EXISTING spec (i.e., a `specs/` folder or `ARCHITECTURE_SPEC.md` already exists), The Reconciler MUST read the following files BEFORE the Blue Team drafts anything:
+   - The existing `ARCHITECTURE_SPEC.md` (to understand what's already defined)
+   - The actual `docker-compose.yml` (to verify real port mappings)
+   - The actual API schema files (e.g., `schemas.py`, route handlers) to verify real field names
+   - The actual frontend component directory listing to verify which components exist
+   <anti_hallucination>The Reconciler MUST use file-reading tools to inspect these files. They are FORBIDDEN from assuming the spec is correct or from relying on memory of past conversations. Fresh reads every time.</anti_hallucination>
 1. **Generation Pass:** The Creator Swarm outputs a complete draft of the Specification Document. **The draft MUST pass the Completeness Checklist above before proceeding.** If it fails, loop back and fill the gaps before any Red Team pass begins.
 2. **Adversarial Pass:** The Critic Council viciously attacks the draft spec, identifying ambiguities, missing edge-case handling, and architectural flaws. **Each finding must be printed in the Iteration Log format above.**
 3. **Resolution:** The Creators attempt to modify the Specification Document to resolve the Critic attacks. **ESCALATION RULE:** If resolving an attack requires making a business assumption, guessing user intent, or defining a UX/architecture flow that was not previously discussed, the Creators are FORBIDDEN from guessing. They must PAUSE the swarm, invoke the `brainstorming` skill to ask the user a clarifying question (or present a visual tradeoff mockup), and only resume the swarm once the user provides explicit direction.
