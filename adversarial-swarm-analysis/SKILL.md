@@ -18,7 +18,7 @@ When acting as the Creators, adopt these personas to draft the Specification Doc
 2. **The Security Auditor:** Defines Zero-Trust boundaries, RBAC requirements, and encryption standards in the spec.
 3. **The AI/MLOps Engineer:** Budgets VRAM, defines embedding strategies, and prompts limits.
 4. **The Data Specialist:** Designs the database schema relationships and transaction consistency rules.
-5. **The UX/UI Lead:** Defines the state management requirements and component hierarchy.
+5. **The UX/UI Lead:** Defines the state management requirements and component hierarchy. **Design Escalation Rule:** The UX/UI Lead is FORBIDDEN from assuming visual design decisions that the user has not explicitly provided. This includes: color palettes, dark/light mode, typography choices, spacing systems, animation styles, border radii, and layout patterns (e.g., glassmorphism, card grids, sidebar widths). If the user has not provided a brand guide, style reference, or explicit visual direction, the UX/UI Lead MUST escalate with a `brainstorming` question before writing any styling into the spec. The only exception is when the project already contains a `BRAND_GUIDELINES.md` or equivalent in the `specs/` directory — in that case, the existing guide is the source of truth.
 6. **The Technical Writer:** Synthesizes the creators' input into a highly structured, unambiguous Specification Document (or PRD).
 
 ## The Critic Council (Red Team)
@@ -48,6 +48,7 @@ Before ANY Red Team pass is allowed to begin, the Blue Team draft MUST contain A
 | 7 | **Infrastructure & DevOps** | Core Architect | Docker services, networking, environment variables table, port mappings |
 | 8 | **Error Handling & Resilience** | Edge-Case Hunter | Timeout values, retry strategies, fallback behaviors for every integration point |
 | 9 | **Cross-Section Consistency** | Reconciler | Field names, types, port mappings, and env vars MUST be identical across all sections |
+| 10 | **Visual Design & Styling** | UX/UI Lead | Color palette, typography, spacing, dark/light mode, animation style — MUST reference user-provided direction or existing brand guide. If neither exists, this section MUST contain explicit `[USER INPUT REQUIRED]` placeholders that trigger escalation. |
 
 **HARD GATE:** If the Blue Team draft is missing even ONE of these sections, the Critic Council MUST immediately reject the entire draft and send it back. Do NOT proceed to the adversarial pass with an incomplete draft.
 
@@ -100,6 +101,15 @@ When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 1. **Generation Pass:** The Creator Swarm outputs a complete draft of the Specification Document. **The draft MUST pass the Completeness Checklist above before proceeding.** If it fails, loop back and fill the gaps before any Red Team pass begins.
 2. **Adversarial Pass:** The Critic Council viciously attacks the draft spec, identifying ambiguities, missing edge-case handling, and architectural flaws. **Each finding must be printed in the Iteration Log format above.**
 3. **Resolution:** The Creators attempt to modify the Specification Document to resolve the Critic attacks. **ESCALATION RULE:** If resolving an attack requires making a business assumption, guessing user intent, or defining a UX/architecture flow that was not previously discussed, the Creators are FORBIDDEN from guessing. They must PAUSE the swarm, invoke the `brainstorming` skill to ask the user a clarifying question (or present a visual tradeoff mockup), and only resume the swarm once the user provides explicit direction.
+   
+   **Explicit Escalation Triggers (non-exhaustive):**
+   - Color palette or theme (dark/light mode) not provided by user
+   - Typography or font family choices not specified
+   - Layout pattern decisions (sidebar width, card vs list, split pane ratios)
+   - Animation/transition style preferences
+   - Any UX flow that affects how the user interacts with a feature (e.g., modal vs inline, wizard vs single page)
+   
+   The UX/UI Lead MUST NOT fill these gaps with "sensible defaults." What seems sensible to the AI may contradict the user's vision. Ask first.
 4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Minimum 3 documented iterations required.**
 5. **Commit & Save (CRITICAL MANDATE):** Output the finalized, battle-tested Specification Document. You MUST save this document, along with any related artifacts (visual mockups, color palettes, data models), into a dedicated `specs/` directory within the target project repository (e.g., `specs/ARCHITECTURE_SPEC.md`). This ensures the specification and all its supporting assets are cleanly grouped and tracked in version control for traceability. **Do NOT write implementation code.**
 6. **Handoff:** Present the finalized Specification Document to the user for review. Explicitly ask for their confirmation and approval. If the user approves, THEN automatically invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
