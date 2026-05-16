@@ -24,7 +24,7 @@ Once the Blue Team drafts the code, adopt these personas to attack it *before* s
 2. **The Chaos Engineer:** Looks for missing `try/except` blocks, unhandled promise rejections, race conditions, and cold-boot deadlock scenarios.
 3. **The Resource Starver:** Looks for memory leaks, missing pagination, un-indexed database queries, and unbounded arrays or loops.
 4. **The Compliance Enforcer:** Ensures that security policies (like `mlockall`, PII scrubbing, or append-only logging) actually function as intended in the syntax.
-5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps. **Skill Mandate:** MUST explicitly invoke the `verification-before-completion` skill to actively execute builds/tests instead of just visually inspecting the code.
+5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps. **Skill Mandate:** MUST explicitly invoke the `verification-before-completion` skill to actively execute builds/tests. **Crucial:** The DX Auditor is FORBIDDEN from issuing a PASS based solely on a `200 OK` HTTP response. They MUST actively inspect application compilation logs (e.g., `docker compose logs`), verify there are no missing imports/modules, and ensure the UI fully hydrates without silent runtime errors.
 6. **The Architect (Spec Enforcer):** Cross-references the drafted code against the `ARCHITECTURE_SPEC.md` and the `IMPLEMENTATION_PHASES.md`. Attacks the Blue Team if any explicitly requested component, state hook, or feature from the checklist is missing or skipped. They are the ultimate safeguard against "feature tunnel vision."
 
 ## Dynamic Swarm Scaling (Context-Aware Personas)
