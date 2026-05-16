@@ -25,6 +25,7 @@ Once the Blue Team drafts the code, adopt these personas to attack it *before* s
 3. **The Resource Starver:** Looks for memory leaks, missing pagination, un-indexed database queries, and unbounded arrays or loops.
 4. **The Compliance Enforcer:** Ensures that security policies (like `mlockall`, PII scrubbing, or append-only logging) actually function as intended in the syntax.
 5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps. **Skill Mandate:** MUST explicitly invoke the `verification-before-completion` skill to actively execute builds/tests instead of just visually inspecting the code.
+6. **The Architect (Spec Enforcer):** Cross-references the drafted code against the `ARCHITECTURE_SPEC.md` and the `IMPLEMENTATION_PHASES.md`. Attacks the Blue Team if any explicitly requested component, state hook, or feature from the checklist is missing or skipped. They are the ultimate safeguard against "feature tunnel vision."
 
 ## Dynamic Swarm Scaling (Context-Aware Personas)
 The base personas listed above are just the foundation. **The Swarm is dynamic.** 
@@ -66,7 +67,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 
 0. **Pre-Flight Dependency Check:** Before drafting, the Blue Team uses the Context7 MCP server to review the current documentation for the specific frameworks/libraries being used to avoid deprecated syntax.
 1. **Draft (Blue Team):** The appropriate Builder persona generates the code for the requested component internally.
-2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version.*
+2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version. Additionally, the Architect MUST verify that EVERY component requested in the current phase of `IMPLEMENTATION_PHASES.md` exists and aligns with the `ARCHITECTURE_SPEC.md` before passing.*
 3. **Refine (Blue Team):** The Builder fixes the code based on the Red Team's findings. 
 4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
 5. **Document & Dockerize (CRITICAL MANDATE):** 
