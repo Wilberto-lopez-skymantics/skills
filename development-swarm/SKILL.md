@@ -35,9 +35,10 @@ Before beginning the Test-Driven loop, analyze the specific file or framework be
 ## Anti-Simulation Enforcement
 
 ### Mandatory Visible Iteration Logs
-You are FORBIDDEN from claiming you "internally looped" or "simulated the Red Team." Every attack and resolution iteration MUST be printed to the user in real-time in the following format:
+<format_enforcement>
+You are FORBIDDEN from claiming you "internally looped" or "simulated the Red Team." Every attack and resolution iteration MUST be printed to the user in real-time EXACTLY matching the following format. You must use a Markdown Table for Red Team Findings, not bullet points.
 
-```
+```markdown
 ## 🔄 Development Iteration N for [Filename]
 
 ### Blue Team Draft/Fix
@@ -54,6 +55,7 @@ You are FORBIDDEN from claiming you "internally looped" or "simulated the Red Te
 ### Verdict: PASS / FAIL
 ```
 **HARD GATE:** If any iteration log is missing or summarized, the swarm run is invalid.
+</format_enforcement>
 
 ### Minimum Iteration Count
 - **Minimum 2 documented iterations** per complex file or component. The first draft is never perfect.
@@ -65,11 +67,11 @@ The Red Team is forbidden from issuing a PASS based on visual inspection alone. 
 ## The Test-Driven Implementation Loop
 When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute this exact sequence for *every* file or component:
 
-0. **Pre-Flight Dependency Check:** Before drafting, the Blue Team uses the Context7 MCP server to review the current documentation for the specific frameworks/libraries being used to avoid deprecated syntax.
+0. **Pre-Flight Dependency Check:** Before drafting, the Blue Team MUST explicitly invoke the tool named `mcp_context7_resolve-library-id` followed by `mcp_context7_query-docs`. <anti_hallucination>You are STRICTLY FORBIDDEN from simulating the Context7 output or claiming you 'reviewed the docs' without actually executing the tool call.</anti_hallucination>
 1. **Draft (Blue Team):** The appropriate Builder persona generates the code for the requested component internally.
 2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version. Additionally, the Architect MUST verify that EVERY component requested in the current phase of `IMPLEMENTATION_PHASES.md` exists and aligns with the `ARCHITECTURE_SPEC.md` before passing.*
 3. **Refine (Blue Team):** The Builder fixes the code based on the Red Team's findings. 
-4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 internally in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
+4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 until the Critics issue a final "PASS" verdict with ZERO new findings. <anti_hallucination>Do NOT attempt to run all 5 loops internally in a single hidden thought block. You MUST persist your state to an artifact (e.g., `artifacts/swarm_state.md`) and output each iteration sequentially to the user to avoid context collapse.</anti_hallucination> **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
 5. **Document & Dockerize (CRITICAL MANDATE):** 
    - The Infrastructure Engineer MUST ensure a `docker-compose.yml` file is generated that can start the entire application and all dependencies with a single command.
    - The Technical Writer MUST generate or update the `README.md` to include explicit instructions on how to run the app locally using the Docker Compose setup. The README MUST also contain a comprehensive table detailing every environment variable and configuration value available.
