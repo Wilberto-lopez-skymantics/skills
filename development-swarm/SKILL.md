@@ -76,7 +76,34 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
    - The Infrastructure Engineer MUST ensure a `docker-compose.yml` file is generated that can start the entire application and all dependencies with a single command.
    - The Technical Writer MUST generate or update the `README.md` to include explicit instructions on how to run the app locally using the Docker Compose setup. The README MUST also contain a comprehensive table detailing every environment variable and configuration value available.
    - The DX Auditor MUST actively invoke the `verification-before-completion` skill to prove the Dockerization actually works. They must run `docker-compose up -d`, check the container logs to ensure there are no startup crashes or runtime errors, and then cleanly tear the environment down before reporting success.
-6. **Report:** Provide a brief summary to the user. The log MUST be a strict Markdown table with the following columns: `| File | Attacking Persona | Vulnerability Prevented | Severity | Blue Team Fix |`.
+6. **Post-Implementation Reconciliation (CLOSING THE LOOP — CRITICAL MANDATE):**
+   After ALL implementation phases are complete and verified, the Architect (Spec Enforcer) MUST execute a full reconciliation pass:
+   
+   **What to check:** Re-read `ARCHITECTURE_SPEC.md` and cross-reference it against every file that was created or modified during the swarm run. Specifically verify:
+   - Every API endpoint's field names in the spec match the actual Pydantic schemas / route handlers written
+   - Every port mapping in the spec's Docker Compose section matches the actual `docker-compose.yml`
+   - Every component in the spec's Frontend Hierarchy exists as an actual file in the codebase
+   - Every environment variable in the spec's table is actually referenced in the code
+   - Every error handling scenario in the spec is actually implemented
+   
+   <anti_hallucination>The Architect MUST use file-reading tools to inspect the actual source files. They are FORBIDDEN from claiming "the code matches the spec" based on memory of what they just wrote. Fresh reads only.</anti_hallucination>
+   
+   **Output format:**
+   ```markdown
+   ## 🔁 Post-Implementation Reconciliation Report
+   
+   | Spec Section | Spec Says | Code Actually Does | Drift? |
+   |--------------|-----------|-------------------|--------|
+   | ...          | ...       | ...               | ✅ / ❌ |
+   ```
+   
+   **If ANY drift is found:**
+   - **Minor drift** (field renamed for pragmatic reasons, port changed to avoid conflict): The Architect MUST immediately update `ARCHITECTURE_SPEC.md` to match the implementation. These are "spec-follows-code" corrections.
+   - **Major drift** (missing feature, architectural deviation, new component not in spec): The swarm MUST HALT. The Architect flags the drift and invokes the `adversarial-swarm-analysis` skill to re-harden the spec before the drift is accepted. This creates the feedback loop back to the spec.
+   
+   **HARD GATE:** The development swarm is NOT allowed to issue its final Report (Step 7) until this reconciliation pass produces ZERO ❌ drift entries.
+
+7. **Report:** Provide a brief summary to the user. The log MUST be a strict Markdown table with the following columns: `| File | Attacking Persona | Vulnerability Prevented | Severity | Blue Team Fix |`.
 
 ## Usage Triggers
 If the user asks to "use the development swarm", "build this with the red team", or "code this using the swarm loop", immediately adopt this workflow.

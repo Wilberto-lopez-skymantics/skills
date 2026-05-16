@@ -27,5 +27,41 @@ When the user says "I want to add X feature" or "Change how Y works":
 3. **Swarm the Spec:** You MUST invoke the `adversarial-swarm-analysis` skill to harden the proposed spec changes. Do not skip this step; the spec modifications must survive the Red Team Critic Council before they are finalized.
 4. **Apply the Change:** Once the spec survives the adversarial swarm and the user approves the hardened spec, write the changes to the `specs/` folder.
 5. **Proceed:** Move to implementation planning (`writing-implementation-phases`) and swarm execution (`development-swarm`).
+6. **Close the Loop:** After the `development-swarm` completes, its mandatory Post-Implementation Reconciliation (Step 6 of that skill) will re-read the spec and compare it against the code that was actually written. If drift is detected:
+   - **Minor drift:** The spec is auto-corrected to match the implementation.
+   - **Major drift:** The `adversarial-swarm-analysis` is re-invoked to harden the updated spec, creating a feedback cycle back to Step 3.
+   
+   The lifecycle is NOT complete until the Reconciliation Report shows ZERO drift entries.
 
-**Hard Rule:** Never write application code (Python, TS, React, Java, etc.) to satisfy a feature request before the markdown spec has been formally updated.
+## SDD Lifecycle Diagram
+```
+  ┌─── 1. User Request ───┐
+  │                        ▼
+  │           2. Draft Spec Change
+  │                        │
+  │           3. adversarial-swarm-analysis
+  │                        │ (3+ iterations)
+  │           4. User Approves Spec
+  │                        │
+  │           5. writing-implementation-phases
+  │                        │
+  │           6. development-swarm
+  │                        │
+  │           7. Post-Implementation Reconciliation
+  │                        │
+  │               ┌────────┴────────┐
+  │               │                 │
+  │          No Drift          Drift Found
+  │               │                 │
+  │            ✅ DONE         ┌────┴────┐
+  │                            │         │
+  │                         Minor     Major
+  │                            │         │
+  │                       Auto-fix   Re-invoke
+  │                        spec     adversarial
+  │                            │     swarm (→3)
+  │                            │         │
+  └────────────────────────────┴─────────┘
+```
+
+**Hard Rule:** Never write application code (Python, TS, React, Java, etc.) to satisfy a feature request before the markdown spec has been formally updated. Never declare a feature complete until the Post-Implementation Reconciliation passes.
