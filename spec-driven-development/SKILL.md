@@ -23,8 +23,9 @@ In an SDD project (identifiable by the presence of a `specs/` directory, an `ARC
 When the user says "I want to add X feature" or "Change how Y works":
 
 1. **Stop & Acknowledge:** Inform the user that because this is an SDD project, the specification must be updated first to ensure the swarm agents build it correctly.
-2. **Draft the Spec Change:** Propose the exact markdown additions/deletions to `ARCHITECTURE_SPEC.md` that define the new feature. Ask the user for approval.
-3. **Apply the Change:** Once approved, write the changes to the `specs/` folder.
-4. **Proceed:** Move to implementation planning and swarm execution.
+2. **Draft the Spec Change:** Propose the exact markdown additions/deletions to `ARCHITECTURE_SPEC.md` that define the new feature.
+3. **Swarm the Spec:** You MUST invoke the `adversarial-swarm-analysis` skill to harden the proposed spec changes. Do not skip this step; the spec modifications must survive the Red Team Critic Council before they are finalized.
+4. **Apply the Change:** Once the spec survives the adversarial swarm and the user approves the hardened spec, write the changes to the `specs/` folder.
+5. **Proceed:** Move to implementation planning (`writing-implementation-phases`) and swarm execution (`development-swarm`).
 
 **Hard Rule:** Never write application code (Python, TS, React, Java, etc.) to satisfy a feature request before the markdown spec has been formally updated.
