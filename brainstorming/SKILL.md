@@ -26,8 +26,9 @@ You MUST create a task for each of these items and complete them in order:
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
+5b. **Write decision log** — consolidate all decisions made during brainstorming into a structured table (see Decision Log section below)
 6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+7. **Spec self-review** — execute the Quantitative Completeness Gate (see below). This is NOT optional.
 8. **User reviews written spec** — ask user to review the spec file before proceeding
 9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
@@ -104,6 +105,24 @@ digraph brainstorming {
 - Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
+## Decision Log (Step 5b)
+
+Before writing the design doc, consolidate ALL decisions made during the brainstorming conversation into a structured table. This table becomes an appendix to the design doc and feeds directly into the Architecture Spec.
+
+```markdown
+## Appendix: Decision Log
+
+| # | Decision | Options Considered | Choice | Rationale |
+|---|----------|-------------------|--------|----------|
+| 1 | Example: Data storage | PostgreSQL, SQLite, localStorage | localStorage | Client-only app, no server required — user confirmed |
+```
+
+**Rules:**
+- Every decision made during brainstorming MUST appear in this table — even ones that felt obvious.
+- If a decision was made by the user selecting from options, list all options considered.
+- If a decision was made by the AI recommending and the user approving, note that in the Rationale.
+- If a decision involves a numeric parameter, the Choice column MUST contain the exact value or range — not vague language.
+
 ## After the Design
 
 **Documentation:**
@@ -113,15 +132,28 @@ digraph brainstorming {
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
 
-**Spec Self-Review:**
-After writing the spec document, look at it with fresh eyes:
+**Spec Self-Review (Quantitative Completeness Gate):**
+
+<HARD-GATE>
+You are FORBIDDEN from invoking any downstream skill (adversarial-swarm-analysis, writing-plans, development-swarm, or any implementation skill) until this gate has been explicitly executed and passed. Skipping this gate invalidates the entire brainstorming output.
+</HARD-GATE>
+
+After writing the spec document, execute each of these checks. For each check, you must either confirm it passes or fix the issue inline before proceeding.
 
 1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Quantification check (NEW):** Scan every line of the spec for vague parameters. Every numeric parameter MUST be an exact value, a bounded range, or a formula. Flag and fix any instance of:
+   - "e.g.," or "for example" used to hedge a parameter value
+   - "approximately", "around", "about" before a number
+   - Adjectives used as parameters: "fast", "slow", "large", "small", "many", "few"
+   - "periodically", "occasionally", "sometimes" without a defined interval
+   - "based on" without a formula
+6. **Decision log completeness (NEW):** Cross-reference the Decision Log appendix against the conversation. Is every brainstorming question and answer reflected in the log? Are any decisions missing?
+7. **Config schema check (NEW):** If the spec references any configuration files (JSON, YAML, env vars), the spec MUST include the exact schema shape with field names, types, and valid ranges. "A config file" is not a specification.
 
-Fix any issues inline. No need to re-review — just fix and move on.
+Fix any issues inline. After fixing, explicitly state: "Spec self-review passed: [N] checks clear, [M] issues fixed inline."
 
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:

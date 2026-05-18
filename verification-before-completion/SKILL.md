@@ -48,6 +48,8 @@ Skip any step = lying, not verifying
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
+| UI looks correct | Browser screenshot evidence | Code inspection, "CSS looks right" |
+| Screen has content | VAT screen walk screenshot | Component exists in DOM |
 
 ## Red Flags - STOP
 
@@ -59,6 +61,7 @@ Skip any step = lying, not verifying
 - Thinking "just this once"
 - Tired and wanting work over
 - **ANY wording implying success without having run verification**
+- **Claiming UI is correct without a browser screenshot**
 
 ## Rationalization Prevention
 
@@ -72,6 +75,7 @@ Skip any step = lying, not verifying
 | "I'm tired" | Exhaustion ≠ excuse |
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
+| "The CSS looks correct" | CSS inspection ≠ rendered output |
 
 ## Key Patterns
 
@@ -91,6 +95,19 @@ Skip any step = lying, not verifying
 ```
 ✅ [Run build] [See: exit 0] "Build passes"
 ❌ "Linter passed" (linter doesn't check compilation)
+```
+
+**TypeScript Compilation (NEW):**
+```
+✅ [Run `npx tsc --noEmit`] [See: exit code 0] "No TypeScript errors"
+❌ "Build passes" (if the build tool like Vite skips typechecking)
+```
+
+**Visual/UI (NEW — requires `visual-acceptance-testing` skill):**
+```
+✅ [Open browser] [Screenshot each screen] [Verify elements present] "UI matches spec"
+❌ "The HTML has the right elements" (DOM existence ≠ visual rendering)
+❌ "The CSS matches the spec" (CSS text ≠ rendered pixels)
 ```
 
 **Requirements:**

@@ -27,41 +27,59 @@ When the user says "I want to add X feature" or "Change how Y works":
 3. **Swarm the Spec:** You MUST invoke the `adversarial-swarm-analysis` skill to harden the proposed spec changes. Do not skip this step; the spec modifications must survive the Red Team Critic Council before they are finalized.
 4. **Apply the Change:** Once the spec survives the adversarial swarm and the user approves the hardened spec, write the changes to the `specs/` folder.
 5. **Proceed:** Move to implementation planning (`writing-implementation-phases`) and swarm execution (`development-swarm`).
-6. **Close the Loop:** After the `development-swarm` completes, its mandatory Post-Implementation Reconciliation (Step 6 of that skill) will re-read the spec and compare it against the code that was actually written. If drift is detected:
+6. **Visual Acceptance Testing (UI projects only):** After the `development-swarm` writes code and it compiles, you MUST invoke the `visual-acceptance-testing` skill to verify the rendered output in a real browser. This catches visual bugs (invisible elements, empty screens, layout breakage) that compilation and unit tests cannot detect.
+7. **Close the Loop:** After the `development-swarm` completes (including VAT for UI projects), its mandatory Post-Implementation Reconciliation (Step 6 of that skill) will re-read the spec and compare it against the code that was actually written. If drift is detected:
    - **Minor drift:** The spec is auto-corrected to match the implementation.
    - **Major drift:** The `adversarial-swarm-analysis` is re-invoked to harden the updated spec, creating a feedback cycle back to Step 3.
    
    The lifecycle is NOT complete until the Reconciliation Report shows ZERO drift entries.
 
+## Workflow When Bugs Escape (The Hardening Loop)
+If a defect, edge case, or structural flaw is discovered *after* the SDD lifecycle has been completed (i.e., a production bug or visual drift):
+
+1. **Root Cause Analysis:** Before fixing the bug, explicitly analyze *why* it slipped through the cracks. Which persona in the `development-swarm` failed to catch it? Was it missing from the `ARCHITECTURE_SPEC.md`? Did `visual-acceptance-testing` not cover that specific state?
+2. **Process Hardening:** Before implementing the fix, you MUST write or update a skill to prevent this category of bug from ever escaping again. If the bug was visual, update the VAT skill. If it was architectural, update the `adversarial-swarm-analysis` guidelines. If an entirely new gate is needed, write a new skill (e.g., `performance-benchmarking`).
+3. **Execute the Fix:** Enter the standard SDD loop (update Spec → regenerate Phases → Swarm).
+
 ## SDD Lifecycle Diagram
 ```
-  ┌─── 1. User Request ───┐
-  │                        ▼
-  │           2. Draft Spec Change
-  │                        │
-  │           3. adversarial-swarm-analysis
-  │                        │ (3+ iterations)
-  │           4. User Approves Spec
-  │                        │
-  │           5. writing-implementation-phases
-  │                        │
-  │           6. development-swarm
-  │                        │
-  │           7. Post-Implementation Reconciliation
-  │                        │
-  │               ┌────────┴────────┐
-  │               │                 │
-  │          No Drift          Drift Found
-  │               │                 │
-  │            ✅ DONE         ┌────┴────┐
-  │                            │         │
-  │                         Minor     Major
-  │                            │         │
-  │                       Auto-fix   Re-invoke
-  │                        spec     adversarial
-  │                            │     swarm (→3)
-  │                            │         │
-  └────────────────────────────┴─────────┘
+  ┌─── 1. User Request (Feature/Bug) ──┐
+  │                                    ▼
+  │                     ┌── 2. Defect Leakage Analysis ──┐
+  │                     │   (If post-release bug)        │
+  │                     │                                ▼
+  │                     │                       Harden Global Skills
+  │                     │                                │
+  │                     └────────────────────────────────┘
+  │                                    ▼
+  │                           3. Draft Spec Change
+  │                                    │
+  │                           4. adversarial-swarm-analysis
+  │                                    │ (3+ iterations)
+  │                           5. User Approves Spec
+  │                                    │
+  │                           6. writing-implementation-phases
+  │                                    │
+  │                           7. development-swarm
+  │                                    │
+  │                          7.5. visual-acceptance-testing
+  │                            (UI projects only)
+  │                                    │
+  │                           8. Post-Implementation Reconciliation
+  │                                    │
+  │                       ┌────────────┴────────────┐
+  │                       │                         │
+  │                  No Drift                  Drift Found
+  │                       │                         │
+  │                    ✅ DONE                 ┌────┴────┐
+  │                                            │         │
+  │                                         Minor     Major
+  │                                            │         │
+  │                                       Auto-fix   Re-invoke
+  │                                        spec     adversarial
+  │                                            │     swarm (→4)
+  │                                            │         │
+  └────────────────────────────────────────────┴─────────┘
 ```
 
-**Hard Rule:** Never write application code (Python, TS, React, Java, etc.) to satisfy a feature request before the markdown spec has been formally updated. Never declare a feature complete until the Post-Implementation Reconciliation passes.
+**Hard Rule:** Never write application code (Python, TS, React, Java, etc.) to satisfy a feature request before the markdown spec has been formally updated. Never declare a feature complete until the Post-Implementation Reconciliation passes. For UI projects, never declare visual correctness without browser screenshot evidence from the `visual-acceptance-testing` skill. Never fix a post-release bug without running a Defect Leakage Analysis first.
