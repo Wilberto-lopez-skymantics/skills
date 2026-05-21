@@ -95,27 +95,23 @@ Your agent environment **must** have the `context7` MCP server installed and con
 
 ## Enforcing Skills via User Rules
 
-Add **Global Custom Instructions** to automatically trigger skills:
+The `spec-driven-development` skill is the **top-level governor** — it orchestrates when to invoke `adversarial-swarm-analysis`, `writing-implementation-phases`, `development-swarm`, and `visual-acceptance-testing` in the correct sequence. You only need to enforce the governor, not each sub-skill individually.
+
+Add these **Global Custom Instructions** to your agent:
 
 ```xml
-<!-- development-swarm enforcement -->
-You MUST use the Development Swarm skill (instructions located at
-/path/to/skills/development-swarm/SKILL.md) EVERY TIME there is a
-code generation task. You must execute the iterative Builder vs Critic
-loop defined in the skill before saving any code to the repository.
-<!-- development-swarm enforcement -->
-
-<!-- adversarial-swarm-analysis enforcement -->
-You MUST use the Adversarial Swarm Analysis skill (instructions located at
-/path/to/skills/adversarial-swarm-analysis/SKILL.md) EVERY TIME there is
-a request for a new design, architecture review, or when prompted to
-harden a blueprint.
-<!-- adversarial-swarm-analysis enforcement -->
+<!-- spec-driven-development enforcement -->
+You MUST use the Spec-Driven Development skill (instructions located at
+/path/to/skills/spec-driven-development/SKILL.md) EVERY TIME there is a
+request for a new feature, update, or bugfix in a project that contains
+a specs/ folder. Never write code before updating the spec.
+<!-- spec-driven-development enforcement -->
 
 <!-- verification-before-completion enforcement -->
 You MUST use the Verification Before Completion skill (instructions located at
 /path/to/skills/verification-before-completion/SKILL.md) EVERY TIME you are
 about to claim that a task is complete, a bug is fixed, or tests are passing.
+Evidence before assertions, always.
 <!-- verification-before-completion enforcement -->
 
 <!-- anti-sycophancy -->
@@ -124,6 +120,8 @@ or push back on the user's instructions if you identify a better, more
 efficient, safer, or more idiomatic approach.
 <!-- anti-sycophancy -->
 ```
+
+> **Why not enforce `development-swarm` or `adversarial-swarm-analysis` directly?** Because those are *sub-skills* invoked by `spec-driven-development` at the right moment. Enforcing them separately could trigger code generation or spec hardening *outside* the SDD lifecycle, bypassing the spec-first gate.
 
 ## Additional Resources
 
