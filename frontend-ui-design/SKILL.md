@@ -13,6 +13,18 @@ This skill dictates how you design and implement user interfaces in the Skymanti
 ## The Prime Directive
 **Never use inline styles (`style={{ color: 'red' }}`). Always use Tailwind CSS utility classes. Never deploy a button, input, or interactive element without proper ARIA attributes.**
 
+## DESIGN.md Authority Rule
+
+If a `DESIGN.md` file exists in the project's `specs/` directory, it is the **authoritative source** for all visual values. The `tailwind.config.ts` theme extension MUST be derived from `DESIGN.md` tokens, not the other way around.
+
+**Before generating any component:**
+1. Read `specs/DESIGN.md` and parse the YAML front matter.
+2. Verify the `tailwind.config.ts` maps every `DESIGN.md` color, font, and spacing token.
+3. Use only the mapped Tailwind classes (e.g., `text-accent`, `bg-primary-surface`) — NOT arbitrary Tailwind color utilities like `text-cyan-400` if `text-accent` is defined.
+
+**After writing a component:**
+Cross-reference all Tailwind classes against `DESIGN.md` tokens. If `DESIGN.md` defines `colors.accent: "#00D4FF"`, the component MUST use `text-accent` (mapped in Tailwind config), NOT `text-cyan-400` or a hardcoded `#00D4FF`.
+
 ## Phase 1: Visual Design & Mockups
 
 Before writing component code, you must ensure the visual design has been validated.
@@ -23,7 +35,8 @@ Before writing component code, you must ensure the visual design has been valida
    - Do not guess the layout or the UX flow. Wait for the user to select their preferred visual mockup before writing the actual React component code.
 
 2. **Tailwind Typography & Colors:**
-   - Avoid generic browser defaults. Use modern typography scales (e.g., `text-sm`, `text-base`, `text-lg font-semibold`).
+   - If `DESIGN.md` exists, all colors and typography MUST come from its tokens mapped through `tailwind.config.ts`. Do not invent new color values.
+   - If no `DESIGN.md` exists, avoid generic browser defaults. Use modern typography scales (e.g., `text-sm`, `text-base`, `text-lg font-semibold`).
    - Do not use harsh absolute colors (e.g., `bg-red-500`). Use harmonious palettes (e.g., slate, zinc, or brand-specific variables if defined in `tailwind.config.ts`).
    - Always account for Dark Mode using the `dark:` variant (e.g., `bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100`).
 

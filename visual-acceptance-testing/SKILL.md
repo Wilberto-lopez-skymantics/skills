@@ -28,7 +28,7 @@ This skill is **MANDATORY** for any project with a UI (web apps, games, PWAs) at
 ## The VAT Protocol
 
 ### Step 1: Identify the Screen Map
-Read the spec's **Component Hierarchy** (e.g., §8.3 of `ARCHITECTURE_SPEC.md`). Extract every screen and its child components into a checklist:
+Read the spec's **Component Hierarchy** (e.g., from `specs/ARCHITECTURE.md`). Extract every screen and its child components into a checklist:
 
 ```markdown
 ## VAT Checklist
@@ -79,6 +79,30 @@ Read the spec's **Input & Interaction Contract** (e.g., §2.6). For each interac
 | Tap tray (match) | GAMEPLAY:IDLE | Cup flies to tray | Cup disappeared from belt, appeared in tray | PASS |
 | Tap Retry | LEVEL_FAILED | Reload level | Screen froze, no transition | FAIL |
 ```
+
+### Step 3.5: Design Token Verification (Projects with `DESIGN.md` only)
+
+If a `specs/DESIGN.md` exists, verify that the rendered UI actually uses the design tokens. This catches cases where the CSS/Tailwind classes are correct but a runtime override (e.g., a parent component's inline style, a CSS specificity conflict) changes the rendered value.
+
+For each major component listed in `DESIGN.md`'s `components:` section:
+
+1. Navigate to a screen where the component is visible
+2. Use `browser_subagent` to inspect the computed styles of the element
+3. Compare the rendered `background-color`, `color`, `font-family`, `font-size`, and `border-radius` against the corresponding `DESIGN.md` token values
+4. Flag any mismatch (tolerance: ±1px for dimensions, exact match for colors after normalizing to the same format)
+
+**Output format:**
+```markdown
+## 🎨 Design Token Verification
+
+| Component | Property | DESIGN.md Token | Expected Value | Rendered Value | Status |
+|-----------|----------|-----------------|----------------|----------------|--------|
+| chat-card-user | borderLeft | colors.accent | #00D4FF | #00D4FF | PASS |
+| header | backgroundColor | colors.primary-surface | #0D1220 | #0D1220 | PASS |
+| send-button | backgroundColor | colors.accent | #00D4FF | #3B82F6 | FAIL |
+```
+
+**Note:** This step supplements, not replaces, the Development Swarm's Design Token Auditor (which checks source code). This step checks the *rendered output* in the browser.
 
 ### Step 4: Debug Artifact Scan
 Search the visible DOM for elements that should not be exposed in production:

@@ -15,7 +15,7 @@ When writing code, adopt the specialized persona most relevant to the task. *Cru
 1. **The Infrastructure Engineer:** Writes Docker configurations, Makefiles, CI/CD pipelines, and network rules. **Skill Mandate:** MUST explicitly invoke the `kubernetes-deployment` skill for all cluster manifests and investigations. MUST generate a highly optimized `.dockerignore` file whenever a `Dockerfile` is created or modified to prevent build context bloat.
 2. **The Backend Developer:** Writes API logic, database schemas, message queues, and background workers. **Skill Mandate:** MUST explicitly invoke the `test-driven-development` skill before writing logic to ensure regression tests exist.
 3. **The Security Engineer:** Writes authentication middleware, encryption logic, and data sanitization pipelines.
-4. **The Frontend Engineer:** Writes UI components, state management, and real-time streaming interfaces. **Skill Mandate:** MUST explicitly invoke the `frontend-ui-design` skill to enforce strict Tailwind and accessibility (a11y) standards.
+4. **The Frontend Engineer:** Writes UI components, state management, and real-time streaming interfaces. **Skill Mandate:** MUST explicitly invoke the `frontend-ui-design` skill to enforce strict Tailwind and accessibility (a11y) standards. **Design Token Mandate:** Before generating any frontend component, MUST read `specs/DESIGN.md` (if it exists) and extract the YAML design tokens. All color, font, spacing, and border-radius values MUST reference these tokens. Hardcoded hex values or arbitrary Tailwind utilities (e.g., `bg-blue-500` when `bg-accent` is defined) are forbidden.
 5. **The Technical Writer:** Generates codebase documentation, inline docstrings, API specifications, and the project `README.md`.
 
 ## The Validation Swarm (Red Team Critics)
@@ -25,8 +25,9 @@ Once the Blue Team drafts the code, adopt these personas to attack it *before* s
 3. **The Resource Starver:** Looks for memory leaks, missing pagination, un-indexed database queries, and unbounded arrays or loops.
 4. **The Compliance Enforcer:** Ensures that security policies (like `mlockall`, PII scrubbing, or append-only logging) actually function as intended in the syntax.
 5. **The DX Auditor:** Follows the README blindly to test onboarding. Attacks poor docstrings, outdated comments, and missing setup steps. **Skill Mandate:** MUST explicitly invoke the `verification-before-completion` skill to actively execute builds/tests. **Crucial:** The DX Auditor is FORBIDDEN from issuing a PASS based solely on a `200 OK` HTTP response. They MUST actively inspect application compilation logs (e.g., `docker compose logs`), verify there are no missing imports/modules, and ensure the UI fully hydrates without silent runtime errors. **For TypeScript projects, the DX Auditor MUST explicitly execute `tsc --noEmit` and verify zero errors before passing; a successful bundler build (like Vite) is NOT sufficient.**
-6. **The Architect (Spec Enforcer):** Cross-references the drafted code against the `ARCHITECTURE_SPEC.md` and the `IMPLEMENTATION_PHASES.md`. Attacks the Blue Team if any explicitly requested component, state hook, or feature from the checklist is missing or skipped. They are the ultimate safeguard against "feature tunnel vision."
+6. **The Architect (Spec Enforcer):** Cross-references the drafted code against the `specs/ARCHITECTURE.md` and the `IMPLEMENTATION_PHASES.md`. Attacks the Blue Team if any explicitly requested component, state hook, or feature from the checklist is missing or skipped. They are the ultimate safeguard against "feature tunnel vision."
 7. **The Visual QA Tester:** For any project with a UI (web apps, games, PWAs), this persona MUST invoke the `visual-acceptance-testing` skill to open the application in a real browser, screenshot every screen, and verify that every component in the spec's Component Hierarchy is visually present, non-empty, and interactive. **Skill Mandate:** MUST explicitly invoke the `visual-acceptance-testing` skill. The Visual QA Tester is FORBIDDEN from issuing a PASS based on code inspection alone — they must see it rendered in a browser.
+8. **The Design Token Auditor:** (UI projects with `DESIGN.md` only) After the Builder produces a frontend component, this persona scans for any hardcoded color hex, font-family string, or pixel spacing value that does not match a `DESIGN.md` token. Violations are flagged as **errors, not warnings**. The Auditor also verifies that component names in code match component names in `DESIGN.md`'s `components:` YAML section. **HARD RULE:** A frontend file containing even one hardcoded visual value that exists as a `DESIGN.md` token is an automatic FAIL.
 
 ## Dynamic Swarm Scaling (Context-Aware Personas)
 The base personas listed above are just the foundation. **The Swarm is dynamic.** 
@@ -70,7 +71,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 
 0. **Pre-Flight Dependency Check:** Before drafting, the Blue Team MUST explicitly invoke the tool named `mcp_context7_resolve-library-id` followed by `mcp_context7_query-docs`. <anti_hallucination>You are STRICTLY FORBIDDEN from simulating the Context7 output or claiming you 'reviewed the docs' without actually executing the tool call.</anti_hallucination>
 1. **Draft (Blue Team):** The appropriate Builder persona generates the code for the requested component internally.
-2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version. Additionally, the Architect MUST verify that EVERY component requested in the current phase of `IMPLEMENTATION_PHASES.md` exists and aligns with the `ARCHITECTURE_SPEC.md` before passing.*
+2. **Attack (Red Team):** The Critic personas analyze the drafted code and point out flaws, missing edge cases, or security holes. *Rule: The Critic must use Context7 to verify if the attack vector is valid for the framework's specific version. Additionally, the Architect MUST verify that EVERY component requested in the current phase of `IMPLEMENTATION_PHASES.md` exists and aligns with the `specs/ARCHITECTURE.md` before passing.*
 3. **Refine (Blue Team):** The Builder fixes the code based on the Red Team's findings. 
 4. **Deploy (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 until the Critics issue a final "PASS" verdict with ZERO new findings. <anti_hallucination>Do NOT attempt to run all 5 loops internally in a single hidden thought block. You MUST persist your state to an artifact (e.g., `artifacts/swarm_state.md`) and output each iteration sequentially to the user to avoid context collapse.</anti_hallucination> **Hard Limit:** Execute a maximum of 5 attack/resolve iterations per component. If the code still fails Red Team validation, halt and ask the user for architectural guidance. Once a "PASS" is issued, write the hardened code to the repository. **MANDATORY:** Before concluding the deploy phase, you MUST invoke the `verification-before-completion` skill to empirically prove the changes compile and pass tests.
 4.5. **Visual Acceptance Testing (VAT Gate — CRITICAL MANDATE for UI projects):**
@@ -88,12 +89,19 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 6. **Post-Implementation Reconciliation (CLOSING THE LOOP — CRITICAL MANDATE):**
    After ALL implementation phases are complete and verified, the Architect (Spec Enforcer) MUST execute a full reconciliation pass:
    
-   **What to check:** Re-read `ARCHITECTURE_SPEC.md` and cross-reference it against every file that was created or modified during the swarm run. Specifically verify:
+   **What to check:** Re-read `specs/ARCHITECTURE.md` and cross-reference it against every file that was created or modified during the swarm run. Specifically verify:
    - Every API endpoint's field names in the spec match the actual Pydantic schemas / route handlers written
    - Every port mapping in the spec's Docker Compose section matches the actual `docker-compose.yml`
    - Every component in the spec's Frontend Hierarchy exists as an actual file in the codebase
    - Every environment variable in the spec's table is actually referenced in the code
    - Every error handling scenario in the spec is actually implemented
+   
+   **DESIGN.md Audit (UI projects with `specs/DESIGN.md`):**
+   In addition to the ARCHITECTURE.md cross-reference, the Architect MUST also reconcile against DESIGN.md:
+   - **Token Usage Audit:** For every frontend component file created during the swarm run, scan for Tailwind classes that map to DESIGN.md tokens. Verify that every `bg-*`, `text-*`, `border-*` class uses a token-mapped custom value (e.g., `bg-primary`), NOT an arbitrary Tailwind utility (e.g., `bg-slate-900`). Verify that every `font-*` class matches a DESIGN.md typography token and every `rounded-*` class matches a DESIGN.md border-radius token.
+   - **Component Coverage:** Every component in DESIGN.md's `components:` section has a corresponding `.tsx` file that actually uses its defined tokens.
+   - **State Coverage:** For every component with interaction states (hover, focus, disabled) defined in DESIGN.md, verify the corresponding Tailwind variants exist in the code (e.g., `hover:bg-accent/80`, `focus:ring-accent`, `disabled:bg-secondary`).
+   - **Cross-Artifact Naming:** Verify component names are consistent: DESIGN.md kebab-case names map 1:1 to ARCHITECTURE.md PascalCase names and to actual `.tsx` filenames. Flag any orphan in any direction.
    
    <anti_hallucination>The Architect MUST use file-reading tools to inspect the actual source files. They are FORBIDDEN from claiming "the code matches the spec" based on memory of what they just wrote. Fresh reads only.</anti_hallucination>
    
@@ -107,7 +115,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
    ```
    
    **If ANY drift is found:**
-   - **Minor drift** (field renamed for pragmatic reasons, port changed to avoid conflict): The Architect MUST immediately update `ARCHITECTURE_SPEC.md` to match the implementation. These are "spec-follows-code" corrections.
+   - **Minor drift** (field renamed for pragmatic reasons, port changed to avoid conflict): The Architect MUST immediately update `specs/ARCHITECTURE.md` to match the implementation. These are "spec-follows-code" corrections.
    - **Major drift** (missing feature, architectural deviation, new component not in spec): The swarm MUST HALT. The Architect flags the drift and invokes the `adversarial-swarm-analysis` skill to re-harden the spec before the drift is accepted. This creates the feedback loop back to the spec.
    
    **HARD GATE:** The development swarm is NOT allowed to issue its final Report (Step 7) until this reconciliation pass produces ZERO ❌ drift entries.
@@ -117,6 +125,7 @@ When invoked to perform a "Development Swarm" or "Test-Driven Swarm", execute th
 ## Usage Triggers
 If the user asks to "use the development swarm", "build this with the red team", or "code this using the swarm loop", immediately adopt this workflow.
 
-**Mandatory Orchestration Input:** The Development Swarm does not guess what to build. Upon invocation, you MUST ingest two critical documents:
-1. `specs/ARCHITECTURE_SPEC.md`: The single source of truth containing all API contracts, data models, layout rules, and edge cases.
+**Mandatory Orchestration Input:** The Development Swarm does not guess what to build. Upon invocation, you MUST ingest these critical documents:
+1. `specs/ARCHITECTURE.md`: The single source of truth containing all API contracts, data models, layout rules, and edge cases.
 2. `specs/IMPLEMENTATION_PHASES.md`: The strict, sequential checklist that breaks the spec down into testable phases. You must execute this checklist strictly in order, and update the markdown file by checking off tasks (`[x]`) as you complete their verifications.
+3. `specs/DESIGN.md` (if it exists): The visual design token schema. If this file is present, the Frontend Engineer MUST read it before writing any component code. The Design Token Auditor MUST validate all generated frontend code against it.

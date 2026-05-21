@@ -127,8 +127,8 @@ You are FORBIDDEN from claiming you "internally looped." Every iteration must be
 When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
 
 0. **Pre-Flight Context Map:** Identify all frameworks/versions in the target architecture.
-0b. **Pre-Flight Codebase Grounding (CRITICAL for Incremental Updates):** If this swarm is modifying an EXISTING spec (i.e., a `specs/` folder or `ARCHITECTURE_SPEC.md` already exists), The Reconciler MUST read the following files BEFORE the Blue Team drafts anything:
-   - The existing `ARCHITECTURE_SPEC.md` (to understand what's already defined)
+0b. **Pre-Flight Codebase Grounding (CRITICAL for Incremental Updates):** If this swarm is modifying an EXISTING spec (i.e., a `specs/` folder or `specs/ARCHITECTURE.md` already exists), The Reconciler MUST read the following files BEFORE the Blue Team drafts anything:
+   - The existing `specs/ARCHITECTURE.md` (to understand what's already defined)
    - The actual `docker-compose.yml` (to verify real port mappings)
    - The actual API schema files (e.g., `schemas.py`, route handlers) to verify real field names
    - The actual frontend component directory listing to verify which components exist
@@ -147,7 +147,7 @@ When invoked to perform an Adversarial Swarm Analysis, execute this exact loop:
    
    The UX/UI Lead MUST NOT fill these gaps with "sensible defaults." What seems sensible to the AI may contradict the user's vision. Ask first.
 4. **Loop (CRITICAL MANDATE):** You MUST recursively repeat Steps 1-3 in a strict loop until the Critics issue a final "PASS" verdict with ZERO new findings. Do NOT stop after a single pass. **Minimum 3 documented iterations required.**
-5. **Commit & Save (CRITICAL MANDATE):** Output the finalized, battle-tested Specification Document. You MUST save this document, along with any related artifacts (visual mockups, color palettes, data models), into a dedicated `specs/` directory within the target project repository (e.g., `specs/ARCHITECTURE_SPEC.md`). This ensures the specification and all its supporting assets are cleanly grouped and tracked in version control for traceability. **Do NOT write implementation code.**
+5. **Commit & Save (CRITICAL MANDATE):** Output the finalized, battle-tested Specification Document. You MUST save this document, along with any related artifacts (visual mockups, color palettes, data models), into a dedicated `specs/` directory within the target project repository (e.g., `specs/ARCHITECTURE.md`). This ensures the specification and all its supporting assets are cleanly grouped and tracked in version control for traceability. **Do NOT write implementation code.**
 6. **Handoff:** Present the finalized Specification Document to the user for review. Explicitly ask for their confirmation and approval. If the user approves, THEN automatically invoke the `development-swarm` skill to read the hardened spec and begin the actual coding phase.
 7. **Report:** Output a "Swarm Log" detailing the exact attacks the Red Team executed against the spec and how the Blue Team resolved them. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 
