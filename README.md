@@ -1,6 +1,10 @@
-# Skymantics Agentic Skills
+# Skymantics Agentic Skills — Spec-Driven Development Toolkit
 
-A curated collection of AI agent "Skills" that enforce a **Spec-Driven Development (SDD)** workflow. Code is a byproduct of the spec — never the other way around.
+> **Code is a byproduct of the spec — never the other way around.**
+
+A curated collection of AI agent skills that enforce a rigorous **Spec-Driven Development (SDD)** pipeline. Every skill in this repo exists to ensure that specifications are written, hardened, and phase-planned *before* a single line of implementation code is generated. If your project has a `specs/` folder, these skills govern the entire lifecycle — from ideation through adversarial review to verified, production-ready code.
+
+**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification**
 
 ## The SDD Pipeline
 
