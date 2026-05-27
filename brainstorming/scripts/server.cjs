@@ -154,6 +154,47 @@ function handleRequest(req, res) {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(fs.readFileSync(filePath));
+  } else if (req.method === 'GET' && req.url.split('?')[0].endsWith('.html')) {
+    const pathname = req.url.split('?')[0];
+    const fileName = path.basename(pathname);
+    const filePath = path.join(CONTENT_DIR, fileName);
+    if (fs.existsSync(filePath)) {
+      let html = (raw => isFullDocument(raw) ? raw : wrapInFrame(raw))(fs.readFileSync(filePath, 'utf-8'));
+      if (html.includes('</body>')) {
+        html = html.replace('</body>', helperInjection + '\n</body>');
+      } else {
+        html += helperInjection;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+      return;
+    }
+    res.writeHead(404);
+    res.end('Not found');
+  } else if (req.method === 'GET') {
+    const pathname = req.url.split('?')[0];
+    // Attempt 1: Serve from CONTENT_DIR
+    const filePath = path.join(CONTENT_DIR, pathname);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(fs.readFileSync(filePath));
+      return;
+    }
+    // Attempt 2: Serve relative to PROJECT_DIR/specs/
+    if (process.env.BRAINSTORM_PROJECT_DIR) {
+      const projectFilePath = path.join(process.env.BRAINSTORM_PROJECT_DIR, 'specs', pathname);
+      if (fs.existsSync(projectFilePath) && fs.statSync(projectFilePath).isFile()) {
+        const ext = path.extname(projectFilePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(fs.readFileSync(projectFilePath));
+        return;
+      }
+    }
+    res.writeHead(404);
+    res.end('Not found');
   } else {
     res.writeHead(404);
     res.end('Not found');
