@@ -114,6 +114,7 @@ All specs live in the project's `specs/` directory — the single source of trut
 | [`frontend-ui-design`](./frontend-ui-design/) | CSS standards, responsive design, a11y. Used by dev swarm for non-SDD React/Next.js projects. |
 | [`test-driven-development`](./test-driven-development/) | Red-green-refactor loop for backend logic. |
 | [`kubernetes-deployment`](./kubernetes-deployment/) | Safe infrastructure investigation and K8s manifest generation. |
+| [`ubiquitous-language`](./ubiquitous-language/) | DDD-style domain glossary — extracts canonical terms, flags ambiguities, enforces consistent terminology across specs and swarms. |
 
 ### Shared Resources
 
@@ -170,6 +171,8 @@ skills/
 │   └── testing-anti-patterns.md
 └── kubernetes-deployment/            # K8s manifests
     └── SKILL.md
+├── ubiquitous-language/              # Domain glossary
+│   └── SKILL.md
 ```
 
 ## Token Efficiency

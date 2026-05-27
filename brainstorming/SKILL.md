@@ -148,7 +148,6 @@ Read & execute full matrix process: [ui-state-matrix.md](file://{{SKILLS_DIR}}/b
 
 **Documentation:**
 - `specs/` = single source of truth. Write `specs/DECISION_LOG.md`, update `specs/SPEC.md`, and (if UI) create `specs/DESIGN.md`.
-- Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit written files to git
 
 ## Spec Merge
