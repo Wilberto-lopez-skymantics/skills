@@ -194,4 +194,24 @@ After drafting spec & passing adversarial swarm, execute checks sequentially.
 
 Execute all 14 checks ∈ [spec-self-review.md](file://{{SKILLS_DIR}}/shared/spec-self-review.md) (base 11 + SDD extensions 12-14).
 
+⊥ resolve reference → use fallback checks. Log: "Spec self-review reference unavailable — using inline fallback."
+
+<details><summary>Fallback Spec Self-Review (use only if reference unresolvable)</summary>
+
+1. **Placeholder scan:** Any "TBD" | "TODO" | incomplete sections → fix.
+2. **Internal consistency:** Sections contradict each other?
+3. **Scope check:** Focused enough for single implementation plan?
+4. **Ambiguity check:** Requirement interpretable two ways → pick one.
+5. **Quantification check:** ∀ numeric parameter ! be exact value | bounded range | formula.
+6. **Decision log completeness:** Cross-ref DECISION_LOG.md vs conversation.
+7. **Config schema check:** Config references ! include exact schema shape.
+8. **WCAG Contrast (UI):** ∀ text/background pair → ≥4.5:1 (body) | ≥3:1 (large).
+9. **Design Token Completeness (UI):** ∀ component ! define backgroundColor, textColor, rounded + interaction states.
+10. **Cross-Artifact (UI):** DESIGN.md component names ↔ SPEC.md hierarchy — flag orphans.
+11. **Auxiliary UI State (UI):** Check for missing screens: splash, loading, settings, error, empty states.
+12. **PRNG Determinism (Algorithmic):** Random generation → define deterministic algorithm + seed storage.
+13. **Input Throttling (Interactive):** Fast inputs (pointermove, scroll) throttled?
+14. **Hardware Resilience:** Fallback for blocked APIs (audio, WebGL, camera)?
+</details>
+
 Fix issues inline. After fixing → "Spec self-review passed: [N] checks clear, [M] issues fixed inline." Then ask user for Final Approval.

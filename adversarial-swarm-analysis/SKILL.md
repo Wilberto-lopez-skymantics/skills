@@ -44,6 +44,26 @@ Base personas = foundation. Analyze user's tech stack → auto-instantiate speci
 ### Project Type Classification & Completeness Checklist (Step 0c)
 Before Blue Team draft, classify project type & apply corresponding checklist. Read full checklist, adapters, & consistency gate: [completeness-checklist.md](file://{{SKILLS_DIR}}/adversarial-swarm-analysis/references/completeness-checklist.md)
 
+⊥ resolve reference → use fallback checklist. Log: "Completeness checklist unavailable — using inline fallback."
+
+<details><summary>Fallback Completeness Checklist (use only if reference unresolvable)</summary>
+
+Classify project: `backend-service` | `fullstack-app` | `client-side-app` | `game`.
+Spec ! define ∀ applicable sections:
+1. System Architecture — services, communication, protocols
+2. API Contracts — ∀ endpoint: method, path, req/res schema, error codes
+3. Data Models — DB schema, relationships, retention
+4. Auth & Authorization — mechanism, RBAC, or explicit "none" + justification
+5. LLM/AI Configuration — provider, model, limits (if applicable)
+6. Frontend Component Hierarchy — named components, state, layout (if UI)
+7. Infrastructure & DevOps — Docker, env vars, ports, networking
+8. Error Handling — timeouts, retries, fallbacks ∀ integration point
+9. Cross-Section Consistency — field names, types, ports identical across sections
+10. Visual Design — colors, typography, spacing (if UI; ref DESIGN.md)
+
+Client-side/game: drop sections 2-5, 7. Add: Asset Pipeline, Input Handling.
+</details>
+
 **⛔ GATE:** Blue Team draft missing even ONE required section (after adapter) → Critic Council ! reject entire draft. ⊥ proceed to adversarial pass with incomplete draft.
 
 ### Mandatory Visible Iteration Logs

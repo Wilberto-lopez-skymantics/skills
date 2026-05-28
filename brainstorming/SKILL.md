@@ -29,7 +29,7 @@ Every project goes through this. Todo list, single-function utility, config chan
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
 6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md`. See [decision-log-template.md](file://{{SKILLS_DIR}}/shared/decision-log-template.md).
-7. **Write DESIGN.md** (UI only) — produce `specs/DESIGN.md`. ! pass Design Token Completeness Checklist. See [design-template.md](file://{{SKILLS_DIR}}/shared/design-template.md).
+7. **Write DESIGN.md** (UI only) — produce `specs/DESIGN.md`. ! pass Design Token Completeness Checklist. See [design-template.md](file://{{SKILLS_DIR}}/shared/design-template.md). ⊥ resolve → use fallback structure below.
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional.
 9. **Spec Merge** — update `specs/SPEC.md` with structural decisions.
 10. **User reviews spec** — ask user to review before proceeding
@@ -133,6 +133,22 @@ Read & execute full process: [theme-brainstorming.md](file://{{SKILLS_DIR}}/brai
 ∃ visual UI → produce `specs/DESIGN.md`.
 
 **Template, checklist, conventions:** See [design-template.md](file://{{SKILLS_DIR}}/shared/design-template.md).
+
+⊥ resolve reference → use fallback structure. Log: "Design template unavailable — using inline fallback."
+
+<details><summary>Fallback DESIGN.md Structure (use only if reference unresolvable)</summary>
+
+DESIGN.md ! contain YAML token blocks for:
+- **Colors:** `primary`, `secondary`, `accent`, `background`, `surface`, `text`, `error`, `success`
+- **Typography:** `fontFamily` (heading, body, mono), `fontSize` scale, `fontWeight`, `lineHeight`
+- **Spacing:** scale (xs through 3xl), `containerMaxWidth`, `sectionPadding`
+- **Borders:** `borderRadius` scale, `borderWidth`, `borderColor`
+- **Shadows:** elevation scale (sm, md, lg, xl)
+- **Animations:** `duration` (fast, normal, slow), `easing` (default, spring)
+- **Components:** ∀ component ! define `backgroundColor`, `textColor`, `rounded`. Interactive components ! have `hover`, `focus`, `disabled` sub-objects.
+
+Component naming: DESIGN.md uses kebab-case → SPEC.md uses PascalCase.
+</details>
 
 **⛔ GATE:** DESIGN.md ⊥ be written until ∀ mandatory category ∈ Design Token Completeness Checklist has defined tokens. Agent ! generate best-practice defaults matching approved theme ∀ categories — user doesn't define manually.
 
