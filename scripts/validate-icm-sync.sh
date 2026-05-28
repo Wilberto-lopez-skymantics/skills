@@ -13,6 +13,24 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="${1:-$(dirname "$SCRIPT_DIR")}"
 ICM_DIR="${2:-$SKILLS_DIR/icm-workspace-template/specs/.sdd}"
 
+# Known intentional differences (stage:check:allowed_delta)
+# brainstorming gate: SKILL has SDD delegation meta-gate, CONTEXT uses stage routing
+KNOWN_DIFFS="01_brainstorming:gates:1"
+
+is_known_diff() {
+  local stage="$1" check="$2" delta="$3"
+  echo "$KNOWN_DIFFS" | tr ' ' '\n' | while read entry; do
+    local s c d
+    s=$(echo "$entry" | cut -d: -f1)
+    c=$(echo "$entry" | cut -d: -f2)
+    d=$(echo "$entry" | cut -d: -f3)
+    if [ "$s" = "$stage" ] && [ "$c" = "$check" ] && [ "$delta" -le "$d" ]; then
+      echo "known"
+      return
+    fi
+  done
+}
+
 # Mapping: ICM stage folder → skill name (using parallel arrays for bash 3 compat)
 STAGES=(
   "01_brainstorming"
@@ -58,11 +76,23 @@ extract_gates() {
   echo "$count" | head -1 | tr -d '[:space:]'
 }
 
-extract_personas() {
-  # Count numbered persona lines (e.g., "1. **Core Architect:**")
-  local count
-  count=$(grep -cE '^\s*[0-9]+\.\s+\*\*' "$1" 2>/dev/null) || count=0
-  echo "$count" | head -1 | tr -d '[:space:]'
+extract_roles() {
+  # Count roles from EITHER format (not both):
+  #   New: comma-separated role lists (e.g., "Roles: A, B, C, D.")
+  #   Old: numbered persona lines (e.g., "1. **Core Architect:**") — only if no Roles: lines
+  local comma_roles numbered
+  comma_roles=$(grep -E '^Roles:' "$1" 2>/dev/null | tr ',' '\n' | grep -c '[A-Za-z]') || comma_roles=0
+  if [ "$comma_roles" -gt 0 ]; then
+    echo "$comma_roles" | tr -d '[:space:]'
+  else
+    # Fallback: count numbered bold items (old persona format)
+    numbered=$(grep -cE '^\s*[0-9]+\.\s+\*\*' "$1" 2>/dev/null) || numbered=0
+    echo "$numbered" | tr -d '[:space:]'
+  fi
+}
+
+has_outputs_section() {
+  grep -q '^## Outputs' "$1" 2>/dev/null
 }
 
 extract_output_files() {
@@ -98,26 +128,35 @@ while [ $i -lt ${#STAGES[@]} ]; do
   context_gates=$(extract_gates "$context_file")
   skill_gates=$(extract_gates "$skill_file")
   if [ "$context_gates" -ne "$skill_gates" ]; then
-    echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Gate count differs (CONTEXT: $context_gates, SKILL: $skill_gates)"
+    delta=$((skill_gates - context_gates))
+    if [ "$delta" -lt 0 ]; then delta=$((-delta)); fi
+    known=$(is_known_diff "$stage" "gates" "$delta")
+    if [ -n "$known" ]; then
+      echo -e "${GREEN}ℹ OK${NC}     $stage: Gate count differs by $delta (known intentional difference)"
+    else
+      echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Gate count differs (CONTEXT: $context_gates, SKILL: $skill_gates)"
+      stage_drift=1
+    fi
+  fi
+
+  # Compare role counts (handles both numbered and comma-separated formats)
+  context_roles=$(extract_roles "$context_file")
+  skill_roles=$(extract_roles "$skill_file")
+  if [ "$context_roles" -ne "$skill_roles" ]; then
+    echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Role count differs (CONTEXT: $context_roles, SKILL: $skill_roles)"
     stage_drift=1
   fi
 
-  # Compare persona counts
-  context_personas=$(extract_personas "$context_file")
-  skill_personas=$(extract_personas "$skill_file")
-  if [ "$context_personas" -ne "$skill_personas" ]; then
-    echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Persona count differs (CONTEXT: $context_personas, SKILL: $skill_personas)"
-    stage_drift=1
-  fi
-
-  # Compare output sections
-  context_outputs=$(extract_output_files "$context_file")
-  skill_outputs=$(extract_output_files "$skill_file")
-  if [ "$context_outputs" != "$skill_outputs" ]; then
-    echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Output files differ"
-    echo "         CONTEXT: $(echo "$context_outputs" | tr '\n' ' ')"
-    echo "         SKILL:   $(echo "$skill_outputs" | tr '\n' ' ')"
-    stage_drift=1
+  # Compare output sections (only if BOTH files have ## Outputs — SKILL.md files don't by design)
+  if has_outputs_section "$context_file" && has_outputs_section "$skill_file"; then
+    context_outputs=$(extract_output_files "$context_file")
+    skill_outputs=$(extract_output_files "$skill_file")
+    if [ "$context_outputs" != "$skill_outputs" ]; then
+      echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Output files differ"
+      echo "         CONTEXT: $(echo "$context_outputs" | tr '\n' ' ')"
+      echo "         SKILL:   $(echo "$skill_outputs" | tr '\n' ' ')"
+      stage_drift=1
+    fi
   fi
 
   if [ "$stage_drift" -eq 0 ]; then

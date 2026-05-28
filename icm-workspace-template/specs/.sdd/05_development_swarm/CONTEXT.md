@@ -83,6 +83,10 @@ Execute this exact sequence ∀ file/component:
 2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. 
 3. **Refine (Blue Team):** Builder fixes based on Red Team findings. 
 4. **Deploy:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO findings. **Hard Limit:** Max 5 iterations per component. Still failing → halt & ask user. After PASS → write hardened code. **! verify code executes before concluding deploy.**
+4.5. **VAT Gate (UI projects):**
+   After code deployed & verified to compile → ∃ UI → walk ∀ screens, screenshot each, verify ∀ components present/visible/interactive. Scan for debug artifacts.
+
+   **⛔ GATE:** VAT FAIL → Blue Team ! fix visual defects & re-run. ⊥ advance past this gate with visual failures.
 5. **Document & Dockerize:**
    - Infrastructure Engineer ! ensure app starts with single command (e.g. `docker-compose up -d`). DX Auditor verifies it works cleanly.
    - Technical Writer ! generate/update `README.md` with run instructions & env var table.

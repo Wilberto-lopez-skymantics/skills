@@ -28,10 +28,14 @@ Start: understand project context → ask questions one at a time → present de
 2b. **Theme & Vibe Brainstorming** (UI only) — ask user for theme/aesthetic/vibe → propose 2-3 matching designs → iterate until approved. Read `../_config/references/theme-brainstorming.md`.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 3b. **Confidence Self-Assessment** — score understanding across 5 dimensions, ! reach ≥85 before proposing approaches. Read `../_config/references/confidence-assessment.md`.
+
+**⛔ GATE:** ⊥ propose approaches (Step 4) until Confidence Self-Assessment score ≥85. ! re-score after each round of clarifying questions.
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
 6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md`. See `../_config/decision-log-template.md`.
 7. **Write DESIGN.md** (UI only) — produce `specs/DESIGN.md`. ! pass Design Token Completeness Checklist. See `../_config/design-template.md`.
+
+**⛔ GATE:** DESIGN.md ⊥ be written until ∀ mandatory category ∈ Design Token Completeness Checklist has defined tokens. Agent ! generate best-practice defaults matching approved theme ∀ categories.
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
 9. **Spec Merge** — update `specs/SPEC.md` with structural decisions.
 10. **User reviews spec** — ask user to review before proceeding
@@ -60,6 +64,8 @@ Start: understand project context → ask questions one at a time → present de
 - Ask after each section whether it looks right
 - Cover: architecture, components, data flow, error handling, testing
 - Ready to go back & clarify if something doesn't make sense
+
+**⛔ GATE:** ⊥ write to `specs/SPEC.md`, `specs/DESIGN.md`, or any spec file until Present Design step complete AND user explicitly approved each design section.
 
 ### Spec Merge
 
