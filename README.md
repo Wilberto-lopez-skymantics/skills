@@ -13,7 +13,9 @@ A curated set of AI agent skills that enforce a rigorous **Spec-Driven Developme
    git clone https://github.com/Wilberto-lopez-skymantics/skills.git ~/my-sdd-skills
    ```
 
-2. Find-and-replace the placeholder with the actual path:
+2. Point your agent at the skills (see [Enforcing Skills](#enforcing-skills-via-user-rules) below).
+
+3. **(Recommended)** Resolve reference paths for full fidelity:
    ```bash
    # macOS
    find ~/my-sdd-skills -name "*.md" -exec sed -i '' "s|{{SKILLS_DIR}}|$(cd ~/my-sdd-skills && pwd)|g" {} +
@@ -22,7 +24,7 @@ A curated set of AI agent skills that enforce a rigorous **Spec-Driven Developme
    find ~/my-sdd-skills -name "*.md" -exec sed -i "s|{{SKILLS_DIR}}|$(cd ~/my-sdd-skills && pwd)|g" {} +
    ```
 
-3. Point your agent at the skills (see [Enforcing Skills](#enforcing-skills-via-user-rules) below).
+   > **Skip this step?** Skills still work — critical references (completeness checklists, design templates, spec review checks) have inline fallbacks that activate automatically. The agent will log when using a fallback. Run this step to enable full reference loading with detailed checklists, examples, and project-type adapters.
 
 ## Two Ways to Use SDD
 
