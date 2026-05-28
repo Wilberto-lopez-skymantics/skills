@@ -46,7 +46,7 @@ Before Blue Team draft, classify project type & apply corresponding checklist. R
 **⛔ GATE:** Blue Team draft missing even ONE required section (after adapter) → Critic Council ! reject entire draft. ⊥ proceed to adversarial pass with incomplete draft.
 
 #### Mandatory Visible Iteration Logs
-⊥ claim "internally looped." ∀ iteration ! be **printed to user** using Adversarial Swarm Iteration Log format ∈ `../_config/iteration-log-format.md`.
+⊥ claim "internally looped" (meaning all loop iterations executed inside a single hidden thought block with only the final output shown). Instead, execute all loop iterations sequentially in a single model response (turn) without stopping to wait for user input (unless a business decision or user guidance is explicitly required). You must print each iteration log in full using the Adversarial Swarm Iteration Log format ∈ `../_config/iteration-log-format.md`.
 
 **⛔ GATE:** Missing | summarized iteration log → entire swarm run invalid.
 

@@ -61,7 +61,7 @@ Analyze project stack → instantiate additional attack vectors as needed.
 
 #### Mandatory Visible Iteration Logs
 <format_enforcement>
-⊥ claim "internally looped". ∀ iteration ! be printed to user in real-time using Development Swarm Iteration Log format ∈ `../_config/iteration-log-format.md`.
+⊥ claim "internally looped" (meaning all loop iterations executed inside a single hidden thought block with only the final output shown). Instead, execute all loop iterations sequentially in a single model response (turn) without stopping to wait for user input (unless a business decision or user guidance is explicitly required). You must print each iteration log in full using the Development Swarm Iteration Log format ∈ `../_config/iteration-log-format.md`.
 
 **⛔ GATE:** Missing | summarized iteration log → swarm run invalid.
 </format_enforcement>
