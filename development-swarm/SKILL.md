@@ -13,26 +13,50 @@ Builder vs. Critic loop during code generation & implementation. Prevents vulner
 **! execute attack-and-refine loop iteratively until Red Team finds zero attacks. Stopping after single pass = severe failure.**
 
 ## Implementation Swarm (Blue Team)
-Write code using relevant persona. *∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
-1. **Infrastructure Engineer:** Docker configs, Makefiles, CI/CD, network rules. **! invoke `kubernetes-deployment` skill ∀ cluster manifests. ! generate optimized `.dockerignore` when `Dockerfile` created | modified.**
-2. **Backend Developer:** API logic, DB schemas, message queues, background workers. **! invoke `test-driven-development` skill before writing logic.**
-3. **Security Engineer:** Auth middleware, encryption logic, data sanitization.
-4. **Frontend Engineer:** UI components, state management, real-time streaming. **Non-SDD React/Next.js:** ! invoke `frontend-ui-design` skill. **SDD projects:** `frontend-ui-design` NOT invoked; DESIGN.md tokens & Design Token Auditor govern visual correctness. **Design Token Mandate:** Before generating frontend component, ! read `specs/DESIGN.md` (if ∃) & extract YAML tokens. ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = ⊥.
-5. **Technical Writer:** Codebase docs, inline docstrings, API specs, `README.md`.
+Roles: Infrastructure, Backend, Security, Frontend, Writer.
+∃ role standards → read [role-standards.md](file://{{SKILLS_DIR}}/shared/role-standards.md).
+∃ project standards → read `specs/CODING_STANDARDS.md`.
+Analyze project stack → instantiate additional specialist roles as needed.
+
+*∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
 
 ## Validation Swarm (Red Team)
-After Blue Team drafts code, adopt these personas to attack *before* saving:
-1. **Penetration Tester:** Exposed ports, hardcoded secrets, XSS, SQL injection, SSRF.
-2. **Chaos Engineer:** Missing `try/except`, unhandled promise rejections, race conditions, cold-boot deadlocks.
-3. **Resource Starver:** Memory leaks, missing pagination, un-indexed queries, unbounded arrays/loops.
-4. **Compliance Enforcer:** Security policies (`mlockall`, PII scrubbing, append-only logging) actually function as intended.
-5. **DX Auditor:** Follow README blindly to test onboarding. Attack poor docstrings, outdated comments, missing setup. **! invoke `verification-before-completion` skill.** ⊥ PASS based solely on `200 OK`. ! inspect compilation logs, verify no missing imports, ensure UI hydrates without silent errors. **TypeScript: ! execute `tsc --noEmit` & verify zero errors; successful bundler build (Vite) NOT sufficient.**
-6. **Architect (Spec Enforcer):** Cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`. Attack if any requested component | state hook | feature missing | skipped. Ultimate safeguard vs "feature tunnel vision." **Orphan Check:** ∀ helper/utility/module created → verify imported & actively called ∈ main entry | controller files. Module only imported ∈ unit tests = fail. **Headless Mock Caveat:** Headless unit tests with mocks ⊥ be sole verification evidence for integration | visual phases.
-7. **Visual QA Tester:** ∃ UI (web apps, games, PWAs) → ! invoke `visual-acceptance-testing` skill → open in browser, screenshot ∀ screens, verify ∀ components present/visible/interactive. ⊥ PASS based on code inspection alone — must see it rendered.
-8. **Design Token Auditor:** (UI + `DESIGN.md` only) After Builder produces frontend component → scan for hardcoded color hex | font-family | pixel spacing ≠ DESIGN.md token. Violations = **errors, not warnings**. Verify component names match DESIGN.md `components:` section. **Framework-agnostic:** CSS projects → scan stylesheets/class definitions. Canvas/WebGL → scan rendering config/draw calls. **HARD RULE:** Hardcoded visual value that ∃ as DESIGN.md token = automatic FAIL; ! ignore values absent from DESIGN.md token schema.
+After Blue Team drafts code, adopt attack roles *before* saving:
+Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer, DX Auditor, Architect (Spec Enforcer), Visual QA Tester, Design Token Auditor.
+∃ role standards → read [role-standards.md](file://{{SKILLS_DIR}}/shared/role-standards.md).
+Analyze project stack → instantiate additional attack vectors as needed.
+
+## Pipeline Rules (∀ roles)
+
+### Build Rules
+- **TDD:** ! write tests before logic. ! invoke `test-driven-development` skill.
+- **K8s:** ∃ cluster manifests → invoke `kubernetes-deployment` skill.
+- **Docker:** ! generate `.dockerignore` when `Dockerfile` created | modified.
+- **Frontend (Non-SDD):** ! invoke `frontend-ui-design` skill for React/Next.js projects.
+
+### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
+- Before generating frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
+- ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = automatic FAIL.
+- Framework-agnostic: CSS → scan stylesheets. Canvas/WebGL → scan rendering config.
+- Component names ! match DESIGN.md `components:` section.
+
+### Verification Rules
+- ⊥ PASS on `200 OK` | code inspection alone. ! run code + include output ∈ iteration log.
+- **TypeScript:** ! execute `tsc --noEmit` & verify zero errors. Bundler build (Vite) ⊥ sufficient.
+- **Empirical evidence:** ! invoke `verification-before-completion` skill before deploy.
+- **Headless Mock Caveat:** Unit tests with mocks ⊥ sole evidence for integration | visual phases.
+
+### Spec Enforcement
+- Architect ! cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`.
+- ∀ components ∈ current phase ! ∃ in code. Missing = FAIL.
+- **Orphan Check:** ∀ helper/utility created → verify imported & called ∈ main entry files. Module only imported ∈ unit tests = FAIL.
+
+### Visual Verification (∃ UI)
+- ! invoke `visual-acceptance-testing` skill → screenshot ∀ screens, verify ∀ components present/visible/interactive.
+- ⊥ PASS based on code inspection alone — must see it rendered.
 
 ## Dynamic Swarm Scaling
-Base personas = foundation. Swarm = dynamic. Before Test-Driven loop, analyze file/framework → auto-instantiate temporary expert personas as needed. *(Example: WebGL canvas → 'Graphics Shader Optimizer'. Kubernetes Helm → 'Cluster Network Architect').*
+Base roles = foundation. Before loop, analyze file/framework → auto-instantiate temporary expert roles as needed. *(Example: WebGL canvas → 'Graphics Shader Optimizer'. Kubernetes Helm → 'Cluster Network Architect').*
 
 ## Anti-Simulation Enforcement
 

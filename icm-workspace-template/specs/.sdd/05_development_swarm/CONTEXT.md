@@ -10,28 +10,52 @@ Builder vs. Critic loop during code generation & implementation. Prevents vulner
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/IMPLEMENTATION_PHASES.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
+- Layer 4 (working): `specs/CODING_STANDARDS.md` (if exists)
+- Layer 3 (reference): `../_config/role-standards.md`
 - Layer 3 (reference): `../_config/iteration-log-format.md`
 
 ## Process
 
 ### Implementation Swarm (Blue Team)
-Write code using relevant persona. *∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
-1. **Infrastructure Engineer:** Docker configs, Makefiles, CI/CD, network rules.
-2. **Backend Developer:** API logic, DB schemas, message queues, background workers.
-3. **Security Engineer:** Auth middleware, encryption logic, data sanitization.
-4. **Frontend Engineer:** UI components, state management. **Design Token Mandate:** Before generating frontend component, ! read `specs/DESIGN.md` (if ∃) & extract YAML tokens. ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = ⊥.
-5. **Technical Writer:** Codebase docs, inline docstrings, API specs, `README.md`.
+Roles: Infrastructure, Backend, Security, Frontend, Writer.
+∃ role standards → read `../_config/role-standards.md`.
+∃ project standards → read `specs/CODING_STANDARDS.md`.
+Analyze project stack → instantiate additional specialist roles as needed.
+
+*∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
 
 ### Validation Swarm (Red Team)
-After Blue Team drafts code, adopt these personas to attack *before* saving:
-1. **Penetration Tester:** Exposed ports, hardcoded secrets, XSS, SQL injection, SSRF.
-2. **Chaos Engineer:** Missing `try/except`, unhandled promise rejections, race conditions.
-3. **Resource Starver:** Memory leaks, missing pagination, un-indexed queries.
-4. **Compliance Enforcer:** Security policies actually function as intended.
-5. **DX Auditor:** Follow README blindly to test onboarding. ⊥ PASS based solely on `200 OK`. ! inspect compilation logs, verify no missing imports.
-6. **Architect (Spec Enforcer):** Cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`. Attack if any requested component | feature missing. **Orphan Check:** ∀ helper module created → verify imported & called ∈ main entry files.
-7. **Visual QA Tester:** ∃ UI → open in browser, screenshot ∀ screens, verify ∀ components present/visible/interactive. ⊥ PASS based on code inspection alone. (This is formally handled in Stage 06, but basic visual sanity checks apply here).
-8. **Design Token Auditor:** (UI + `DESIGN.md` only) After Builder produces frontend component → scan for hardcoded visual values ≠ DESIGN.md token. Violations = **errors, not warnings**.
+After Blue Team drafts code, adopt attack roles *before* saving:
+Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer, DX Auditor, Architect (Spec Enforcer), Visual QA Tester, Design Token Auditor.
+∃ role standards → read `../_config/role-standards.md`.
+Analyze project stack → instantiate additional attack vectors as needed.
+
+### Pipeline Rules (∀ roles)
+
+#### Build Rules
+- **TDD:** ! write tests before logic.
+- **Docker:** ! generate `.dockerignore` when `Dockerfile` created | modified.
+
+#### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
+- Before generating frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
+- ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = automatic FAIL.
+- Framework-agnostic: CSS → scan stylesheets. Canvas/WebGL → scan rendering config.
+- Component names ! match DESIGN.md `components:` section.
+
+#### Verification Rules
+- ⊥ PASS on `200 OK` | code inspection alone. ! run code + include output ∈ iteration log.
+- **TypeScript:** ! execute `tsc --noEmit` & verify zero errors. Bundler build ⊥ sufficient.
+- **Headless Mock Caveat:** Unit tests with mocks ⊥ sole evidence for integration | visual phases.
+
+#### Spec Enforcement
+- Architect ! cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`.
+- ∀ components ∈ current phase ! ∃ in code. Missing = FAIL.
+- **Orphan Check:** ∀ helper/utility created → verify imported & called ∈ main entry files. Module only imported ∈ unit tests = FAIL.
+
+#### Visual Verification (∃ UI)
+- ∃ UI → screenshot ∀ screens, verify ∀ components present/visible/interactive.
+- ⊥ PASS based on code inspection alone — must see it rendered.
+- (Formal visual QA handled in Stage 06, but basic visual sanity checks apply here).
 
 ### Anti-Simulation Enforcement
 

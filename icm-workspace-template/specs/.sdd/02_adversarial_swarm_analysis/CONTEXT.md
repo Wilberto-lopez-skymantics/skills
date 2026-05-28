@@ -18,22 +18,25 @@ Strict SDD workflow. Multi-agent adversarial review → bulletproof Technical Sp
 ## Process
 
 ### Creator Swarm (Blue Team)
-Draft/revise spec using these personas:
-1. **Core Architect:** System boundaries, protocols, API contracts (headers, payloads, error codes)
-2. **Security Auditor:** Zero-Trust boundaries, RBAC requirements, encryption standards
-3. **AI/MLOps Engineer:** VRAM budget, embedding strategies, prompt limits
-4. **Data Specialist:** DB schema relationships, transaction consistency rules
-5. **UX/UI Lead:** State management requirements, component hierarchy. **Design Escalation:** ⊥ assume visual design decisions user hasn't provided. No brand guide | style reference → ! prompt user to return to Stage 01. Exception: existing `DESIGN.md` ∈ `specs/` → use as source of truth.
-6. **Technical Writer:** Synthesize creators' input → structured, unambiguous Specification Document
+Draft/revise spec using these roles:
+Roles: Core Architect, Security Auditor, AI/MLOps Engineer, Data Specialist, UX/UI Lead, Technical Writer.
+Analyze project stack → instantiate additional specialist roles as needed.
 
 ### Critic Council (Red Team)
 Attack spec contract, not code syntax:
-1. **Edge-Case Hunter:** "API timeout? Spec missing fallback behavior. Reject."
-2. **Chaos Engineer:** "Spec assumes ordered message queue. Split-brain scenario undefined. Reject."
-3. **Resource Starver:** "DB schema unbounded growth. Missing pagination constraints. Reject."
-4. **DX Auditor:** "API contract ambiguous. ID type unclear (string | UUID?). Reject."
-5. **Reconciler:** Cross-ref spec vs actual codebase & running infrastructure. <anti_hallucination>⊥ assume spec correct. ! inspect source files (schemas, docker-compose, route handlers, components) & flag ANY spec-vs-reality discrepancy.</anti_hallucination>
-6. **Quantifier:** Attack vague/unquantified spec language. Parameter COULD be number/formula/range but ISN'T → reject. Mandate: **∀ parameter ∈ final spec ! be exact value | bounded range | formula | config file ref with defined schema.**
+1. **Edge-Case Hunter:** Missing fallback behavior, undefined error paths, unhandled timeouts.
+2. **Chaos Engineer:** Assumptions about ordering, consistency, availability. Split-brain scenarios.
+3. **Resource Starver:** Unbounded growth, missing pagination, no retention policy.
+4. **DX Auditor:** Ambiguous contracts, unclear types (string | UUID?), inconsistent naming.
+5. **Reconciler:** Cross-ref spec vs actual codebase & running infrastructure. <anti_hallucination>⊥ assume spec correct. ! inspect source files & flag ANY spec-vs-reality discrepancy.</anti_hallucination>
+6. **Quantifier:** Attack vague/unquantified language. ∀ parameter ∈ final spec ! be exact value | bounded range | formula | config ref.
+7. **Asset Auditor:** ∃ custom themed entities & ⊥ explicit asset pipeline → reject.
+
+### Pipeline Rules
+
+#### Design Escalation (UX/UI Lead)
+⊥ assume visual design decisions user hasn't provided (colors, typography, spacing, animations, layout patterns).
+No brand guide | style reference → ! prompt user to return to Stage 01. Exception: existing `specs/DESIGN.md` → use as source of truth.
 
 ### Anti-Simulation Enforcement
 

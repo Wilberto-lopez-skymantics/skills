@@ -154,6 +154,7 @@ The `shared/` directory contains templates and format definitions referenced by 
 
 | File | Used By |
 |------|---------|
+| `shared/role-standards.md` | Dev swarm, adversarial swarm (default role behavioral standards) |
 | `shared/spec-self-review.md` | SDD orchestrator (14-step completeness gate) |
 | `shared/design-template.md` | Brainstorming, wireframing (DESIGN.md template + token checklist) |
 | `shared/decision-log-template.md` | Brainstorming (DECISION_LOG.md template) |
