@@ -14,6 +14,8 @@ User requests feature | behavior change | architectural update → ⊥ jump into
 
 **Orchestrator Role:** ∀ sub-skills (brainstorming, adversarial-swarm-analysis, interactive-wireframing, writing-implementation-phases, development-swarm, visual-acceptance-testing) ! return control to this skill on completion. SDD determines next step from artifacts on disk. ⊥ sub-skill invoke another sub-skill directly.
 
+**Anti-Eagerness Enforcement:** User commands "keep going" across phases → ! update `specs/.sdd-state.json` between phases. ⊥ silently transition without state update. Skipping checkpoint = broken recoverability.
+
 ## Rule of Source of Truth
 SDD project = ∃ `specs/` directory with `SPEC.md` | `DESIGN.md` | `IMPLEMENTATION_PHASES.md`:
 

@@ -24,6 +24,36 @@ A curated set of AI agent skills that enforce a rigorous **Spec-Driven Developme
 
 3. Point your agent at the skills (see [Enforcing Skills](#enforcing-skills-via-user-rules) below).
 
+## Two Ways to Use SDD
+
+This repository provides two delivery mechanisms for the same SDD pipeline. They implement identical stages and must stay synchronized.
+
+### Option A: Skill-Based (Global Agent Rules)
+
+For agents that support global skill instructions (Gemini Code Assist, Claude Code with global rules). The `spec-driven-development` orchestrator skill invokes sub-skills by name. See [Enforcing Skills](#enforcing-skills-via-user-rules) below.
+
+**Best for:** Teams with a single agent platform and centralized configuration.
+
+### Option B: ICM Workspace Template (Portable)
+
+For agents that don't support global skills, or for projects that need to be shared across teams/environments. The pipeline is encoded as a folder structure with `CONTEXT.md` files that any agent can read.
+
+**Best for:** Cross-team sharing, multi-agent environments, portable projects.
+
+1. Copy `icm-workspace-template/` contents (`.cursorrules`, `CLAUDE.md`, `specs/.sdd/`) to the root of your new project.
+2. If your agent supports auto-loading rules (Cursor with `.cursorrules`, Claude Code with `CLAUDE.md`), it will automatically find the routing instructions in `specs/.sdd/WORKSPACE_ROUTING.md`.
+3. Ask your agent to start the project — it will begin at `specs/.sdd/01_brainstorming/CONTEXT.md`.
+4. All spec outputs live in `specs/` at the project root. Pipeline machinery lives in `specs/.sdd/`.
+
+### Keeping Them in Sync
+
+The skills are the source of truth. The ICM template is a portable view of the same pipeline. Run the sync validator to detect drift:
+
+```bash
+./scripts/validate-icm-sync.sh
+```
+
+
 ## The SDD Pipeline
 
 These skills form a sequential, gated pipeline. Each skill produces artifacts that the next consumes. Skipping a step or writing code before the spec is updated is a violation.
@@ -118,7 +148,9 @@ All specs live in the project's `specs/` directory — the single source of trut
 
 ### Shared Resources
 
-The `shared/` directory contains templates and format definitions referenced by multiple skills:
+The `shared/` directory contains templates and format definitions referenced by multiple skills. This is the **source of truth** for shared resources.
+
+> **`shared/` vs `_config/`:** The ICM workspace template copies these files into `icm-workspace-template/specs/.sdd/_config/` for portability — ICM workspaces must be self-contained folders. When updating shared resources, edit `shared/` first, then sync to `_config/`. Run `./scripts/validate-icm-sync.sh` to detect drift.
 
 | File | Used By |
 |------|---------|
@@ -133,14 +165,31 @@ The `shared/` directory contains templates and format definitions referenced by 
 
 ```
 skills/
-├── shared/                           # Templates and formats used across skills
+├── shared/                           # Source of truth for shared templates
 │   ├── spec-self-review.md
 │   ├── design-template.md
 │   ├── decision-log-template.md
 │   ├── iteration-log-format.md
 │   ├── vat-report-format.md
 │   └── visual-companion.md
-├── spec-driven-development/          # The governor / orchestrator
+├── scripts/                          # Tooling
+│   └── validate-icm-sync.sh          # Skills ↔ ICM drift detector
+├── icm-workspace-template/           # Portable ICM template (Option B)
+│   ├── README.md                     # Setup guide + ICM theory
+│   ├── CLAUDE.md                     # Agent pointer → specs/.sdd/
+│   ├── .cursorrules                  # Agent pointer → specs/.sdd/
+│   └── specs/.sdd/                   # Pipeline machinery
+│       ├── WORKSPACE_ROUTING.md      # Layer 0+1: identity + routing
+│       ├── _config/                  # Layer 3: portable copy of shared/
+│       ├── 00_backprop/CONTEXT.md    # Bug → source fix loop
+│       ├── 01_brainstorming/         # Ideas → specs
+│       ├── 02_adversarial_swarm_analysis/
+│       ├── 03_interactive_wireframing/
+│       ├── 04_writing_implementation_phases/
+│       ├── 05_development_swarm/
+│       ├── 06_visual_acceptance_testing/
+│       └── 07_verification_before_completion/
+├── spec-driven-development/          # The governor / orchestrator (Option A)
 │   └── SKILL.md
 ├── brainstorming/                    # Ideas → specs
 │   ├── SKILL.md
@@ -164,6 +213,8 @@ skills/
 │   └── SKILL.md
 ├── verification-before-completion/   # Empirical proof gate
 │   └── SKILL.md
+├── ubiquitous-language/              # Domain glossary
+│   └── SKILL.md
 ├── frontend-ui-design/               # CSS/a11y standards
 │   └── SKILL.md
 ├── test-driven-development/          # TDD loop
@@ -171,8 +222,6 @@ skills/
 │   └── testing-anti-patterns.md
 └── kubernetes-deployment/            # K8s manifests
     └── SKILL.md
-├── ubiquitous-language/              # Domain glossary
-│   └── SKILL.md
 ```
 
 ## Token Efficiency
@@ -240,6 +289,3 @@ Add skill paths to your `.cursorrules` or workspace settings.
 ### Other Agents
 Any agent that can read files from disk and follows markdown instructions can use these skills. Point your agent's configuration at the `SKILL.md` files.
 
-## License
-
-MIT

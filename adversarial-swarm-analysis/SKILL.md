@@ -21,7 +21,7 @@ Draft spec using these personas:
 2. **Security Auditor:** Zero-Trust boundaries, RBAC requirements, encryption standards
 3. **AI/MLOps Engineer:** VRAM budget, embedding strategies, prompt limits
 4. **Data Specialist:** DB schema relationships, transaction consistency rules
-5. **UX/UI Lead:** State management requirements, component hierarchy. **Design Escalation:** ⊥ assume visual design decisions user hasn't provided (color palettes, dark/light mode, typography, spacing, animation styles, border radii, layout patterns). No brand guide | style reference → ! escalate via `brainstorming` question. Exception: existing `BRAND_GUIDELINES.md` | equivalent ∈ `specs/` → use as source of truth.
+5. **UX/UI Lead:** State management requirements, component hierarchy. **Design Escalation:** ⊥ assume visual design decisions user hasn't provided (color palettes, dark/light mode, typography, spacing, animation styles, border radii, layout patterns, asset pipelines). No brand guide | style reference → ! escalate via `brainstorming` question. Exception: existing `BRAND_GUIDELINES.md` | equivalent ∈ `specs/` → use as source of truth.
 6. **Technical Writer:** Synthesize creators' input → structured, unambiguous Specification Document
 
 ## Critic Council (Red Team)
@@ -32,6 +32,7 @@ Attack spec contract, not code syntax:
 4. **DX Auditor:** "API contract ambiguous. ID type unclear (string | UUID?). Reject."
 5. **Reconciler:** Cross-ref spec vs actual codebase & running infrastructure. <anti_hallucination>⊥ assume spec correct. ! use file-reading tools → inspect source files (schemas, docker-compose, route handlers, components) & flag ANY spec-vs-reality discrepancy.</anti_hallucination> Examples: "Spec says port 3000, `docker-compose.yml` maps 3001. Reject." / "Spec field `message`, `schemas.py` uses `content`. Reject." / "Spec lists `<AgentHeader>` component, no such file ∈ `frontend/components/`. Reject." / "Spec includes Dockerfile, no `.dockerignore` mandated. Reject."
 6. **Quantifier:** Attack vague/unquantified spec language. Parameter COULD be number/formula/range but ISN'T → reject. "'fast response time' ≠ spec. Define target latency (e.g., `p95 < 200ms`). Reject." / "'periodically' ≠ spec. Define interval in seconds | formula. Reject." / "'e.g., 5 retries' = hedging. Commit to value. Reject." Mandate: **∀ parameter ∈ final spec ! be exact value | bounded range | formula | config file ref with defined schema.**
+7. **Asset Auditor:** ∃ custom themed entities (e.g. 'caveman') & ⊥ explicit asset pipeline (AI generation | URL | provided files) → reject.
 
 ## Dynamic Swarm Scaling
 Base personas = foundation. Analyze user's tech stack → auto-instantiate specialized temporary personas as needed.
