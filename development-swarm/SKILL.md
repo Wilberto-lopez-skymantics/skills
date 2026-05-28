@@ -13,7 +13,7 @@ Builder vs. Critic loop during code generation & implementation. Prevents vulner
 **! execute attack-and-refine loop iteratively until Red Team finds zero attacks. Stopping after single pass = severe failure.**
 
 ## Implementation Swarm (Blue Team)
-Write code using relevant persona. *∀ Builders ! query Context7 MCP server before writing code → ensure syntax matches latest framework versions.*
+Write code using relevant persona. *∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
 1. **Infrastructure Engineer:** Docker configs, Makefiles, CI/CD, network rules. **! invoke `kubernetes-deployment` skill ∀ cluster manifests. ! generate optimized `.dockerignore` when `Dockerfile` created | modified.**
 2. **Backend Developer:** API logic, DB schemas, message queues, background workers. **! invoke `test-driven-development` skill before writing logic.**
 3. **Security Engineer:** Auth middleware, encryption logic, data sanitization.
@@ -56,9 +56,9 @@ Execute this exact sequence ∀ file/component:
 
 **⛔ GATE:** **One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
 
-0. **Pre-Flight Dependency Check:** Blue Team ! invoke `mcp_context7_resolve-library-id` then `mcp_context7_query-docs`. <anti_hallucination>⊥ simulate Context7 output | claim "reviewed docs" without executing tool call.</anti_hallucination>
+0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke `mcp_context7_resolve-library-id` then `mcp_context7_query-docs`. <anti_hallucination>⊥ simulate Context7 output | claim "reviewed docs" without executing tool call.</anti_hallucination> ⊥ Context7 → use web search | built-in knowledge for framework APIs. Log: "Context7 unavailable — docs sourced from [web search | training data]."
 1. **Draft (Blue Team):** Appropriate Builder generates code.
-2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. *Critic ! use Context7 to verify attack vectors valid for specific framework version. Architect ! verify EVERY component ∈ current `IMPLEMENTATION_PHASES.md` phase ∃ & aligns with `specs/SPEC.md`.*
+2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. *∃ Context7 → Critic SHOULD use it to verify attack vectors valid for specific framework version. Architect ! verify EVERY component ∈ current `IMPLEMENTATION_PHASES.md` phase ∃ & aligns with `specs/SPEC.md`.*
 3. **Refine (Blue Team):** Builder fixes based on Red Team findings. **GUARDRAIL:** Fixing bugs ∈ existing files → ! use `replace_file_content` | `multi_replace_file_content` for surgical edits. ⊥ rewrite entire file via `write_to_file` to fix few lines.
 4. **Deploy:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO findings. <anti_hallucination>⊥ run all loops internally ∈ single hidden thought block. ! persist state to artifact & output each iteration sequentially.</anti_hallucination> **Hard Limit:** Max 5 attack/resolve iterations per component. Still failing → halt & ask user for architectural guidance. After PASS → write hardened code. **! invoke `verification-before-completion` before concluding deploy.**
 4.5. **VAT Gate (UI projects):**

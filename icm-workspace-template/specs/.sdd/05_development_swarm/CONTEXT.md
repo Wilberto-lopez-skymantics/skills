@@ -15,7 +15,7 @@ Builder vs. Critic loop during code generation & implementation. Prevents vulner
 ## Process
 
 ### Implementation Swarm (Blue Team)
-Write code using relevant persona. *∀ Builders ! query Context7 MCP server before writing code → ensure syntax matches latest framework versions.*
+Write code using relevant persona. *∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
 1. **Infrastructure Engineer:** Docker configs, Makefiles, CI/CD, network rules.
 2. **Backend Developer:** API logic, DB schemas, message queues, background workers.
 3. **Security Engineer:** Auth middleware, encryption logic, data sanitization.
@@ -54,7 +54,7 @@ Execute this exact sequence ∀ file/component:
 
 **⛔ GATE:** **One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
 
-0. **Pre-Flight Dependency Check:** Blue Team ! invoke MCP `context7` resolving tools.
+0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke its resolving tools. ⊥ Context7 → use web search | built-in knowledge for framework APIs. Log: "Context7 unavailable — docs sourced from [web search | training data]."
 1. **Draft (Blue Team):** Appropriate Builder generates code.
 2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. 
 3. **Refine (Blue Team):** Builder fixes based on Red Team findings. 

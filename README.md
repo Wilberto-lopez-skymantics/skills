@@ -236,11 +236,11 @@ Each file includes a decoder key:
 
 Additionally, large reference sections are extracted into `references/` subdirectories and loaded on-demand, keeping per-invocation context lean.
 
-## Prerequisites: Context7 MCP Server
+## Recommended: Context7 MCP Server
 
-Several skills (`development-swarm`, `adversarial-swarm-analysis`) require querying latest framework docs via [Context7](https://context7.com) before writing code.
+Several skills (`development-swarm`, `adversarial-swarm-analysis`) benefit from querying latest framework docs via [Context7](https://context7.com) before writing code.
 
-Your agent environment **must** have the `context7` MCP server configured. Without it, pre-flight dependency checks will block execution.
+If available, the `context7` MCP server provides verified, up-to-date framework documentation during pre-flight checks. Without it, agents will fall back to web search or training knowledge — the pipeline still works, but generated code may not reflect the latest API changes.
 
 ## Enforcing Skills via User Rules
 
