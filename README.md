@@ -277,18 +277,80 @@ efficient, safer, or more idiomatic approach.
 
 ## Platform Setup
 
+### What to install
+
+The repo contains **skills** (install these) and **infrastructure** (don't install):
+
+| Directory | Type | Install? |
+|-----------|------|----------|
+| `adversarial-swarm-analysis/` | Skill | ✓ |
+| `brainstorming/` | Skill | ✓ |
+| `development-swarm/` | Skill | ✓ |
+| `frontend-ui-design/` | Skill | ✓ |
+| `interactive-wireframing/` | Skill | ✓ |
+| `kubernetes-deployment/` | Skill | ✓ |
+| `spec-driven-development/` | Skill | ✓ |
+| `test-driven-development/` | Skill | ✓ |
+| `ubiquitous-language/` | Skill | ✓ |
+| `verification-before-completion/` | Skill | ✓ |
+| `visual-acceptance-testing/` | Skill | ✓ |
+| `writing-implementation-phases/` | Skill | ✓ |
+| `shared/` | Dependency | ✓ (required by multiple skills) |
+| `icm-workspace-template/` | Project template | ✗ (use via Quick Start Option B) |
+| `scripts/` | Tooling | ✗ |
+| `README.md` | Repo docs | ✗ |
+
+> **Important:** Some skills have `references/` or `scripts/` subdirectories containing checklists and templates referenced by SKILL.md. These subdirectories must be copied alongside SKILL.md — not just the SKILL.md file alone.
+
 ### Gemini Code Assist / Antigravity
-Copy skills to `~/.gemini/config/skills/` or symlink:
+
+Skills go in `~/.gemini/config/skills/<skill-name>/SKILL.md`.
+
+**Scriptable install** (agent or human can run this verbatim):
 ```bash
-ln -s /path/to/skills/* ~/.gemini/config/skills/
+# 1. Clone the repo (source — don't modify this copy)
+git clone https://github.com/Wilberto-lopez-skymantics/skills.git /tmp/sdd-skills-source
+
+# 2. Define target
+TARGET="$HOME/.gemini/config/skills"
+mkdir -p "$TARGET"
+
+# 3. Copy skills + shared (preserving subdirectories like references/)
+for skill in adversarial-swarm-analysis brainstorming development-swarm \
+             frontend-ui-design interactive-wireframing kubernetes-deployment \
+             spec-driven-development test-driven-development ubiquitous-language \
+             verification-before-completion visual-acceptance-testing \
+             writing-implementation-phases shared; do
+  cp -r "/tmp/sdd-skills-source/$skill" "$TARGET/$skill"
+done
+
+# 4. Resolve reference paths (runs on destination, not source)
+find "$TARGET" -name "*.md" -exec sed -i '' "s|{{SKILLS_DIR}}|$TARGET|g" {} +
+# Linux: remove the '' after -i
+
+# 5. Verify
+echo "Installed $(ls -d $TARGET/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ') skills"
+grep -rl '{{SKILLS_DIR}}' "$TARGET" --include='*.md' | wc -l | tr -d ' '
+echo "unresolved template vars (should be 0)"
+
+# 6. Clean up source
+rm -rf /tmp/sdd-skills-source
 ```
 
+Then add user rules as described in [Enforcing Skills](#enforcing-skills-via-user-rules).
+
 ### Claude Code
-Copy skills to `~/.claude/skills/` or the project's `.claude/skills/` directory.
+
+**Option A (Global):** Copy skills to `~/.claude/skills/` using the same script above (change `TARGET`).
+
+**Option B (Per-project, recommended):** Use the ICM template — copy `icm-workspace-template/` contents to your project root. Claude Code reads `CLAUDE.md` automatically. No global config needed.
 
 ### Cursor
-Add skill paths to your `.cursorrules` or workspace settings.
+
+**Recommended:** Use the ICM template — copy `icm-workspace-template/` contents to your project root. Cursor reads `.cursorrules` automatically. No global config needed.
 
 ### Other Agents
-Any agent that can read files from disk and follows markdown instructions can use these skills. Point your agent's configuration at the `SKILL.md` files.
 
+Any agent that can read files from disk and follows markdown instructions can use these skills. Either:
+- Point your agent's configuration at the `SKILL.md` files (Option A)
+- Copy the ICM template into your project (Option B — works with any agent)
