@@ -123,7 +123,7 @@ specs/
 ├── DESIGN.md                ← Design tokens (UI projects)
 ├── DECISION_LOG.md          ← Architectural decisions
 ├── IMPLEMENTATION_PHASES.md ← Build checklist
-├── .sdd-state.json          ← Pipeline checkpoint (resume across sessions)
+├── .sdd-state.json          ← Pipeline checkpoint (created at runtime)
 ├── wireframes/              ← Approved HTML wireframes (UI projects)
 └── backprop-log.md          ← Bug → source fix log
 ```

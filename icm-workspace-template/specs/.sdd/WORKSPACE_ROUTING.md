@@ -1,5 +1,5 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.05.27 -->
+<!-- version: 2026.05.28 -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 
 # Spec-Driven Development (SDD) Workspace
@@ -25,4 +25,4 @@ When a user asks you to perform a task, map it to the correct stage below and **
 - **Code is a byproduct of the spec.** Never write or edit implementation code before the specification (`specs/SPEC.md`) is updated.
 - Read `specs/.sdd/_config/` reference materials only when instructed to do so by a stage's `CONTEXT.md`.
 - All specifications and outputs live in the `specs/` directory at the project root.
-- **Continuous State Tracking:** Before transitioning between any two stages (e.g., from Hardening to Implementation)—even if the user commands you to "keep going" continuously—you **MUST** update `specs/.sdd-state.json` with the newly completed step. Bypassing the state save to be 'helpful' breaks pipeline recoverability.
+- **Continuous State Tracking:** Before transitioning between any two stages, ! update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`). ⊥ silently transition without state update — breaks pipeline recoverability.
