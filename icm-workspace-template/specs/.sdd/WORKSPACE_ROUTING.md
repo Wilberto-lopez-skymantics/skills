@@ -14,6 +14,7 @@ When a user asks you to perform a task, map it to the correct stage below and **
 
 0. **`specs/.sdd/00_backprop/CONTEXT.md`**: Use this when a bug is found post-deployment, a test fails unexpectedly, or the user wants to trace a defect back to its source and fix the pipeline — not just the code.
 1. **`specs/.sdd/01_brainstorming/CONTEXT.md`**: Use this when the user wants to brainstorm a new feature, explore ideas, design UI, or start a new specification.
+1b. **`specs/.sdd/01b_adoption/CONTEXT.md`**: Use this when the user wants to adopt an existing codebase into SDD management — reverse-engineering specs from existing code rather than designing from scratch.
 2. **`specs/.sdd/02_adversarial_swarm_analysis/CONTEXT.md`**: Use this when the user wants to harden, review, or attack a draft specification.
 3. **`specs/.sdd/03_interactive_wireframing/CONTEXT.md`**: Use this when the user wants to build HTML wireframes based on a UI design specification.
 4. **`specs/.sdd/04_writing_implementation_phases/CONTEXT.md`**: Use this when the user wants to break down a hardened spec into dependency-ordered implementation phases.

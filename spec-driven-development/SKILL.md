@@ -100,6 +100,24 @@ Defect | edge case | structural flaw discovered *after* SDD lifecycle completed:
 2. **Process Hardening:** Before implementing fix → ! write | update skill to prevent this bug category from escaping again. Visual bug → update VAT. Architectural → update adversarial. New gate needed → write new skill.
 3. **Execute Fix:** Enter standard SDD loop (update Spec → regenerate Phases → Swarm).
 
+## Workflow: Adopt Existing Project
+User has existing codebase → wants SDD management. Code exists, spec does not.
+
+1. **Stop & Route:** Detect adoption intent (user says "adopt", "onboard", project has code but no `specs/`). Inform user: this uses the adoption workflow (Stage 01b) instead of brainstorming (Stage 01).
+2. **Adopt:** Invoke `sdd-adoption` → reverse-engineers SPEC.md, DECISION_LOG.md, DESIGN.md (UI), IMPLEMENTATION_PHASES.md (pre-checked) from existing code. Maps existing tests → spec invariants. Returns control on completion.
+3. **Verify Adoption Artifacts:** After adoption returns control, confirm on disk:
+   - `specs/SPEC.md` ✓
+   - `specs/DECISION_LOG.md` ✓
+   - `specs/DESIGN.md` (UI only) ✓
+   - `specs/IMPLEMENTATION_PHASES.md` (pre-checked) ✓
+   Missing → re-invoke adoption. ⊥ draft them here.
+4. **User Chooses Next Step:** Adoption presents 3 options:
+   - **Option A:** Run adversarial-swarm-analysis → harden adopted spec, surface gaps in existing code. Proceed to Step 4 of User Feedback workflow.
+   - **Option B:** Expand via brainstorming → use adopted spec as baseline, brainstorm new features. Proceed to Step 2 of User Feedback workflow.
+   - **Option C:** Jump to development → skip hardening, use SDD for future changes only. Proceed to Step 8 of User Feedback workflow.
+
+**Key difference from User Feedback workflow:** Steps 1-3 use `sdd-adoption` instead of `brainstorming`. From Step 4 onward, the standard SDD lifecycle applies unchanged.
+
 ## Process Failure Recovery
 
 | Failure Mode | Recovery |
@@ -115,15 +133,15 @@ Canonical templates ∈ shared files:
 
 | Document | Template | Created By | Verified By |
 |----------|----------|------------|-------------|
-| `specs/DECISION_LOG.md` | [decision-log-template.md](file://{{SKILLS_DIR}}/shared/decision-log-template.md) | brainstorming | SDD (Step 3) |
-| `specs/DESIGN.md` | [design-template.md](file://{{SKILLS_DIR}}/shared/design-template.md) | brainstorming | SDD (Step 3), wireframing |
-| `specs/SPEC.md` | (structure from adversarial completeness checklist) | brainstorming | adversarial, SDD (Step 5) |
-| `specs/IMPLEMENTATION_PHASES.md` | (structure from writing-implementation-phases) | writing-impl-phases | SDD (Step 8) |
+| `specs/DECISION_LOG.md` | [decision-log-template.md](file://{{SKILLS_DIR}}/shared/decision-log-template.md) | brainstorming \| sdd-adoption | SDD (Step 3) |
+| `specs/DESIGN.md` | [design-template.md](file://{{SKILLS_DIR}}/shared/design-template.md) | brainstorming \| sdd-adoption (UI) | SDD (Step 3), wireframing |
+| `specs/SPEC.md` | (structure from adversarial completeness checklist) | brainstorming \| sdd-adoption | adversarial, SDD (Step 5) |
+| `specs/IMPLEMENTATION_PHASES.md` | (structure from writing-implementation-phases) | writing-impl-phases \| sdd-adoption (pre-checked) | SDD (Step 8) |
 
 ## SDD Lifecycle Diagram
 ```
-  ┌─── 1. User Request (Feature/Bug) ──┐
-  │                                    ▼
+  ┌─── 1. User Request (Feature/Bug/Adopt) ──┐
+  │                                           ▼
   │                     ┌── 1.5 Defect Leakage Analysis ──┐
   │                     │   (If post-release bug)         │
   │                     │                                 ▼
@@ -131,8 +149,15 @@ Canonical templates ∈ shared files:
   │                     │                                 │
   │                     └─────────────────────────────────┘
   │                                    ▼
-  │                           2. brainstorming
-  │                       (drafts DECISION_LOG, SPEC, DESIGN)
+  │                     ┌──────────────┴──────────────┐
+  │                     │                             │
+  │              New project?                  Existing codebase?
+  │                     │                             │
+  │            2. brainstorming              2b. sdd-adoption
+  │         (drafts DECISION_LOG,        (reverse-engineers spec
+  │              SPEC, DESIGN)             from existing code)
+  │                     │                             │
+  │                     └──────────────┬──────────────┘
   │                                    │
   │                           3. Verify Draft Artifacts
   │                                    │
