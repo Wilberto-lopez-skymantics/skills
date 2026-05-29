@@ -65,7 +65,7 @@ Execute this exact loop:
 2. **Adversarial Pass:** Critic Council attacks draft. ∀ finding ! be printed ∈ Iteration Log format.
 3. **Resolution:** Creators modify spec to resolve attacks. **ESCALATION:** Resolving attack requires business assumption | guessing user intent → Creators ⊥ guess. ! PAUSE swarm, prompt user for explicit direction.
 4. **Loop:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO new findings. ⊥ stop after single pass. **≥ 3 documented iterations required.**
-5. **Commit & Save:** Output finalized spec. ! save to `specs/SPEC.md`. ⊥ write implementation code.
+5. **Save:** Output finalized spec. ! save to `specs/SPEC.md`. ⊥ write implementation code.
 6. **Handoff:** Present spec to user. Prompt user to proceed to `04_writing_implementation_phases` (or `03_interactive_wireframing` if UI project).
 7. **Report:** Output Swarm Log. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 

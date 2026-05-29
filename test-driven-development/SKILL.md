@@ -236,7 +236,7 @@ The "waste" is keeping code you can't trust. Working code without real tests is 
 **"TDD is dogmatic, being pragmatic means adapting"**
 
 TDD IS pragmatic:
-- Finds bugs before commit (faster than debugging after)
+- Finds bugs before shipping (faster than debugging after)
 - Prevents regressions (tests catch breaks immediately)
 - Documents behavior (tests show how to use code)
 - Enables refactoring (change freely, tests catch breaks)

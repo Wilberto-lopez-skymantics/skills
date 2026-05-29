@@ -2,7 +2,7 @@
 
 # Stage 07: Verification Before Completion
 
-Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always.
+Use when about to claim work is complete, fixed, or passing — requires running verification commands and confirming output before making any success claims; evidence before assertions always.
 
 Claiming work is complete without verification is dishonesty, not efficiency.
 
@@ -56,7 +56,7 @@ Skip any step = lying, not verifying
 
 - Using "should", "probably", "seems to"
 - Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
-- About to commit/push/PR without verification
+- About to claim completion without verification
 - Relying on partial verification
 - Thinking "just this once"
 - **ANY wording implying success without having run verification**
@@ -89,6 +89,6 @@ Skip any step = lying, not verifying
 
 ## Outputs
 - Terminal output of tests/builds
-- Final Commit/PR
+- Final verified output
 
 Upon success, the SDD pipeline is complete for this iteration!

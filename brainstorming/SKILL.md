@@ -164,19 +164,19 @@ Read & execute full matrix process: [ui-state-matrix.md](file://{{SKILLS_DIR}}/b
 
 **Documentation:**
 - `specs/` = single source of truth. Write `specs/DECISION_LOG.md`, update `specs/SPEC.md`, and (if UI) create `specs/DESIGN.md`.
-- Commit written files to git
+- Save written files to disk
 
 ## Spec Merge
 
 After user approves design, merge decisions into spec:
 
-**⛔ GATE:** Brainstorming ⊥ return control to SDD until `SPEC.md` updated & committed to git.
+**⛔ GATE:** Brainstorming ⊥ return control to SDD until `SPEC.md` updated & saved to disk.
 
 1. Read current `specs/SPEC.md`
 2. ∀ decision → determine if it introduces: new component | data flow | API contract | behavioral change
 3. Draft `specs/SPEC.md` modifications, present to user
 4. `specs/DECISION_LOG.md` = "why" behind each decision. Both ! reflect same decisions as `SPEC.md`.
-5. Commit updated `specs/SPEC.md`
+5. Save updated `specs/SPEC.md`
 
 **`specs/` folder = single source of truth:**
 
@@ -194,7 +194,7 @@ After user approves design, merge decisions into spec:
 **User Review Gate:**
 After writing spec, ask user to review before returning to SDD:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before I return to the SDD orchestrator for hardening."
+> "Spec written and saved to `<path>`. Please review it and let me know if you want to make any changes before I return to the SDD orchestrator for hardening."
 
 Wait for response. Changes requested → make them. Proceed only after user approves.
 

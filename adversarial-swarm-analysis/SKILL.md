@@ -100,7 +100,7 @@ Execute this exact loop:
 
    UX/UI Lead ⊥ fill gaps with "sensible defaults." Ask first.
 4. **Loop:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO new findings. ⊥ stop after single pass. **≥ 3 documented iterations required.**
-5. **Commit & Save:** Output finalized spec. ! save to `specs/` directory (e.g., `specs/SPEC.md`). ⊥ write implementation code.
+5. **Save:** Output finalized spec. ! save to `specs/` directory (e.g., `specs/SPEC.md`). ⊥ write implementation code.
 6. **Handoff:** Present spec to user. **SDD Context:** ∃ `specs/.sdd-state.json` | invoked by SDD orchestrator → return control to SDD. ⊥ invoke downstream skills directly. **Standalone:** Present spec, ask user next step.
 7. **Report:** Output Swarm Log. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 

@@ -78,7 +78,7 @@ User says "I want to add X" | "Change how Y works":
    Missing → re-invoke brainstorming. ⊥ draft them here.
 4. **Harden Spec:** Invoke `adversarial-swarm-analysis` → Red Team Critic Council. Returns control on completion. PASS verdict → artifacts transition DRAFT → **HARDENED**.
 5. **Quantitative Completeness Gate:** Execute 14-step Spec Self-Review (see below). Fix issues inline before final approval.
-6. **User Approves Hardened Spec:** Present to user. Approved → commit to `specs/`.
+6. **User Approves Hardened Spec:** Present to user. Approved → save to `specs/`.
 7. **Wireframe (UI only):** Invoke `interactive-wireframing` → iterative WYSIWYG HTML wireframes from `DESIGN.md` & `SPEC.md`. Iterates screen-by-screen until approved. Saved to `specs/wireframes/` → absolute visual source of truth.
 8. **Generate Implementation Phases:** Invoke `writing-implementation-phases` → granular sequenced checklist `specs/IMPLEMENTATION_PHASES.md`. Returns control on completion.
 9. **Execute:** Invoke `development-swarm` → implement per `IMPLEMENTATION_PHASES.md`. Pass approved wireframes (if any) as absolute visual spec.

@@ -69,9 +69,9 @@ encodes the invariant. Name the test so it references the invariant it validates
 
 Fix the code. Run the test — it must pass. Run the full test suite — it must not regress.
 
-### Step 6: Log and Commit
+### Step 6: Log and Save
 
-Commit the spec edit, pipeline fix, test, and code fix together as a single atomic change.
+Save the spec edit, pipeline fix, test, and code fix together as a single atomic change.
 
 Append the backprop entry to `specs/backprop-log.md` (create if it doesn't exist).
 

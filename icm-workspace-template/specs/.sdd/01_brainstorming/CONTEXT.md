@@ -71,13 +71,13 @@ Start: understand project context → ask questions one at a time → present de
 
 After user approves design, merge decisions into spec:
 
-**⛔ GATE:** ⊥ proceed to next stage until `SPEC.md` updated & committed to git.
+**⛔ GATE:** ⊥ proceed to next stage until `SPEC.md` updated & saved to disk.
 
 1. Read current `specs/SPEC.md` (if exists)
 2. ∀ decision → determine if it introduces: new component | data flow | API contract | behavioral change
 3. Draft `specs/SPEC.md` modifications, present to user
 4. `specs/DECISION_LOG.md` = "why" behind each decision. Both ! reflect same decisions as `SPEC.md`.
-5. Commit updated `specs/SPEC.md`
+5. Save updated `specs/SPEC.md`
 
 ## Outputs
 - `specs/SPEC.md`
