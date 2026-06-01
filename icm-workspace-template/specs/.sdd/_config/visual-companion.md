@@ -34,7 +34,7 @@ Server watches directory for HTML files, serves newest to browser. Write HTML �
 
 ```bash
 # Start server with persistence (mockups saved to project)
-scripts/start-server.sh --project-dir /path/to/project
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 
 # Returns: {"type":"server-started","port":52341,"url":"http://localhost:52341",
 #           "screen_dir":"/path/to/project/specs/brainstorming/12345-1706000000/content",
@@ -51,33 +51,33 @@ Save `screen_dir` & `state_dir`. Tell user to open URL.
 
 **Claude Code (macOS/Linux):**
 ```bash
-scripts/start-server.sh --project-dir /path/to/project
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 ```
 
 **Claude Code (Windows):**
 ```bash
 # Windows auto-detects foreground mode (blocks tool call).
 # Set run_in_background: true. Read $STATE_DIR/server-info next turn.
-scripts/start-server.sh --project-dir /path/to/project
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 ```
 
 **Codex:**
 ```bash
 # Codex reaps background processes. Script auto-detects CODEX_CI → foreground mode.
-scripts/start-server.sh --project-dir /path/to/project
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 ```
 
 **Gemini CLI:**
 ```bash
 # Use --foreground + is_background: true on shell tool
-scripts/start-server.sh --project-dir /path/to/project --foreground
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project --foreground
 ```
 
 **Other environments:** Server ! keep running across turns. Environment reaps detached processes → use `--foreground` + platform's background mechanism.
 
 Unreachable URL (remote/containerized):
 ```bash
-scripts/start-server.sh \
+specs/.sdd/scripts/start-server.sh \
   --project-dir /path/to/project \
   --host 0.0.0.0 \
   --url-host localhost
@@ -88,7 +88,7 @@ scripts/start-server.sh \
 ## The Loop
 
 1. **Check server alive → write HTML** to new file ∈ `screen_dir`:
-   - Before each write, check `$STATE_DIR/server-info` ∃. ∄ (or `server-stopped` ∃) → restart via `start-server.sh`. Server auto-exits after 30min inactivity.
+   - Before each write, check `$STATE_DIR/server-info` ∃. ∄ (or `server-stopped` ∃) → restart via `specs/.sdd/scripts/start-server.sh`. Server auto-exits after 30min inactivity.
    - Semantic filenames: `platform.html`, `visual-style.html`, `layout.html`
    - ⊥ reuse filenames — each screen = fresh file
    - Use Write tool — ⊥ cat/heredoc (dumps noise into terminal)
@@ -259,12 +259,12 @@ Full event stream shows exploration path — may click multiple before settling.
 ## Cleaning Up
 
 ```bash
-scripts/stop-server.sh $SESSION_DIR
+specs/.sdd/scripts/stop-server.sh $SESSION_DIR
 ```
 
 With `--project-dir` → mockup files persist ∈ `specs/brainstorming/`. `/tmp` sessions deleted on stop.
 
 ## Reference
 
-- Frame template (CSS reference): `scripts/frame-template.html`
-- Helper script (client-side): `scripts/helper.js`
+- Frame template (CSS reference): `specs/.sdd/scripts/frame-template.html`
+- Helper script (client-side): `specs/.sdd/scripts/helper.js`

@@ -32,7 +32,8 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
 
    Fix issues inline → "Phase Integrity Check passed: [N] checks clear, [M] issues fixed inline."
 
-6. **Handoff:** Prompt user to proceed to `05_development_swarm`.
+6. **Update state:** Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+7. **Handoff:** Prompt user to proceed to `05_development_swarm`.
 
 ### Document Format (`specs/IMPLEMENTATION_PHASES.md`)
 ```markdown
@@ -60,3 +61,4 @@ Cross-stage consistency checks (execute before presenting to user):
 ## Outputs
 - `specs/IMPLEMENTATION_PHASES.md`
 - `specs/phase-integrity-check.md` (temporary tracker)
+- `specs/.sdd-state.json`

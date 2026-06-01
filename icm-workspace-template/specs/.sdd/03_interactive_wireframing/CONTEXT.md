@@ -22,7 +22,8 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 3. **Scaffold Base HTML** — Create base HTML ∈ `specs/wireframes/` ∀ screens ∈ architecture.
 4. **Iterative Feedback Loop** — Present wireframes via Visual Companion, iterate on user feedback.
 5. **Finalization** — Save final HTML as definitive visual spec, update `DESIGN.md` to reference them.
-6. **Transition** — Prompt user to proceed to `04_writing_implementation_phases`.
+6. **Update state** — Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+7. **Transition** — Prompt user to proceed to `04_writing_implementation_phases`.
 
 ### 1. Verify Prerequisites
 
@@ -37,7 +38,7 @@ Server watches directory for HTML files, serves to browser.
 
 ```bash
 # Start server with persistence
-scripts/start-server.sh --project-dir /path/to/project
+specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 ```
 
 - Save `screen_dir` & `state_dir` from response.
@@ -100,3 +101,4 @@ Update after each screen approved | starting new screen. On invocation, check fi
 ## Outputs
 - `specs/wireframes/*.html`
 - Updated `specs/DESIGN.md`
+- `specs/.sdd-state.json`

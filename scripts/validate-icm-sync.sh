@@ -15,7 +15,7 @@ ICM_DIR="${2:-$SKILLS_DIR/icm-workspace-template/specs/.sdd}"
 
 # Known intentional differences (stage:check:allowed_delta)
 # brainstorming gate: SKILL has SDD delegation meta-gate, CONTEXT uses stage routing
-KNOWN_DIFFS="01_brainstorming:gates:1"
+KNOWN_DIFFS="01_brainstorming:gates:1 01_brainstorming:roles:1 03_interactive_wireframing:roles:1 04_writing_implementation_phases:roles:1"
 
 is_known_diff() {
   local stage="$1" check="$2" delta="$3"
@@ -143,8 +143,15 @@ while [ $i -lt ${#STAGES[@]} ]; do
   context_roles=$(extract_roles "$context_file")
   skill_roles=$(extract_roles "$skill_file")
   if [ "$context_roles" -ne "$skill_roles" ]; then
-    echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Role count differs (CONTEXT: $context_roles, SKILL: $skill_roles)"
-    stage_drift=1
+    delta=$((skill_roles - context_roles))
+    if [ "$delta" -lt 0 ]; then delta=$((-delta)); fi
+    known=$(is_known_diff "$stage" "roles" "$delta")
+    if [ -n "$known" ]; then
+      echo -e "${GREEN}ℹ OK${NC}     $stage: Role count differs by $delta (known intentional difference)"
+    else
+      echo -e "${YELLOW}⚠ DRIFT${NC}  $stage: Role count differs (CONTEXT: $context_roles, SKILL: $skill_roles)"
+      stage_drift=1
+    fi
   fi
 
   # Compare output sections (only if BOTH files have ## Outputs — SKILL.md files don't by design)

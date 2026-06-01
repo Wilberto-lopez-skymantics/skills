@@ -90,5 +90,6 @@ Skip any step = lying, not verifying
 ## Outputs
 - Terminal output of tests/builds
 - Final verified output
+- `specs/.sdd-state.json`
 
-Upon success, the SDD pipeline is complete for this iteration!
+Upon success, update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) to record complete verification, then notify the user that the SDD pipeline is complete for this iteration!

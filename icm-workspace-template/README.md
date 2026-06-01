@@ -101,6 +101,9 @@ icm-workspace-template/
 └── specs/
     └── .sdd/              ← Pipeline machinery (dot-prefix = infrastructure)
         ├── WORKSPACE_ROUTING.md    ← Layer 0+1: version + routing
+        ├── scripts/                ← Visual Companion server scripts
+        │   ├── start-server.sh
+        │   └── ...
         ├── _config/                ← Layer 3: reference material
         │   ├── references/         ← Checklists, rubrics
         │   ├── design-template.md

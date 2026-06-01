@@ -39,7 +39,8 @@ Start: understand project context → ask questions one at a time → present de
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
 9. **Spec Merge** — update `specs/SPEC.md` with structural decisions.
 10. **User reviews spec** — ask user to review before proceeding
-11. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
+11. **Update state** — Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
 
 ### The Process
 
@@ -83,3 +84,4 @@ After user approves design, merge decisions into spec:
 - `specs/SPEC.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/DECISION_LOG.md`
+- `specs/.sdd-state.json`

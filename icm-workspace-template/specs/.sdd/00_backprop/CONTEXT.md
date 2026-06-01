@@ -75,6 +75,8 @@ Save the spec edit, pipeline fix, test, and code fix together as a single atomic
 
 Append the backprop entry to `specs/backprop-log.md` (create if it doesn't exist).
 
+Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) to record the backprop event, then transition back to the stage where the defect was detected.
+
 ## Verify
 
 After completing the backprop:
@@ -89,5 +91,6 @@ After completing the backprop:
 - Updated stage `CONTEXT.md` (if pipeline contract was too weak)
 - Updated `specs/.sdd/_config/` reference file (if reference material was wrong)
 - `specs/backprop-log.md` (cumulative log of all backprop entries)
+- `specs/.sdd-state.json` (updated state checkpoint)
 - New test file
 - Code fix

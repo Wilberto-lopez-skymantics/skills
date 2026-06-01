@@ -114,7 +114,8 @@ After ALL phases complete & verified, Architect ! execute full reconciliation:
 
 **⛔ GATE:** ⊥ proceed until reconciliation = ZERO ❌ drift entries.
 
-6. **Handoff:** If UI project, prompt user to proceed to `06_visual_acceptance_testing`. If backend-only, prompt to proceed to `07_verification_before_completion`.
+6. **Update state:** Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+7. **Handoff:** If UI project, prompt user to proceed to `06_visual_acceptance_testing`. If backend-only, prompt to proceed to `07_verification_before_completion`.
 
 ## Verify
 
@@ -130,3 +131,4 @@ Cross-stage consistency checks (execute after all phases complete):
 - Codebase files
 - `specs/dev-swarm-reconciliation.md`
 - `README.md`
+- `specs/.sdd-state.json`

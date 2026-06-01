@@ -76,5 +76,6 @@ Save ∀ screenshots taken during Screen Walk → conversation artifacts directo
 - `specs/vat-checklist.md`
 - VAT Report (printed or saved as `specs/VAT_REPORT.md` using `vat-report-format.md`)
 - Saved screenshots
+- `specs/.sdd-state.json`
 
-If passing, prompt user to proceed to `07_verification_before_completion`.
+If passing, update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) and prompt user to proceed to `07_verification_before_completion`.

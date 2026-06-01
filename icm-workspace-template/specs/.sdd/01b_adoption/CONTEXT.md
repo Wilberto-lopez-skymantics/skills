@@ -70,7 +70,7 @@ Present all drafted artifacts. User knows the codebase better → they catch mis
 
 ### Step 6: Set State & Transition
 
-Write `specs/.sdd/_config/sdd-state.json`:
+Write `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`):
 ```json
 {
   "lastCompletedStep": 1,
@@ -94,5 +94,5 @@ Prompt the user to choose, then transition.
 - `specs/DECISION_LOG.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/IMPLEMENTATION_PHASES.md` (pre-checked)
-- `specs/.sdd/_config/sdd-state.json`
+- `specs/.sdd-state.json`
 - `specs/backprop-log.md` (created empty if not present)
