@@ -19,6 +19,10 @@ Start: understand project context → ask questions one at a time → present de
 
 **⛔ GATE:** ⊥ invoke implementation skills, write code, scaffold projects, or take implementation action until design presented & user approved. Applies to EVERY project regardless of perceived simplicity.
 
+**⛔ GATE (UI Projects):** ⊥ generate design system tokens (e.g. `colors`, `typography` in `DESIGN.md`) or present pre-styled high-fidelity mockups until Step 2b (Theme & Vibe Brainstorming) is complete and the theme is approved. Presenting styled visuals prior to theme selection is forbidden to avoid anchoring bias.
+
+**⛔ GATE (Visual Default):** ∃ enabled visual companion → ∀ UI proposal (layout | theme | color palette | component option) ! present via browser visual companion. Proposing | discussing visual variations in text first = process violation.
+
 ### Checklist
 
 ! create task for each item, complete in order:

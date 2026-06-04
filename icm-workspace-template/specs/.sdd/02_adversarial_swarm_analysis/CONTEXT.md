@@ -55,6 +55,17 @@ Before Blue Team draft, classify project type & apply corresponding checklist. R
 - Iteration 1 = ALWAYS FAIL (initial draft always has gaps)
 - Red Team PASS on iteration 1 | 2 → override, ! attack harder. Premature PASS = lazy analysis, not perfect spec.
 
+#### Prevent Premature Pass (Structured Verification Gates)
+
+⊥ PASS review until Critic Council verifies spec against 4 dimensions:
+- **Structural**: DB schemas, API req/res contracts, config shapes, missing §
+- **Concurrency & Tx**: race conditions, request isolation, db rollback, file-to-db atomicity
+- **Resource Limits**: text/paragraph limits, db scale limits, API timeout & backoff
+- **Determinism**: tie-breaker ordering, random seeds, float boundaries
+
+Pre-PASS ! include `Pre-Pass Hardening Verification Checklist` in iteration log explaining ∀ 4 dimensions. PASS ∉ checklist → process violation.
+
+
 ### Iterative Workflow
 Execute this exact loop:
 
