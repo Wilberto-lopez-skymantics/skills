@@ -70,14 +70,16 @@ Present all drafted artifacts. User knows the codebase better → they catch mis
 
 ### Step 6: Set State & Transition
 
-Write `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`):
+Write `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`):
 ```json
 {
+  "instanceId": "[UUID]",
   "lastCompletedStep": 1,
-  "stepName": "Adoption Complete",
+  "stepName": "01b_adoption",
   "projectType": "[detected]",
   "timestamp": "[ISO 8601]",
-  "notes": "Project adopted into SDD. Spec reverse-engineered from existing codebase."
+  "notes": "Project adopted into SDD. Spec reverse-engineered from existing codebase.",
+  "history": []
 }
 ```
 
@@ -94,5 +96,5 @@ Prompt the user to choose, then transition.
 - `specs/DECISION_LOG.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/IMPLEMENTATION_PHASES.md` (pre-checked)
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`
 - `specs/backprop-log.md` (created empty if not present)

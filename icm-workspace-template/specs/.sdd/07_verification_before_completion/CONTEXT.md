@@ -10,6 +10,9 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 - Layer 4 (working): Source code
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/IMPLEMENTATION_PHASES.md`
+- Layer 4 (working): `specs/dev-swarm-reconciliation.md`
+- Layer 4 (working): `specs/vat-checklist.md` (? UI project)
+- Layer 4 (working): `specs/VAT_REPORT.md` (? UI project)
 
 ## Process
 
@@ -51,6 +54,7 @@ Skip any step = lying, not verifying
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Requirements met | Line-by-line checklist | Tests passing |
 | UI looks correct | Stage 06 VAT screenshot evidence | Code inspection, "CSS looks right" |
+| Reconciliation complete | `specs/dev-swarm-reconciliation.md` verified zero drift | claim zero drift without file read |
 
 ### Red Flags - STOP
 
@@ -87,9 +91,15 @@ Skip any step = lying, not verifying
 ❌ "Tests pass, phase complete"
 ```
 
+**Reconciliation:**
+```
+✅ read `specs/dev-swarm-reconciliation.md` → verify zero drift
+❌ claim zero drift from memory
+```
+
 ## Outputs
 - Terminal output of tests/builds
 - Final verified output
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`
 
-Upon success, update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) to record complete verification, then notify the user that the SDD pipeline is complete for this iteration!
+! update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 7` & `stepName: "07_verification_before_completion"` before success claim. ⊥ claim completion without update. Notify user pipeline complete.

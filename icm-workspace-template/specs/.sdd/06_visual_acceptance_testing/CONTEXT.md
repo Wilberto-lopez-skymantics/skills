@@ -10,6 +10,7 @@ Browser-based visual acceptance testing for UI projects. Walks every screen in t
 - Layer 4 (working): Source code / Deployed application
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
+- Layer 4 (working): `specs/wireframes/*.html` (? exists)
 - Layer 3 (reference): `../_config/vat-report-format.md`
 
 ## Process
@@ -76,6 +77,6 @@ Save ∀ screenshots taken during Screen Walk → conversation artifacts directo
 - `specs/vat-checklist.md`
 - VAT Report (printed or saved as `specs/VAT_REPORT.md` using `vat-report-format.md`)
 - Saved screenshots
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`
 
-If passing, update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) and prompt user to proceed to `07_verification_before_completion`.
+If passing, update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 6` & `stepName: "06_visual_acceptance_testing"`, and prompt user to proceed to `07_verification_before_completion`.

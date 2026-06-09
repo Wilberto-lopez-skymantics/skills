@@ -19,7 +19,7 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
    - Infrastructure & DB schemas = always Phase 1 & 2. Frontend UIs = always final phases.
    - **Data-Flow Traceability (CRITICAL):** ∀ REST endpoint | UI component | API ∈ checklist ! explicitly state data source (e.g., `Database Table X` | `Configuration File Y`). ∃ config file like `agents.yaml` ∈ spec → ! create checklist item stating exactly which module/endpoint parses & consumes it. ⊥ leave "wiring" implicit.
 3. **Mandate Verifications:** ∀ phase ! define strict empirical `Verification` step. Phase ⊥ be marked complete by Dev Swarm unless verification command passes (e.g., `pytest`, `docker-compose up`, `curl`).
-4. **Write Checklist:** Output → `specs/IMPLEMENTATION_PHASES.md` using markdown task lists (`- [ ]`).
+4. **Write Checklist:** Append new phase(s) to `specs/IMPLEMENTATION_PHASES.md` (⊥ overwrite existing completed phases). Keep checklist of new changes sequenced & unchecked (`- [ ]`).
 5. **Phase Integrity Check:** Before presenting to user, execute structural validations sequentially.
 
    **⛔ GATE:** ! create tracking artifact `specs/phase-integrity-check.md`. ! evaluate steps sequentially, write reasoning, check box only when proven. Rubber-stamping "All phases look good" without tracker = process violation.
@@ -32,7 +32,7 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
 
    Fix issues inline → "Phase Integrity Check passed: [N] checks clear, [M] issues fixed inline."
 
-6. **Update state:** Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 4` & `stepName: "04_writing_implementation_phases"`.
 7. **Handoff:** Prompt user to proceed to `05_development_swarm`.
 
 ### Document Format (`specs/IMPLEMENTATION_PHASES.md`)
@@ -61,4 +61,4 @@ Cross-stage consistency checks (execute before presenting to user):
 ## Outputs
 - `specs/IMPLEMENTATION_PHASES.md`
 - `specs/phase-integrity-check.md` (temporary tracker)
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`

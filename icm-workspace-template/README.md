@@ -126,10 +126,32 @@ specs/
 ├── DESIGN.md                ← Design tokens (UI projects)
 ├── DECISION_LOG.md          ← Architectural decisions
 ├── IMPLEMENTATION_PHASES.md ← Build checklist
-├── .sdd-state.json          ← Pipeline checkpoint (created at runtime)
+├── .sdd/_config/sdd-state.json ← Pipeline checkpoint (created at runtime)
 ├── wireframes/              ← Approved HTML wireframes (UI projects)
 └── backprop-log.md          ← Bug → source fix log
 ```
+
+
+## Iterative Workflows (Features & Bugs)
+
+Once a project has completed its initial SDD cycle (`lastCompletedStep: 7`), subsequent changes (adding features, changing behaviors, or fixing bugs) trigger a new, scoped iteration of the pipeline.
+
+### 1. Adding a New Feature or Change
+When the user requests a new feature or behavioral change:
+1. **Reset State:** Transition `specs/.sdd/_config/sdd-state.json` back to `lastCompletedStep: 1` (`01_brainstorming`).
+2. **Track Decisions:** Add a new numbered entry (e.g. `DEC005`) to `specs/DECISION_LOG.md` detailing the feature's design and options considered.
+3. **Update Specifications:** Edit `specs/SPEC.md` and `specs/DESIGN.md` directly (git tracks the diff).
+4. **Harden & Wireframe:** Run Stage 02 (Adversarial Swarm) on the spec changes and Stage 03 (Wireframing) for new screens.
+5. **Phase Scoping:** Instead of overwriting `specs/IMPLEMENTATION_PHASES.md`, **append a new Phase** (e.g. `## Phase 8: Feature X`) containing the tasks and verification commands for the feature.
+6. **Execution & QA:** Execute only the new phase (`- [ ]`) in Stage 05, run VAT in Stage 06, and reconcile in Stage 07.
+
+### 2. Fixing a Bug (Backprop)
+When a bug is discovered after completion:
+1. **Trace to Source:** Transition `specs/.sdd/_config/sdd-state.json` to `lastCompletedStep: 0` (`00_backprop`).
+2. **Log Backprop:** Create a new entry in `specs/backprop-log.md` detailing the defect, root cause, the stage that failed to catch it, the source fix, and the new invariant.
+3. **Harden Spec:** Append the new invariant rule (e.g. `V4: <invariant>`) to the Invariants section of `specs/SPEC.md`.
+4. **Phase Bug Fix:** Append a bug-fixing phase (e.g. `## Phase 9: Fix Bug X`) to `specs/IMPLEMENTATION_PHASES.md` containing tasks to write a regression test first, implement the fix, and verify it passes.
+5. **Execute & Close:** Implement the fix, run the tests (Stage 05), and verify everything compiles (Stage 07).
 
 ## Relationship to SDD Skills
 

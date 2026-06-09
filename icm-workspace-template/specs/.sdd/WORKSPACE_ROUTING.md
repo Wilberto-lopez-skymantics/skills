@@ -26,4 +26,4 @@ When a user asks you to perform a task, map it to the correct stage below and **
 - **Code is a byproduct of the spec.** Never write or edit implementation code before the specification (`specs/SPEC.md`) is updated.
 - Read `specs/.sdd/_config/` reference materials only when instructed to do so by a stage's `CONTEXT.md`.
 - All specifications and outputs live in the `specs/` directory at the project root.
-- **Continuous State Tracking:** Before transitioning between any two stages, ! update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`). ⊥ silently transition without state update — breaks pipeline recoverability.
+- **Continuous State Tracking:** Before transitioning between any two stages, ! update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) by updating the top-level keys to the new stage and appending the previous stage state (excluding `history`) to the `history` array. ⊥ silently transition without state update — breaks pipeline recoverability.

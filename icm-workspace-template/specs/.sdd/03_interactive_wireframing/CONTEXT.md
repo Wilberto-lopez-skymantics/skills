@@ -22,7 +22,7 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 3. **Scaffold Base HTML** — Create base HTML ∈ `specs/wireframes/` ∀ screens ∈ architecture.
 4. **Iterative Feedback Loop** — Present wireframes via Visual Companion, iterate on user feedback.
 5. **Finalization** — Save final HTML as definitive visual spec, update `DESIGN.md` to reference them.
-6. **Update state** — Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+6. **Update state** — Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 3` & `stepName: "03_interactive_wireframing"`.
 7. **Transition** — Prompt user to proceed to `04_writing_implementation_phases`.
 
 ### 1. Verify Prerequisites
@@ -101,4 +101,4 @@ Update after each screen approved | starting new screen. On invocation, check fi
 ## Outputs
 - `specs/wireframes/*.html`
 - Updated `specs/DESIGN.md`
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`

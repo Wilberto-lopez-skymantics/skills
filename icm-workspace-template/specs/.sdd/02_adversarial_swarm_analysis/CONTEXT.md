@@ -67,6 +67,9 @@ Pre-PASS ! include `Pre-Pass Hardening Verification Checklist` in iteration log 
 
 
 ### Iterative Workflow
+> [!NOTE]
+> **Iterative Spec Hardening:** If `specs/SPEC.md` already exists and is being updated, the swarms ! focus their drafting and attacks primarily on the new additions and behavioral changes (the diff) while ensuring existing invariants (§V) are not violated.
+
 Execute this exact loop:
 
 0. **Pre-Flight Context Map:** Identify ∀ frameworks/versions ∈ target architecture.
@@ -77,10 +80,10 @@ Execute this exact loop:
 3. **Resolution:** Creators modify spec to resolve attacks. **ESCALATION:** Resolving attack requires business assumption | guessing user intent → Creators ⊥ guess. ! PAUSE swarm, prompt user for explicit direction.
 4. **Loop:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO new findings. ⊥ stop after single pass. **≥ 3 documented iterations required.**
 5. **Save:** Output finalized spec. ! save to `specs/SPEC.md`. ⊥ write implementation code.
-6. **Update state:** Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 2` & `stepName: "02_adversarial_swarm_analysis"`.
 7. **Handoff:** Present spec to user. Prompt user to proceed to `04_writing_implementation_phases` (or `03_interactive_wireframing` if UI project).
 8. **Report:** Output Swarm Log. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 
 ## Outputs
 - `specs/SPEC.md` (Hardened)
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`

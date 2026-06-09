@@ -19,7 +19,7 @@ material, or the upstream stage output) and fix it there.
 
 - **Layer 4 (working):** Bug report, test failure output, or post-mortem notes
 - **Layer 4 (working):** `specs/SPEC.md`
-- **Layer 4 (working):** `specs/.sdd-state.json`
+- **Layer 4 (working):** `specs/.sdd/_config/sdd-state.json`
 - **Layer 3 (reference):** All stage `CONTEXT.md` files in `specs/.sdd/` (read only the stage relevant to the root cause)
 
 ## Process
@@ -75,7 +75,7 @@ Save the spec edit, pipeline fix, test, and code fix together as a single atomic
 
 Append the backprop entry to `specs/backprop-log.md` (create if it doesn't exist).
 
-Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) to record the backprop event, then transition back to the stage where the defect was detected.
+Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 0` & `stepName: "00_backprop"` to record the backprop event, then transition back to the stage where the defect was detected.
 
 ## Verify
 
@@ -91,6 +91,6 @@ After completing the backprop:
 - Updated stage `CONTEXT.md` (if pipeline contract was too weak)
 - Updated `specs/.sdd/_config/` reference file (if reference material was wrong)
 - `specs/backprop-log.md` (cumulative log of all backprop entries)
-- `specs/.sdd-state.json` (updated state checkpoint)
+- `specs/.sdd/_config/sdd-state.json` (updated state checkpoint)
 - New test file
 - Code fix

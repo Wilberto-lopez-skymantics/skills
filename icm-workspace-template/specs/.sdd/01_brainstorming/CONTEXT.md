@@ -23,6 +23,9 @@ Start: understand project context → ask questions one at a time → present de
 
 **⛔ GATE (Visual Default):** ∃ enabled visual companion → ∀ UI proposal (layout | theme | color palette | component option) ! present via browser visual companion. Proposing | discussing visual variations in text first = process violation.
 
+> [!NOTE]
+> **Iterative Cycle:** If `specs/SPEC.md` & `specs/DESIGN.md` already exist, reuse them as baseline. Skip Step 2b (Theme & Vibe) & reuse existing design tokens unless redesign requested.
+
 ### Checklist
 
 ! create task for each item, complete in order:
@@ -36,14 +39,14 @@ Start: understand project context → ask questions one at a time → present de
 **⛔ GATE:** ⊥ propose approaches (Step 4) until Confidence Self-Assessment score ≥85. ! re-score after each round of clarifying questions.
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
-6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md`. See `../_config/decision-log-template.md`.
-7. **Write DESIGN.md** (UI only) — produce `specs/DESIGN.md`. ! pass Design Token Completeness Checklist. See `../_config/design-template.md`.
+6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md` (append new entries; ⊥ overwrite existing). See `../_config/decision-log-template.md`.
+7. **Write DESIGN.md** (UI only) — update existing or produce `specs/DESIGN.md`. ! pass Design Token Completeness Checklist. See `../_config/design-template.md`.
 
 **⛔ GATE:** DESIGN.md ⊥ be written until ∀ mandatory category ∈ Design Token Completeness Checklist has defined tokens. Agent ! generate best-practice defaults matching approved theme ∀ categories.
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
 9. **Spec Merge** — update `specs/SPEC.md` with structural decisions.
 10. **User reviews spec** — ask user to review before proceeding
-11. **Update state** — Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+11. **Update state** — Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 1` & `stepName: "01_brainstorming"`.
 12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
 
 ### The Process
@@ -88,4 +91,4 @@ After user approves design, merge decisions into spec:
 - `specs/SPEC.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/DECISION_LOG.md`
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`

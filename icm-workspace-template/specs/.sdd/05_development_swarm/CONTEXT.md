@@ -10,6 +10,7 @@ Builder vs. Critic loop during code generation & implementation. Prevents vulner
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/IMPLEMENTATION_PHASES.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
+- Layer 4 (working): `specs/wireframes/*.html` (? exists)
 - Layer 4 (working): `specs/CODING_STANDARDS.md` (if exists)
 - Layer 3 (reference): `../_config/role-standards.md`
 - Layer 3 (reference): `../_config/iteration-log-format.md`
@@ -73,6 +74,9 @@ Analyze project stack → instantiate additional attack vectors as needed.
 #### Mandatory Empirical Evidence
 Red Team ⊥ PASS based on visual inspection alone. ! use terminal tools → actually run code/tests/build & include terminal output ∈ Iteration Log.
 
+> [!NOTE]
+> **Iterative Execution:** Only execute the new unchecked phases (`- [ ]`) in `specs/IMPLEMENTATION_PHASES.md`. Skip phases marked completed (`- [x]`).
+
 ### Test-Driven Implementation Loop
 Execute this exact sequence ∀ file/component:
 
@@ -114,7 +118,7 @@ After ALL phases complete & verified, Architect ! execute full reconciliation:
 
 **⛔ GATE:** ⊥ proceed until reconciliation = ZERO ❌ drift entries.
 
-6. **Update state:** Update `specs/.sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).
+6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 5` & `stepName: "05_development_swarm"`.
 7. **Handoff:** If UI project, prompt user to proceed to `06_visual_acceptance_testing`. If backend-only, prompt to proceed to `07_verification_before_completion`.
 
 ## Verify
@@ -131,4 +135,4 @@ Cross-stage consistency checks (execute after all phases complete):
 - Codebase files
 - `specs/dev-swarm-reconciliation.md`
 - `README.md`
-- `specs/.sdd-state.json`
+- `specs/.sdd/_config/sdd-state.json`
