@@ -91,10 +91,16 @@ Present next-step options to user:
 Prompt the user to choose, then transition.
 
 ## Outputs
-
 - `specs/SPEC.md`
 - `specs/DECISION_LOG.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/IMPLEMENTATION_PHASES.md` (pre-checked)
 - `specs/.sdd/_config/sdd-state.json`
 - `specs/backprop-log.md` (created empty if not present)
+
+### Handoff / Transitions
+1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 1` & `stepName: "01b_adoption"`.
+2. **Handoff:** Present next-step options:
+   - **Option A (Harden Spec)**: Route `02_adversarial_swarm_analysis`.
+   - **Option B (Expand Spec)**: Route `01_brainstorming` (baseline spec exists).
+   - **Option C (Write Phases / Code)**: Route `04_writing_implementation_phases` (future changes).

@@ -36,6 +36,7 @@ Analyze project stack → instantiate additional attack vectors as needed.
 #### Build Rules
 - **TDD:** ! write tests before logic.
 - **Docker:** ! generate `.dockerignore` when `Dockerfile` created | modified.
+- **Failure Routing (Backprop):** Test failure | regression found → ! transition `00_backprop` to update spec invariants & test back-to-source. ⊥ patch code directly without spec update.
 
 #### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
 - Before generating frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
@@ -81,6 +82,7 @@ Red Team ⊥ PASS based on visual inspection alone. ! use terminal tools → act
 Execute this exact sequence ∀ file/component:
 
 **⛔ GATE:** **One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
+- **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → agent ! proceed through ∀ files & phases sequentially. ⊥ pause | return to user after single file/phase written. Loop next files/phases via tool calls.
 
 0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke its resolving tools. ⊥ Context7 → use web search | built-in knowledge for framework APIs. Log: "Context7 unavailable — docs sourced from [web search | training data]."
 1. **Draft (Blue Team):** Appropriate Builder generates code.

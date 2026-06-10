@@ -9,6 +9,7 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 ## Inputs
 - Layer 4 (working): `specs/DESIGN.md`
 - Layer 4 (working): `specs/SPEC.md`
+- Layer 4 (working): `specs/wireframes/*.html` (if exists)
 - Layer 3 (reference): `../_config/visual-companion.md`
 
 ## Process
@@ -19,7 +20,7 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 
 1. **Verify Prerequisites** — Read `specs/DESIGN.md` & `specs/SPEC.md` → extract layout rules, tokens, component hierarchy. Missing → flag to user.
 2. **Start Visual Server** — Launch local Visual Companion server.
-3. **Scaffold Base HTML** — Create base HTML ∈ `specs/wireframes/` ∀ screens ∈ architecture.
+3. **Scaffold / Load Base HTML** — Load existing HTML files if they exist, or create new base HTML ∈ `specs/wireframes/` ∀ screens ∈ architecture.
 4. **Iterative Feedback Loop** — Present wireframes via Visual Companion, iterate on user feedback.
 5. **Finalization** — Save final HTML as definitive visual spec, update `DESIGN.md` to reference them.
 6. **Update state** — Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 3` & `stepName: "03_interactive_wireframing"`.
@@ -46,11 +47,13 @@ specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 
 *See `../_config/visual-companion.md` for detailed server instructions.*
 
-### 3. Scaffold Base HTML
+### 3. Scaffold / Load Base HTML
 
 ! generate, iterate, finalize **one screen at a time**. ⊥ scaffold all screens ∈ single turn.
 
-For first screen ∈ Component Hierarchy, generate base HTML using precise tokens from `DESIGN.md`:
+For the screen being built/modified:
+- **∃ Existing Wireframe**: If `specs/wireframes/<screen-name>.html` already exists, load and use it as the base. Identify spec modifications and plan targeted edits.
+- **∄ Existing Wireframe**: Generate new base HTML using precise tokens from `DESIGN.md`.
 
 - Write to `specs/wireframes/<screen-name>.html` (or `screen_dir` if iterating)
 - Use Vanilla CSS | Tailwind. ⊥ rely on external UI libraries unless specified ∈ architecture.

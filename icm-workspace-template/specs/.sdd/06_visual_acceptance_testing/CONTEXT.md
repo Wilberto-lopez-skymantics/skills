@@ -79,4 +79,6 @@ Save ∀ screenshots taken during Screen Walk → conversation artifacts directo
 - Saved screenshots
 - `specs/.sdd/_config/sdd-state.json`
 
-If passing, update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 6` & `stepName: "06_visual_acceptance_testing"`, and prompt user to proceed to `07_verification_before_completion`.
+### Handoff / Transitions
+1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 6` & `stepName: "06_visual_acceptance_testing"`.
+2. **Handoff:** Prompt user to proceed `07_verification_before_completion`.

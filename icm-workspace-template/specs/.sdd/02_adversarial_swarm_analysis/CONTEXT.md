@@ -81,7 +81,9 @@ Execute this exact loop:
 4. **Loop:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO new findings. ⊥ stop after single pass. **≥ 3 documented iterations required.**
 5. **Save:** Output finalized spec. ! save to `specs/SPEC.md`. ⊥ write implementation code.
 6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 2` & `stepName: "02_adversarial_swarm_analysis"`.
-7. **Handoff:** Present spec to user. Prompt user to proceed to `04_writing_implementation_phases` (or `03_interactive_wireframing` if UI project).
+7. **Handoff:** Present spec to user.
+   - UI project & spec modifications introduce new visual components, states, layouts → ! route `03_interactive_wireframing` to update & verify wireframe first.
+   - Otherwise → prompt user to proceed `04_writing_implementation_phases`.
 8. **Report:** Output Swarm Log. Format: `| Spec Section | Attacking Persona | Ambiguity/Flaw Found | Blue Team Resolution |`.
 
 ## Outputs

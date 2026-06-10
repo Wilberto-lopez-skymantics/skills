@@ -92,3 +92,7 @@ After user approves design, merge decisions into spec:
 - `specs/DESIGN.md` (if UI project)
 - `specs/DECISION_LOG.md`
 - `specs/.sdd/_config/sdd-state.json`
+
+### Handoff / Transitions
+1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 1` & `stepName: "01_brainstorming"`.
+2. **Handoff:** Prompt user to proceed `02_adversarial_swarm_analysis`.

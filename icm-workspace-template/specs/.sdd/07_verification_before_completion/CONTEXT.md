@@ -56,6 +56,10 @@ Skip any step = lying, not verifying
 | UI looks correct | Stage 06 VAT screenshot evidence | Code inspection, "CSS looks right" |
 | Reconciliation complete | `specs/dev-swarm-reconciliation.md` verified zero drift | claim zero drift without file read |
 
+### Failure Routing
+
+- **Failure Routing (Backprop):** Verification tests fail | regressions found → ! transition `00_backprop` to trace defect back-to-source & add new spec invariants. ⊥ patch code directly without spec update.
+
 ### Red Flags - STOP
 
 - Using "should", "probably", "seems to"
@@ -102,4 +106,6 @@ Skip any step = lying, not verifying
 - Final verified output
 - `specs/.sdd/_config/sdd-state.json`
 
-! update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 7` & `stepName: "07_verification_before_completion"` before success claim. ⊥ claim completion without update. Notify user pipeline complete.
+### Handoff / Transitions
+1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 7` & `stepName: "07_verification_before_completion"`.
+2. **Handoff:** Notify user pipeline complete & app fully verified. Present walkthrough. Prompt if user wants archive workspace state | plan new features.

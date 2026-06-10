@@ -1,52 +1,37 @@
+<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | & = and | | = or -->
+
 # Stage 00: Backprop — Trace Bugs to Source
 
-When a bug is found or a test fails, the natural instinct is to fix the code and move on.
-SDD does something different: it fixes the code **and** edits the spec so the class of bug
-cannot recur. That edit-back-to-source step is backprop.
+Bug found | test fails → ⊥ just fix code. ! edit spec back-to-source (add §V invariant) to prevent recurrence.
 
-This stage implements the ICM paper's §6.3 "Edit-Source Principle": if you repeatedly fix
-the same kind of output error, trace it back to the source (the CONTEXT.md, the reference
-material, or the upstream stage output) and fix it there.
+*Edit-Source Principle: repeatedly fix same error → trace root cause to source (spec, CONTEXT.md, or reference) & fix there.*
 
 ## When to Use This Stage
 
-- A test fails during Stage 05 (development swarm) or Stage 07 (verification).
-- A bug is reported after deployment.
-- A post-mortem reveals a class of defect that should have been caught.
-- The user explicitly asks to trace a bug back to its source.
+- Test fails during `05_development_swarm` | `07_verification_before_completion`.
+- Bug reported post-deployment.
+- Post-mortem reveals defect class.
+- User explicitly asks trace bug back to source.
 
 ## Inputs
-
-- **Layer 4 (working):** Bug report, test failure output, or post-mortem notes
-- **Layer 4 (working):** `specs/SPEC.md`
-- **Layer 4 (working):** `specs/.sdd/_config/sdd-state.json`
-- **Layer 3 (reference):** All stage `CONTEXT.md` files in `specs/.sdd/` (read only the stage relevant to the root cause)
+- Layer 4 (working): Bug report, test failure output, | post-mortem notes
+- Layer 4 (working): `specs/SPEC.md`
+- Layer 4 (working): `specs/.sdd/_config/sdd-state.json`
+- Layer 3 (reference): All stage `CONTEXT.md` files in `specs/.sdd/` (read relevant stage context only)
 
 ## Process
 
-### Step 1: Trace
+### 1. Trace
+Read failure output | bug report → locate exact file & line of wrong behavior. State root cause ∈ single sentence.
 
-Read the failure output or bug report. Find the exact file and line of wrong behavior.
-State the root cause in one sentence.
+### 2. Analyze
+Identify pipeline failure layer:
+1. **Spec incomplete?** Spec failed define behavior → ! update `specs/SPEC.md` (add invariant, define behavior).
+2. **Stage contract weak?** `CONTEXT.md` failed instruct check for problem → ! update relevant stage `CONTEXT.md` (add gate | attack role).
+3. **Reference material wrong?** `_config/` file provided wrong guidance → ! update Layer 3 reference file.
 
-### Step 2: Analyze — Where Did the Pipeline Fail?
-
-Ask three questions to identify which layer of the SDD pipeline allowed the bug through:
-
-1. **Was the spec incomplete?** Did the specification fail to define behavior for this case?
-   If yes → the fix belongs in `specs/SPEC.md` (add an invariant, define the missing behavior).
-
-2. **Was a stage contract too weak?** Did a CONTEXT.md fail to instruct the agent to check
-   for this class of problem? If yes → the fix belongs in the relevant stage's `CONTEXT.md`
-   (add a gate, checklist item, or Red Team persona attack).
-
-3. **Was reference material missing or wrong?** Did a `_config/` file provide incorrect
-   guidance? If yes → the fix belongs in the Layer 3 reference file.
-
-### Step 3: Propose the Source Fix
-
-Draft the spec or pipeline change. Always produce a backprop log entry:
-
+### 3. Propose Source Fix
+Draft spec | pipeline change. ! produce backprop log entry:
 ```markdown
 ## Backprop Entry
 
@@ -60,37 +45,28 @@ Draft the spec or pipeline change. Always produce a backprop log entry:
 | Invariant | Testable rule (if applicable) |
 ```
 
-### Step 4: Generate a Test
+### 4. Generate Test
+Invariant without test = wish. ! write failing test encoding invariant. Test name ! reference invariant.
 
-A new invariant without a test is a wish, not a guarantee. Write a failing test that
-encodes the invariant. Name the test so it references the invariant it validates.
+### 5. Fix & Verify
+Fix code. Run test → ! pass. Run full test suite → ⊥ regress.
 
-### Step 5: Fix and Verify
-
-Fix the code. Run the test — it must pass. Run the full test suite — it must not regress.
-
-### Step 6: Log and Save
-
-Save the spec edit, pipeline fix, test, and code fix together as a single atomic change.
-
-Append the backprop entry to `specs/backprop-log.md` (create if it doesn't exist).
-
-Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 0` & `stepName: "00_backprop"` to record the backprop event, then transition back to the stage where the defect was detected.
+### 6. Log & Save
+Save spec edit, pipeline fix, test, & code fix together as single atomic commit. Append backprop entry to `specs/backprop-log.md` (create if ∄).
 
 ## Verify
-
-After completing the backprop:
-- Confirm the new invariant is testable and the test passes.
-- Confirm the source fix (CONTEXT.md or reference material) would have prevented the
-  original bug if it had been in place before the pipeline ran.
-- Check that no other stage contracts have the same gap.
+- New invariant testable & test passes.
+- Source fix prevents original bug recurrence.
+- ⊥ duplicate gaps ∈ other stage contracts.
 
 ## Outputs
+- Updated `specs/SPEC.md` (if spec incomplete)
+- Updated stage `CONTEXT.md` (if contract weak)
+- Updated `specs/.sdd/_config/` reference (if reference wrong)
+- `specs/backprop-log.md`
+- `specs/.sdd/_config/sdd-state.json`
+- New test file & code fix
 
-- Updated `specs/SPEC.md` (if spec was incomplete)
-- Updated stage `CONTEXT.md` (if pipeline contract was too weak)
-- Updated `specs/.sdd/_config/` reference file (if reference material was wrong)
-- `specs/backprop-log.md` (cumulative log of all backprop entries)
-- `specs/.sdd/_config/sdd-state.json` (updated state checkpoint)
-- New test file
-- Code fix
+### Handoff / Transitions
+1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 0` & `stepName: "00_backprop"`.
+2. **Handoff:** Return to stage where defect detected.

@@ -9,6 +9,7 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
 ## Inputs
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
+- Layer 4 (working): `specs/wireframes/*.html` (if UI project & exists)
 
 ## Process
 
@@ -29,6 +30,7 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
    3. **Verification Step Check:** ∀ phase ! end with concrete verification — command to run | test to pass | behavior to observe with expected output. "Verify it works" ≠ verification step. Flag any missing.
    4. **Phase Size Check:** Phase with >8 items → split. Phase with 1 item → merge into adjacent.
    5. **DESIGN.md Cross-Ref (UI):** ∃ `specs/DESIGN.md` → ∀ phase creating frontend component ! include "Read `specs/DESIGN.md` tokens for [component]" as first item. Flag any missing.
+   6. **Wireframe Sync Check (UI):** ∃ `specs/wireframes/*.html` & ∃ UI modifications ∈ spec diff → verify ∀ new UI components, states, layouts implemented ∈ wireframes. Drift exists → ! update wireframes to match spec contract before proceeding. Flag drift.
 
    Fix issues inline → "Phase Integrity Check passed: [N] checks clear, [M] issues fixed inline."
 
@@ -57,6 +59,7 @@ Cross-stage consistency checks (execute before presenting to user):
 - **Verification steps:** Every phase ends with a concrete verification command or observable behavior. "Verify it works" is not a verification step.
 - **Phase sizing:** Phases with more than 8 items should be split. Phases with 1 item should be merged.
 - **DESIGN.md cross-ref (UI):** Every phase creating a frontend component includes "Read `specs/DESIGN.md` tokens for [component]" as its first item.
+- **Wireframe sync check (UI):** ∀ new UI component, state, layout ∈ spec diff ! be implemented ∈ wireframes.
 
 ## Outputs
 - `specs/IMPLEMENTATION_PHASES.md`
