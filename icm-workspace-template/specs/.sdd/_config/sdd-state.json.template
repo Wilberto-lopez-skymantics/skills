@@ -3,6 +3,10 @@
   "lastCompletedStep": 0,
   "stepName": "Project Initialization",
   "projectType": "",
+  "extractionClosurePassed": false,
+  "contractsGenerated": [],
+  "fixturesGenerated": [],
+  "observationalEquivalenceVerified": false,
   "timestamp": "",
   "notes": "Template — agent populates on first stage transition.",
   "history": []

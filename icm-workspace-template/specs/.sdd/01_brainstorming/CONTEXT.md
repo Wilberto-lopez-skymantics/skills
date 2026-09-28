@@ -8,14 +8,14 @@ Turn ideas → fully formed designs & specs through collaborative dialogue.
 - Layer 4 (working): User request or brief
 - Layer 3 (reference): `../_config/decision-log-template.md`
 - Layer 3 (reference): `../_config/design-template.md`
-- Layer 3 (reference): `../_config/references/confidence-assessment.md`
+- Layer 3 (reference): `../_config/references/extraction-closure.md`
 - Layer 3 (reference): `../_config/references/theme-brainstorming.md`
 - Layer 3 (reference): `../_config/references/ui-state-matrix.md`
 - Layer 3 (reference): `../_config/visual-companion.md`
 
 ## Process
 
-Start: understand project context → ask questions one at a time → present design → get user approval.
+Start: understand project context → interview via Socratic Shadow-Critic loop → pass Extraction Closure gate → present design → get user approval.
 
 **⛔ GATE:** ⊥ invoke implementation skills, write code, scaffold projects, or take implementation action until design presented & user approved. Applies to EVERY project regardless of perceived simplicity.
 
@@ -33,10 +33,10 @@ Start: understand project context → ask questions one at a time → present de
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if visual questions ahead) — own message, not combined with clarifying question. See Visual Companion section.
 2b. **Theme & Vibe Brainstorming** (UI only) — ask user for theme/aesthetic/vibe → propose 2-3 matching designs → iterate until approved. Read `../_config/references/theme-brainstorming.md`.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-3b. **Confidence Self-Assessment** — score understanding across 5 dimensions, ! reach ≥85 before proposing approaches. Read `../_config/references/confidence-assessment.md`.
+3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time. Shadow Critic concurrently probes domain gaps, negative space, and edge cases.
+3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`.
 
-**⛔ GATE:** ⊥ propose approaches (Step 4) until Confidence Self-Assessment score ≥85. ! re-score after each round of clarifying questions.
+**⛔ GATE:** ⊥ propose approaches (Step 4) until Extraction Closure Report passes with ZERO open domain gaps. Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
 6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md` (append new entries; ⊥ overwrite existing). See `../_config/decision-log-template.md`.
@@ -49,29 +49,32 @@ Start: understand project context → ask questions one at a time → present de
 11. **Update state** — Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 1` & `stepName: "01_brainstorming"`.
 12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
 
-### The Process
+### The Socratic Shadow-Critic Interview Process
 
 **Understanding the idea:**
-- Check current project state first (files, docs, recent commits)
-- Before detailed questions, assess scope: request describes multiple independent subsystems → flag immediately. Don't refine details of project needing decomposition first.
-- Project too large for single spec → help decompose into sub-projects. Each sub-project gets own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time
-- Prefer multiple choice when possible, open-ended fine too
-- Only one question per message — if topic needs more exploration, break into multiple questions
-- Focus: purpose, constraints, success criteria
+- Check current project state first (files, docs, recent commits).
+- Before detailed questions, assess scope: request describes multiple independent subsystems → flag immediately. Help decompose into sub-projects before spec drafting.
+- For appropriately-scoped projects, conduct interview using the **Two-Persona Engine**:
+  1. **Lead Architect (Interviewer):** Interfaces directly with user. Maintains conversation flow. Asks exactly ONE question per turn.
+  2. **Shadow Critic (Domain Gap Hunter):** Background auditor. Evaluates evolving domain model after each user answer against the 4 Extraction Closure dimensions. Identifies unstated business assumptions, dangling states, and unhandled failure paths. Feeds the next edge-case question to the Lead Architect.
 
-**⛔ GATE:** ∀ message during clarifying questions (Step 3) ! contain exactly ONE question. Multiple questions | bullet-pointed sub-questions | batched categories = process violation. Need multiple topics → send multiple messages across multiple turns. "Being helpful" by batching = anti-pattern → partial answers & unexamined assumptions.
+**Policy vs Mechanics Protocol:**
+- **Business & Domain Policy (Escalate to Human):** Pricing, access permissions, workflow rules, entity lifecycles, regulatory/compliance constraints. ⊥ guess | assume. ! ask user directly.
+- **Technical Plumbing & Mechanics (Auto-Default):** Pagination style, ID formats (UUIDv7), retry backoff curves, date serialization formats. Propose industry standard, explain in 1 sentence, ask only for veto/consent. ⊥ burn interview turns on plumbing trivia.
+
+**One Question at a Time Rule:**
+- **⛔ GATE:** ∀ message during clarifying questions (Step 3) ! contain exactly ONE question. Multiple questions | bullet-pointed sub-questions | batched categories = process violation. Need multiple topics → send multiple messages across multiple turns. "Being helpful" by batching = anti-pattern → partial answers & unexamined assumptions.
 
 **Exploring approaches:**
-- Propose 2-3 approaches with trade-offs
-- Lead with recommended option & explain why
+- Propose 2-3 approaches with trade-offs.
+- Lead with recommended option & explain why.
 
 ### Presenting the design:
-- Present design when you understand what you're building
-- Scale each section to complexity: few sentences if straightforward, up to 200-300 words if nuanced
-- Ask after each section whether it looks right
-- Cover: architecture, components, data flow, error handling, testing
-- Ready to go back & clarify if something doesn't make sense
+- Present design when Extraction Closure Report passes with ZERO gaps.
+- Scale each section to complexity: few sentences if straightforward, up to 200-300 words if nuanced.
+- Ask after each section whether it looks right.
+- Cover: architecture, components, data flow, error handling, testing.
+- Ready to go back & clarify if something doesn't make sense.
 
 **⛔ GATE:** ⊥ write to `specs/SPEC.md`, `specs/DESIGN.md`, or any spec file until Present Design step complete AND user explicitly approved each design section.
 
@@ -81,11 +84,11 @@ After user approves design, merge decisions into spec:
 
 **⛔ GATE:** ⊥ proceed to next stage until `SPEC.md` updated & saved to disk.
 
-1. Read current `specs/SPEC.md` (if exists)
-2. ∀ decision → determine if it introduces: new component | data flow | API contract | behavioral change
-3. Draft `specs/SPEC.md` modifications, present to user
+1. Read current `specs/SPEC.md` (if exists).
+2. ∀ decision → determine if it introduces: new component | data flow | API contract | behavioral change.
+3. Draft `specs/SPEC.md` modifications, present to user.
 4. `specs/DECISION_LOG.md` = "why" behind each decision. Both ! reflect same decisions as `SPEC.md`.
-5. Save updated `specs/SPEC.md`
+5. Save updated `specs/SPEC.md`.
 
 ## Outputs
 - `specs/SPEC.md`

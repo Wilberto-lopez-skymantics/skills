@@ -1,13 +1,15 @@
 <!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | § = section ref | & = and | | = or -->
 
-# Stage 05: Test-Driven Development Swarm
+# Stage 05: Test-Fulfillment Development Swarm
 
-Builder vs. Critic loop during code generation & implementation. Prevents vulnerabilities, unhandled exceptions, logic errors from being committed.
+Builder vs. Critic loop during code generation & implementation. Guarantees observational equivalence by enforcing strict adherence to pre-existing machine contracts and test fixtures.
 
 **! execute attack-and-refine loop iteratively until Red Team finds zero attacks. Stopping after single pass = severe failure.**
 
 ## Inputs
 - Layer 4 (working): `specs/SPEC.md`
+- Layer 4 (working): `specs/contracts/*` (`openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`)
+- Layer 4 (working): `specs/fixtures/*` (Immutable Test Oracle)
 - Layer 4 (working): `specs/IMPLEMENTATION_PHASES.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
 - Layer 4 (working): `specs/wireframes/*.html` (? exists)
@@ -29,35 +31,37 @@ Analyze project stack → instantiate additional specialist roles as needed.
 After Blue Team drafts code, adopt attack roles *before* saving:
 Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer, DX Auditor, Architect (Spec Enforcer), Visual QA Tester, Design Token Auditor.
 ∃ role standards → read `../_config/role-standards.md`.
-Analyze project stack → instantiate additional attack vectors as needed.
 
 ### Pipeline Rules (∀ roles)
 
-#### Build Rules
-- **TDD:** ! write tests before logic.
+#### Build Rules & Strict Test-Consumer Mandate
+- **Strict Test-Driven Fulfillment:** Builder mandate = write implementation code to make pre-existing test oracle in `specs/fixtures/` and contracts in `specs/contracts/` pass 100%.
+- **⛔ IMMUTABLE GATE (Anti-Tampering):** Builder is **strictly forbidden from modifying, editing, or deleting any file in `specs/` or `specs/fixtures/`**.
+  - Relaxing an assertion, commenting out a test case, or altering an expected fixture payload = AUTOMATIC PROCESS FAILURE.
+  - If a test fails: the CODE is defective, NOT the test.
+- **Deterministic Scaffolding:** Code ! strictly adhere to pinned dependencies and directory layout (`src/...`) defined in `specs/SPEC.md`. Introducing unapproved third-party dependencies or altering folder structures = FAIL.
 - **Docker:** ! generate `.dockerignore` when `Dockerfile` created | modified.
-- **Failure Routing (Backprop):** Test failure | regression found → ! transition `00_backprop` to update spec invariants & test back-to-source. ⊥ patch code directly without spec update.
+- **Failure Routing (Backprop):** Unresolvable spec defect discovered during build → ! transition `00_backprop` to update spec invariants & test back-to-source. ⊥ patch code around spec defects.
 
 #### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
 - Before generating frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
 - ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = automatic FAIL.
-- Framework-agnostic: CSS → scan stylesheets. Canvas/WebGL → scan rendering config.
 - Component names ! match DESIGN.md `components:` section.
 
 #### Verification Rules
-- ⊥ PASS on `200 OK` | code inspection alone. ! run code + include output ∈ iteration log.
+- ⊥ PASS on `200 OK` | code inspection alone. ! run test runner against `specs/fixtures/` + include terminal output ∈ iteration log.
 - **TypeScript:** ! execute `tsc --noEmit` & verify zero errors. Bundler build ⊥ sufficient.
-- **Headless Mock Caveat:** Unit tests with mocks ⊥ sole evidence for integration | visual phases.
+- **Headless Mock Caveat:** Unit tests with mocks ⊥ sole evidence for integration | contract phases. Must execute against real DB/runtime per phase verification command.
 
-#### Spec Enforcement
-- Architect ! cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`.
-- ∀ components ∈ current phase ! ∃ in code. Missing = FAIL.
+#### Spec & Contract Enforcement
+- Architect ! cross-ref code vs `specs/SPEC.md`, `specs/contracts/`, and `specs/IMPLEMENTATION_PHASES.md`.
+- ∀ API endpoints match `specs/contracts/openapi.yaml` schemas, headers, status codes.
+- ∀ database queries match `specs/contracts/schema.sql` columns, indices, OCC `version` handling.
 - **Orphan Check:** ∀ helper/utility created → verify imported & called ∈ main entry files. Module only imported ∈ unit tests = FAIL.
 
 #### Visual Verification (∃ UI)
 - ∃ UI → screenshot ∀ screens, verify ∀ components present/visible/interactive.
 - ⊥ PASS based on code inspection alone — must see it rendered.
-- (Formal visual QA handled in Stage 06, but basic visual sanity checks apply here).
 
 ### Anti-Simulation Enforcement
 
@@ -81,57 +85,37 @@ Red Team ⊥ PASS based on visual inspection alone. ! use terminal tools → act
 ### Test-Driven Implementation Loop
 Execute this exact sequence ∀ file/component:
 
-**⛔ GATE:** **One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
+**⛔ GATE: One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
 - **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → agent ! proceed through ∀ files & phases sequentially. ⊥ pause | return to user after single file/phase written. Loop next files/phases via tool calls.
 
-0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke its resolving tools. ⊥ Context7 → use web search | built-in knowledge for framework APIs. Log: "Context7 unavailable — docs sourced from [web search | training data]."
-1. **Draft (Blue Team):** Appropriate Builder generates code.
-2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. 
-3. **Refine (Blue Team):** Builder fixes based on Red Team findings. 
-4. **Deploy:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO findings. **Hard Limit:** Max 5 iterations per component. Still failing → halt & ask user. After PASS → write hardened code. **! verify code executes before concluding deploy.**
-4.5. **VAT Gate (UI projects):**
-   After code deployed & verified to compile → ∃ UI → walk ∀ screens, screenshot each, verify ∀ components present/visible/interactive. Scan for debug artifacts.
-
-   **⛔ GATE:** VAT FAIL → Blue Team ! fix visual defects & re-run. ⊥ advance past this gate with visual failures.
-5. **Document & Dockerize:**
-   - Infrastructure Engineer ! ensure app starts with single command (e.g. `docker-compose up -d`). DX Auditor verifies it works cleanly.
-   - Technical Writer ! generate/update `README.md` with run instructions & env var table.
+0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke its resolving tools. ⊥ Context7 → use web search | training knowledge. Log documentation source.
+1. **Draft (Blue Team):** Appropriate Builder generates code fulfilling phase task.
+2. **Attack (Red Team):** Critics analyze drafted code against contracts, edge cases, security, systems standards.
+3. **Refine (Blue Team):** Builder fixes based on Red Team findings.
+4. **Deploy & Verify:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO findings. **Hard Limit:** Max 5 iterations per component. Still failing → halt & ask user. After PASS → write code. **! execute phase verification command against `specs/fixtures/` and confirm terminal output.**
+4.5. **VAT Gate (UI projects):** Verify visual screens via screenshot tool. VAT FAIL → fix defects before advancing.
+5. **Document & Dockerize:** Ensure single-command start (`docker-compose up -d`). DX Auditor verifies. Technical Writer updates `README.md`.
 
 ### Post-Implementation Reconciliation (CRITICAL)
 After ALL phases complete & verified, Architect ! execute full reconciliation:
 
 **⛔ GATE:** ! create tracking artifact `specs/dev-swarm-reconciliation.md`. Evaluate cross-refs sequentially, write findings ∀ bullet, check box only when proven. Rubber-stamping = process violation.
 
-**What to check:** Re-read `specs/SPEC.md`, cross-ref vs ∀ created/modified files:
-- ∀ API endpoint field names ∈ spec match actual schema/route handlers
-- ∀ components ∈ Frontend Hierarchy ∃ as actual files
-- ∀ env vars ∈ spec actually referenced ∈ code
-
-**DESIGN.md Audit (∃ `specs/DESIGN.md`):**
-- **Token Usage:** ∀ frontend component → scan for hardcoded visual values that should be DESIGN.md tokens.
-- **Component Coverage:** ∀ component ∈ DESIGN.md `components:` has implementation file using its tokens.
-- **Cross-Artifact Naming:** Component names consistent: DESIGN.md kebab-case → SPEC.md PascalCase → implementation filenames. Flag any orphan.
-
-**Output format:** Use Reconciliation Report format ∈ `../_config/iteration-log-format.md`.
+**What to check:** Re-read `specs/SPEC.md` and `specs/contracts/*`, cross-ref vs created/modified files:
+- ∀ API endpoint field names, query params, headers match `specs/contracts/openapi.yaml`.
+- ∀ DB migrations match `specs/contracts/schema.sql`.
+- ∀ components in Frontend Hierarchy exist as actual files.
+- ∀ env vars in spec actually referenced in code.
+- 100% of test cases in `specs/fixtures/` execute and pass.
 
 **Drift found:**
-- **Minor:** Architect ! update `specs/SPEC.md` to match implementation.
-- **Major:** Swarm ! HALT. Architect flags drift & prompts user to return to Stage 02.
+- **Minor:** Architect ! update `specs/SPEC.md` to match implementation (if within contract limits).
+- **Major / Contract Violation:** Swarm ! HALT. Architect flags drift & prompts user to return to Stage 02.
 
 **⛔ GATE:** ⊥ proceed until reconciliation = ZERO ❌ drift entries.
 
 6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 5` & `stepName: "05_development_swarm"`.
 7. **Handoff:** If UI project, prompt user to proceed to `06_visual_acceptance_testing`. If backend-only, prompt to proceed to `07_verification_before_completion`.
-
-## Verify
-
-Cross-stage consistency checks (execute after all phases complete):
-- **Spec fidelity:** Every API endpoint field name in `specs/SPEC.md` matches actual schema/route handlers in code.
-- **Component coverage:** Every component in the Frontend Hierarchy exists as an actual file.
-- **Env var traceability:** Every environment variable in the spec is actually referenced in code.
-- **Design token compliance (UI):** Every frontend component uses `specs/DESIGN.md` tokens — no hardcoded visual values that exist as tokens.
-- **Naming consistency:** Component names are consistent across DESIGN.md (kebab-case) → SPEC.md (PascalCase) → implementation filenames. Flag orphans.
-- **Reconciliation report:** Must reach ZERO drift entries before declaring complete.
 
 ## Outputs
 - Codebase files

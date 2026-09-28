@@ -9,6 +9,8 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 ## Inputs
 - Layer 4 (working): Source code
 - Layer 4 (working): `specs/SPEC.md`
+- Layer 4 (working): `specs/contracts/*`
+- Layer 4 (working): `specs/fixtures/*` (Immutable Test Oracle)
 - Layer 4 (working): `specs/IMPLEMENTATION_PHASES.md`
 - Layer 4 (working): `specs/dev-swarm-reconciliation.md`
 - Layer 4 (working): `specs/vat-checklist.md` (? UI project)
@@ -55,6 +57,7 @@ Skip any step = lying, not verifying
 | Requirements met | Line-by-line checklist | Tests passing |
 | UI looks correct | Stage 06 VAT screenshot evidence | Code inspection, "CSS looks right" |
 | Reconciliation complete | `specs/dev-swarm-reconciliation.md` verified zero drift | claim zero drift without file read |
+| Observational Equivalence | 100% pass on `specs/fixtures/` and schema validation vs `specs/contracts/` | Mocked unit tests alone, unverified API/DB boundaries |
 
 ### Failure Routing
 

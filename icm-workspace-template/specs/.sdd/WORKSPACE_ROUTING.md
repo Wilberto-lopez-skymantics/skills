@@ -1,10 +1,13 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.05.28 -->
+<!-- version: 2026.09.28-v2 -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 
-# Spec-Driven Development (SDD) Workspace
+# Spec-Driven Development (SDD v2) Workspace
+## Equivalence & Determinism Engine
 
 This project uses an Interpretable Context Methodology (ICM) workspace to orchestrate the Spec-Driven Development (SDD) pipeline. 
+
+**Core Objective:** Generate specifications, typed machine contracts, and test fixtures so complete and invariant-constrained that two independent coding agents produce observationally and semantically equivalent solutions.
 
 As an AI agent, your role is to read the appropriate `CONTEXT.md` file for the current stage when the user makes a request. The folder structure dictates the pipeline order.
 
@@ -12,18 +15,19 @@ As an AI agent, your role is to read the appropriate `CONTEXT.md` file for the c
 
 When a user asks you to perform a task, map it to the correct stage below and **read the `CONTEXT.md` file in that folder before doing anything else.**
 
-0. **`specs/.sdd/00_backprop/CONTEXT.md`**: Use this when a bug is found post-deployment, a test fails unexpectedly, or the user wants to trace a defect back to its source and fix the pipeline — not just the code.
-1. **`specs/.sdd/01_brainstorming/CONTEXT.md`**: Use this when the user wants to brainstorm a new feature, explore ideas, design UI, or start a new specification.
-1b. **`specs/.sdd/01b_adoption/CONTEXT.md`**: Use this when the user wants to adopt an existing codebase into SDD management — reverse-engineering specs from existing code rather than designing from scratch.
-2. **`specs/.sdd/02_adversarial_swarm_analysis/CONTEXT.md`**: Use this when the user wants to harden, review, or attack a draft specification.
-3. **`specs/.sdd/03_interactive_wireframing/CONTEXT.md`**: Use this when the user wants to build HTML wireframes based on a UI design specification.
-4. **`specs/.sdd/04_writing_implementation_phases/CONTEXT.md`**: Use this when the user wants to break down a hardened spec into dependency-ordered implementation phases.
-5. **`specs/.sdd/05_development_swarm/CONTEXT.md`**: Use this when the user wants to generate code, build the application, or execute the implementation phases.
-6. **`specs/.sdd/06_visual_acceptance_testing/CONTEXT.md`**: Use this when the user wants to verify UI implementation against the design tokens.
-7. **`specs/.sdd/07_verification_before_completion/CONTEXT.md`**: Use this when the user wants to verify tests, builds, and overall completion before finalizing work.
+0. **`specs/.sdd/00_backprop/CONTEXT.md`**: Defect backpropagation. Trace unexpected test failures or post-deployment defects back to spec invariants (§V) and fix the specification before touching code.
+1. **`specs/.sdd/01_brainstorming/CONTEXT.md`**: Socratic human-in-the-loop dialogue with real-time **Shadow Critic**. Terminates only upon passing the 4 empirical **Extraction Closure** dimensions (Entity Lifecycle, Negative Space, Fork Test, Policy vs Mechanics).
+1b. **`specs/.sdd/01b_adoption/CONTEXT.md`**: Reverse-engineer specs, typed contracts, and tests from an existing codebase.
+2. **`specs/.sdd/02_adversarial_swarm_analysis/CONTEXT.md`**: Autonomous technical hardening and **Machine Contract Synthesis**. Produces `specs/contracts/` (`openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`) complying strictly with `systems-standards.md`.
+3. **`specs/.sdd/03_interactive_wireframing/CONTEXT.md`**: WYSIWYG HTML wireframes from design tokens (UI projects).
+4. **`specs/.sdd/04_writing_implementation_phases/CONTEXT.md`**: Granular phase breakdown AND **Immutable Test Oracle Synthesis** (`specs/fixtures/` containing API golden cases, DB assertions, and state transition sequences).
+5. **`specs/.sdd/05_development_swarm/CONTEXT.md`**: Strict test-fulfillment coding swarm. Builders are **strictly forbidden from modifying `specs/` or `specs/fixtures/`**; their sole role is satisfying the pre-existing test oracle.
+6. **`specs/.sdd/06_visual_acceptance_testing/CONTEXT.md`**: Browser-based visual QA against design tokens.
+7. **`specs/.sdd/07_verification_before_completion/CONTEXT.md`**: Independent evidence-based completion proof.
 
 ## Core Rules
-- **Code is a byproduct of the spec.** Never write or edit implementation code before the specification (`specs/SPEC.md`) is updated.
-- Read `specs/.sdd/_config/` reference materials only when instructed to do so by a stage's `CONTEXT.md`.
-- All specifications and outputs live in the `specs/` directory at the project root.
-- **Continuous State Tracking:** Before transitioning between any two stages, ! update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) by updating the top-level keys to the new stage and appending the previous stage state (excluding `history`) to the `history` array. ⊥ silently transition without state update — breaks pipeline recoverability.
+- **Observational Equivalence Principle:** Specs must leave zero unconstrained domain degrees of freedom. Two independent coding instances must produce indistinguishable external behaviors.
+- **Machine Contracts over Prose:** API routes, DB DDL, state machines, and error taxonomies must be emitted as machine-checkable files in `specs/contracts/`.
+- **Strict Test-Consumer Mandate:** Acceptance tests and fixtures are authored in the spec phase (`specs/fixtures/`), NOT by the coder in Stage 05. The coder never grades its own work.
+- **Code is a Byproduct:** Never write or edit implementation code before the specification, contracts, and test fixtures are frozen.
+- **Continuous State Tracking:** Before transitioning between any two stages, ! update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`).

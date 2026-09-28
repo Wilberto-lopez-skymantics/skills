@@ -1,13 +1,14 @@
 <!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | & = and | | = or -->
 
-# Stage 04: Writing Implementation Phases
+# Stage 04: Writing Implementation Phases & Test Oracle Synthesis
 
-Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for builder agent to execute ∈ one shot. This stage converts high-level contract → granular, traceable, strictly sequenced checklist: `IMPLEMENTATION_PHASES.md`.
+Critical governance bridge. Converts high-level spec contract → granular, sequenced checklist (`IMPLEMENTATION_PHASES.md`) AND generates the **Immutable Test Oracle** (`specs/fixtures/`) *before* code generation begins.
 
-**⊥ write code while this stage active. Output = phase breakdown document only.**
+**⊥ write implementation code while this stage active. Output = phase checklist & test fixtures only.**
 
 ## Inputs
 - Layer 4 (working): `specs/SPEC.md`
+- Layer 4 (working): `specs/contracts/*` (`openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`)
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
 - Layer 4 (working): `specs/wireframes/*.html` (if UI project & exists)
 
@@ -15,53 +16,55 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
 
 ### Workflow
 
-1. **Ingest Spec:** Read `specs/SPEC.md` in entirety.
-2. **Deconstruct into Phases:** Break system → logical, dependency-ordered phases.
+1. **Ingest Spec & Machine Contracts:** Read `specs/SPEC.md` and ∀ files in `specs/contracts/`.
+2. **Synthesize Immutable Test Oracle (`specs/fixtures/`):**
+   Before breaking down phases, generate the black-box verification suite that Stage 05 will be graded against:
+   - `specs/fixtures/api_cases.json`:
+     - **Happy Path:** Expected request payload $\to$ exact expected response status, headers, and body shape.
+     - **Error Path:** Invalid payloads $\to$ exact HTTP status, error code, and RFC 7807/9457 error envelope matching `errors.json`.
+     - **Idempotency Cases:** Replay same `Idempotency-Key` $\to$ cached response (`Idempotent-Replay: true`); conflicting in-flight $\to$ 409 Conflict.
+     - **OCC Cases:** Concurrent mutation with stale `version` $\to$ 409 Conflict (`RESOURCE_CONFLICT`).
+   - `specs/fixtures/db_seed.sql` & `specs/fixtures/db_assertions.json`: Initial state seed data and expected post-mutation database row states.
+   - `specs/fixtures/state_transitions.json`: Sequences of events validating valid state machine steps and verifying illegal transitions are rejected.
+3. **Deconstruct into Phases:** Break system → logical, dependency-ordered phases.
    - Infrastructure & DB schemas = always Phase 1 & 2. Frontend UIs = always final phases.
-   - **Data-Flow Traceability (CRITICAL):** ∀ REST endpoint | UI component | API ∈ checklist ! explicitly state data source (e.g., `Database Table X` | `Configuration File Y`). ∃ config file like `agents.yaml` ∈ spec → ! create checklist item stating exactly which module/endpoint parses & consumes it. ⊥ leave "wiring" implicit.
-3. **Mandate Verifications:** ∀ phase ! define strict empirical `Verification` step. Phase ⊥ be marked complete by Dev Swarm unless verification command passes (e.g., `pytest`, `docker-compose up`, `curl`).
-4. **Write Checklist:** Append new phase(s) to `specs/IMPLEMENTATION_PHASES.md` (⊥ overwrite existing completed phases). Keep checklist of new changes sequenced & unchecked (`- [ ]`).
-5. **Phase Integrity Check:** Before presenting to user, execute structural validations sequentially.
+   - **Data-Flow Traceability:** ∀ REST endpoint | UI component | API ∈ checklist ! explicitly state data source.
+4. **Mandate Empirical Verifications:** ∀ phase ! bind to an immutable test fixture or contract validation command.
+   - Example: `Verification: npm test -- tests/contracts/phase1.test.ts` (consuming `specs/fixtures/api_cases.json`).
+   - "Verify it works" | coder writing ad-hoc tests in Stage 05 = STRICTLY FORBIDDEN.
+5. **Write Checklist:** Append new phase(s) to `specs/IMPLEMENTATION_PHASES.md`. Keep new tasks sequenced & unchecked (`- [ ]`).
+6. **Phase Integrity Check:** Before presenting to user, execute structural validations sequentially.
 
-   **⛔ GATE:** ! create tracking artifact `specs/phase-integrity-check.md`. ! evaluate steps sequentially, write reasoning, check box only when proven. Rubber-stamping "All phases look good" without tracker = process violation.
+   **⛔ GATE:** ! create tracking artifact `specs/phase-integrity-check.md`. ! evaluate steps sequentially, write reasoning, check box only when proven.
 
-   1. **Coverage Check:** ∀ component ∈ SPEC.md's Component Hierarchy, ∀ API endpoint, ∀ data model, ∀ game invariant (§V), ∀ interface (§I), ∀ task ∈ `## §T TASKS` → appears ∈ ≥1 phase. Flag orphans.
-   2. **Dependency Ordering:** ∀ phase → list dependencies. Verify acyclic graph. Flag any phase referencing component not built ∈ prior phase.
-   3. **Verification Step Check:** ∀ phase ! end with concrete verification — command to run | test to pass | behavior to observe with expected output. "Verify it works" ≠ verification step. Flag any missing.
-   4. **Phase Size Check:** Phase with >8 items → split. Phase with 1 item → merge into adjacent.
-   5. **DESIGN.md Cross-Ref (UI):** ∃ `specs/DESIGN.md` → ∀ phase creating frontend component ! include "Read `specs/DESIGN.md` tokens for [component]" as first item. Flag any missing.
-   6. **Wireframe Sync Check (UI):** ∃ `specs/wireframes/*.html` & ∃ UI modifications ∈ spec diff → verify ∀ new UI components, states, layouts implemented ∈ wireframes. Drift exists → ! update wireframes to match spec contract before proceeding. Flag drift.
+   1. **Coverage Check:** ∀ component ∈ `SPEC.md` Component Hierarchy, ∀ API endpoint in `openapi.yaml`, ∀ table in `schema.sql`, ∀ state in `statecharts.json` $\to$ appears ∈ $\ge 1$ phase. Flag orphans.
+   2. **Fixture Mapping Check:** ∀ phase ! have corresponding test fixtures in `specs/fixtures/`. Phase without fixture = GATE FAIL.
+   3. **Dependency Ordering:** ∀ phase $\to$ list dependencies. Verify acyclic graph. Flag any phase referencing component not built in prior phase.
+   4. **Phase Size Check:** Phase with >8 items $\to$ split. Phase with 1 item $\to$ merge into adjacent.
+   5. **DESIGN.md Cross-Ref (UI):** ∃ `specs/DESIGN.md` $\to$ ∀ phase creating frontend component ! include "Read `specs/DESIGN.md` tokens for [component]" as first item.
+   6. **Wireframe Sync Check (UI):** ∃ `specs/wireframes/*.html` $\to$ verify ∀ new UI components, states, layouts implemented in wireframes.
 
-   Fix issues inline → "Phase Integrity Check passed: [N] checks clear, [M] issues fixed inline."
-
-6. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 4` & `stepName: "04_writing_implementation_phases"`.
-7. **Handoff:** Prompt user to proceed to `05_development_swarm`.
+7. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 4` & `stepName: "04_writing_implementation_phases"`.
+8. **Handoff:** Prompt user to proceed to `05_development_swarm`.
 
 ### Document Format (`specs/IMPLEMENTATION_PHASES.md`)
 ```markdown
 # Implementation Phases
-*Derived from specs/SPEC.md*
+*Derived from specs/SPEC.md and specs/contracts/*
 
 ## Phase 1: [Name]
-- [ ] Task 1
-- [ ] Task 2
-- [ ] **Verification:** [Exact command or empirical test to run]
+- [ ] Task 1: Scaffolding / Schema migration
+- [ ] Task 2: Service / Repository implementation
+- [ ] **Verification:** [Exact test command evaluating against specs/fixtures/ or specs/contracts/]
 
 ## Phase 2: [Name]
 ...
 ```
 
-## Verify
-
-Cross-stage consistency checks (execute before presenting to user):
-- **Coverage:** Every component in `specs/SPEC.md` Component Hierarchy, every API endpoint, every data model, every invariant (§V), every interface (§I), and every task (§T) appears in at least one phase. Flag orphans.
-- **Dependency ordering:** Every phase's dependencies are built in a prior phase. Verify acyclic graph.
-- **Verification steps:** Every phase ends with a concrete verification command or observable behavior. "Verify it works" is not a verification step.
-- **Phase sizing:** Phases with more than 8 items should be split. Phases with 1 item should be merged.
-- **DESIGN.md cross-ref (UI):** Every phase creating a frontend component includes "Read `specs/DESIGN.md` tokens for [component]" as its first item.
-- **Wireframe sync check (UI):** ∀ new UI component, state, layout ∈ spec diff ! be implemented ∈ wireframes.
-
 ## Outputs
 - `specs/IMPLEMENTATION_PHASES.md`
-- `specs/phase-integrity-check.md` (temporary tracker)
+- `specs/fixtures/api_cases.json`
+- `specs/fixtures/db_seed.sql` & `specs/fixtures/db_assertions.json`
+- `specs/fixtures/state_transitions.json`
+- `specs/phase-integrity-check.md`
 - `specs/.sdd/_config/sdd-state.json`

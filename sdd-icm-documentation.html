@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skymantics SDD & ICM Framework — Personal Implementation Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Official Skymantics Master Corporate Identity Tokens */
+      --skymantics-navy: #0C1387;       /* Pantone 2756C Primary Brand Blue */
+      --skymantics-yellow: #FFB000;     /* Pantone 137C Complementary Accent */
+      --skymantics-blue: #00A2FD;       /* Pantone 285C Azure Blue */
+      --skymantics-cyan: #00DFFF;       /* Pantone 2985C Bright Cyan */
+      
+      /* Dark Canvas & Card Hierarchy (Optimized for deep contrast & clarity) */
+      --bg-dark: #060A24;               /* Deep Navy Space Canvas */
+      --bg-surface: #0B113B;            /* Deep Navy Surface */
+      --bg-card: #0F174D;               /* Elevated Card Surface */
+      --bg-card-hover: #141F66;         /* Interactive Card Hover */
+      --bg-code: #04071A;               /* High-Contrast Code Canvas */
+      
+      /* Border & Horizon Glow System */
+      --border: rgba(0, 162, 253, 0.18);
+      --border-bright: rgba(0, 223, 255, 0.4);
+      --border-glow: rgba(0, 223, 255, 0.25);
+      --border-accent: rgba(255, 176, 0, 0.35);
+      
+      /* Brand Color Roles */
+      --navy: #0C1387;
+      --yellow: #FFB000;
+      --yellow-glow: rgba(255, 176, 0, 0.22);
+      --blue: #00A2FD;
+      --blue-glow: rgba(0, 162, 253, 0.22);
+      --cyan: #00DFFF;
+      --cyan-glow: rgba(0, 223, 255, 0.22);
+      
+      /* Semantic Status Roles */
+      --emerald: #22C55E;              /* Success Green */
+      --emerald-glow: rgba(34, 197, 94, 0.2);
+      --amber: #FFB000;                /* Warning Yellow (Pantone 137C) */
+      --amber-glow: rgba(255, 176, 0, 0.22);
+      --rose: #EF4444;                 /* Error Red */
+      --rose-glow: rgba(239, 68, 68, 0.2);
+      --purple: #00A2FD;               /* Mapped to Azure Blue (avoids forbidden colors) */
+      --purple-glow: rgba(0, 162, 253, 0.2);
+      
+      /* Strict WCAG Legibility Text System */
+      --text-bright: #FFFFFF;
+      --text-main: #F8FAFC;             /* Slate 100 for maximum readability */
+      --text-muted: #CBD5E1;            /* Slate 300 for readable secondary text */
+      --text-dim: #94A3B8;              /* Slate 400 for meta/captions */
+      --text-cyan: #00DFFF;
+      --text-yellow: #FFB000;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 12%, rgba(12, 19, 135, 0.5) 0%, transparent 45%),
+        radial-gradient(circle at 90% 40%, rgba(0, 162, 253, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(0, 223, 255, 0.06) 0%, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Container & Layout */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header Nav */
+    header.navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(6, 10, 36, 0.9);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-family: 'Albert Sans', sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--text-bright);
+      letter-spacing: -0.01em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 800;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .nav-link:hover {
+      color: var(--cyan);
+    }
+
+    .badge-personal {
+      background: rgba(255, 176, 0, 0.12);
+      border: 1px solid rgba(255, 176, 0, 0.4);
+      color: var(--yellow);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 223, 255, 0.1);
+      border: 1px solid rgba(0, 223, 255, 0.35);
+      color: var(--cyan);
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: var(--text-bright);
+      margin-bottom: 20px;
+    }
+
+    .hero h1 span.gradient-text {
+      background: linear-gradient(135deg, #FFFFFF 0%, #00DFFF 50%, #FFB000 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-manifesto {
+      max-width: 800px;
+      margin: 0 auto 32px;
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .hero-manifesto strong {
+      color: var(--yellow);
+      font-weight: 700;
+    }
+
+    .personal-callout {
+      background: linear-gradient(135deg, rgba(15, 23, 77, 0.95), rgba(11, 17, 59, 0.95));
+      border: 1px solid var(--border-glow);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+      position: relative;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .personal-callout::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--cyan), var(--yellow));
+      border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    }
+
+    .personal-callout-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .author-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--navy);
+      border: 1.5px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .personal-callout h3 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 1.2rem;
+      color: var(--text-bright);
+    }
+
+    .personal-callout p {
+      font-size: 0.98rem;
+      color: var(--text-main);
+      line-height: 1.65;
+    }
+
+    /* Section Styles */
+    section.doc-section {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-header {
+      margin-bottom: 40px;
+    }
+
+    .section-subtitle {
+      color: var(--yellow);
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .section-title {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--text-bright);
+      letter-spacing: -0.02em;
+    }
+
+    .section-description {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 750px;
+      margin-top: 10px;
+    }
+
+    /* Flowchart Visualiser Section */
+    .flowchart-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .flowchart-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .flowchart-hint {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flowchart-hint span.pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+    }
+
+    /* Interactive SVG Flowchart Styles */
+    .svg-flowchart-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      padding: 20px 0;
+    }
+
+    svg.interactive-flowchart {
+      width: 100%;
+      min-width: 960px;
+      height: auto;
+    }
+
+    .node-group {
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .node-group:hover {
+      transform: translateY(-3px);
+    }
+
+    .node-rect {
+      fill: var(--bg-card);
+      stroke: var(--border);
+      stroke-width: 2;
+      rx: 10;
+      transition: all 0.25s ease;
+    }
+
+    .node-group:hover .node-rect {
+      stroke: var(--cyan);
+      fill: var(--bg-card-hover);
+      filter: drop-shadow(0 0 12px var(--cyan-glow));
+    }
+
+    .node-group.active .node-rect {
+      stroke: var(--cyan);
+      fill: rgba(0, 223, 255, 0.12);
+      stroke-width: 2.5;
+    }
+
+    .node-group.backprop-node:hover .node-rect {
+      stroke: var(--rose);
+      filter: drop-shadow(0 0 12px var(--rose-glow));
+    }
+
+    .node-group.backprop-node.active .node-rect {
+      stroke: var(--rose);
+      fill: rgba(239, 68, 68, 0.12);
+    }
+
+    .node-title {
+      fill: var(--text-bright);
+      font-family: 'Albert Sans', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .node-sub {
+      fill: var(--text-muted);
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 11px;
+    }
+
+    .node-badge {
+      fill: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .flow-line {
+      stroke: var(--border);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      animation: dash 30s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -1000; }
+    }
+
+    /* Stage Detail Display Panel */
+    .stage-detail-panel {
+      margin-top: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: var(--radius-md);
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 32px;
+      transition: var(--transition);
+    }
+
+    @media (max-width: 900px) {
+      .stage-detail-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage-meta-info h4 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 1.5rem;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stage-num-tag {
+      background: var(--navy);
+      border: 1.5px solid var(--cyan);
+      color: #FFFFFF;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .gate-alert {
+      background: rgba(255, 176, 0, 0.12);
+      border-left: 4px solid var(--yellow);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: var(--yellow);
+    }
+
+    .gate-alert strong {
+      color: #fff;
+    }
+
+    .contract-box {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      position: relative;
+    }
+
+    .contract-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .toggle-btn {
+      background: rgba(0, 223, 255, 0.1);
+      border: 1px solid rgba(0, 223, 255, 0.3);
+      color: var(--cyan);
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: 'Albert Sans', sans-serif;
+      transition: var(--transition);
+    }
+
+    .toggle-btn:hover {
+      background: var(--yellow);
+      color: var(--navy);
+      border-color: var(--yellow);
+    }
+
+    /* 4-Layer Grid */
+    .grid-4layer {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .layer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .layer-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .layer-card-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .layer-card h3 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 1.25rem;
+      color: var(--text-bright);
+      margin-bottom: 10px;
+    }
+
+    .layer-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .layer-card .file-path {
+      background: var(--bg-code);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      border: 1px solid var(--border);
+      display: inline-block;
+    }
+
+    /* Comparison & Token Section */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .comp-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 28px;
+      position: relative;
+    }
+
+    .comp-card.recommended {
+      border-color: var(--cyan);
+      background: linear-gradient(180deg, rgba(0, 223, 255, 0.08), var(--bg-card));
+      box-shadow: 0 0 25px rgba(0, 223, 255, 0.15);
+    }
+
+    .comp-card.recommended::before {
+      content: 'RECOMMENDED (ICM)';
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: var(--yellow);
+      color: var(--navy);
+      font-size: 0.72rem;
+      font-weight: 900;
+      padding: 4px 12px;
+      border-radius: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .comp-card h3 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 1.25rem;
+      color: var(--text-bright);
+      margin-bottom: 12px;
+    }
+
+    .stat-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin: 12px 0;
+    }
+
+    .comp-card.recommended .stat-badge {
+      color: var(--cyan);
+    }
+
+    /* Caveman Notation Table */
+    .caveman-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .caveman-table th, .caveman-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .caveman-table th {
+      background: var(--bg-card);
+      color: var(--text-bright);
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    .caveman-symbol {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--yellow);
+    }
+
+    /* Copy Code Box */
+    .code-snippet-box {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      position: relative;
+      margin-top: 16px;
+    }
+
+    .code-snippet-box pre {
+      color: var(--text-main);
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: 'Albert Sans', sans-serif;
+      transition: var(--transition);
+    }
+
+    .copy-btn:hover {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    /* Swarm Matrix Grid */
+    .swarm-matrix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 800px) {
+      .swarm-matrix {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .swarm-column {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+    }
+
+    .swarm-column.blue-team {
+      border-top: 4px solid var(--cyan);
+    }
+
+    .swarm-column.red-team {
+      border-top: 4px solid var(--rose);
+    }
+
+    .swarm-column h4 {
+      font-family: 'Albert Sans', sans-serif;
+      font-size: 1.2rem;
+      color: var(--text-bright);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .persona-tag {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-top: 80px;
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 64 64" width="42" height="42" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="14" fill="#0C1387" stroke="rgba(0, 223, 255, 0.45)" stroke-width="1.5"/>
+            <g transform="translate(10, 8)">
+              <text x="2" y="32" font-family="'Albert Sans', sans-serif" font-weight="900" font-size="34" fill="#FFFFFF">s</text>
+              <path d="M 4 36 Q 20 36 34 30 Q 20 44 4 42 Z" fill="#00DFFF" />
+              <path d="M 10 43 Q 26 43 40 37 Q 26 51 10 49 Z" fill="#FFB000" />
+            </g>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Skymantics SDD &amp; ICM Framework</span>
+          <span class="brand-subtitle">LEVERAGE THE POWER OF DATA</span>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="#intent" class="nav-link">Intent &amp; Philosophy</a>
+        <a href="#pipeline" class="nav-link">Pipeline Flowchart</a>
+        <a href="#architecture" class="nav-link">4-Layer Architecture</a>
+        <a href="#invariants" class="nav-link">Requirements vs Invariants</a>
+        <a href="#token-efficiency" class="nav-link">Token Efficiency</a>
+        <a href="#quickstart" class="nav-link">Quick Start</a>
+        <span class="badge-personal" style="background: rgba(0, 162, 253, 0.15); border-color: rgba(0, 162, 253, 0.4); color: var(--skymantics-blue); font-weight: 700;">v2026.09.28-v2</span>
+        <span class="badge-personal">Wilberto Lopez Implementation</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="intent">
+    <div class="container">
+      <div class="hero-tag">
+        <span>⚡ Portable Repository-Native Orchestration • Release v2026.09.28-v2</span>
+      </div>
+      <h1>
+        Code is a byproduct of the spec — <br>
+        <span class="gradient-text">never the other way around.</span>
+      </h1>
+      <p class="hero-manifesto">
+        Welcome to the official documentation for <strong>Wilberto Lopez's personal implementation of Spec-Driven Development (SDD)</strong>, powered by the <strong>Interpretable Context Methodology (ICM)</strong>.
+      </p>
+
+      <!-- Personal Implementation Explanation Callout -->
+      <div class="personal-callout">
+        <div class="personal-callout-header">
+          <div class="author-avatar">WL</div>
+          <div>
+            <h3>What makes this a Personal Implementation?</h3>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">By Wilberto Lopez / Skymantics</span>
+          </div>
+        </div>
+        <p>
+          While Spec-Driven Development is a broad industry concept, <strong>this repository represents my own opinionated, production-tested methodology</strong>. Traditional AI agent setups rely on opaque, non-auditable global system prompts or platform-specific IDE plugins. 
+        </p>
+        <p style="margin-top: 12px;">
+          This personal implementation fuses SDD with research from the <strong>Interpretable Context Methodology (ICM)</strong> paper (<em>"If the context is interpretable, the agent is steerable"</em>). By embedding the entire multi-stage pipeline, adversarial review swarms, token audit rules, and defect backpropagation loops directly into the project's filesystem inside <code>specs/.sdd/</code>, any AI agent (Cursor, Gemini CLI, Claude Code, ChatGPT, Llama) can execute the pipeline perfectly with <strong>zero global configuration lock-in</strong>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Pipeline Flowchart Section -->
+  <section class="doc-section" id="pipeline">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Interactive Process Map</span>
+        <h2 class="section-title">The 8-Stage Gated SDD Pipeline</h2>
+        <p class="section-description">
+          Click any stage node in the flowchart below to inspect its execution contract, input/output artifacts, and gated requirements.
+        </p>
+      </div>
+
+      <div class="flowchart-card">
+        <div class="flowchart-controls">
+          <div class="flowchart-hint">
+            <span class="pulse-dot"></span>
+            Click any stage node to view detailed stage contract & gates
+          </div>
+        </div>
+
+        <!-- SVG Flowchart -->
+        <div class="svg-flowchart-wrapper">
+          <svg class="interactive-flowchart" viewBox="0 0 1100 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+              </marker>
+              <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#00DFFF"/>
+              </marker>
+              <marker id="arrow-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#EF4444"/>
+              </marker>
+            </defs>
+
+            <!-- Connecting Lines -->
+            <path d="M 125 155 L 175 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 295 155 L 345 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 465 155 L 515 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 635 155 L 685 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 805 155 L 855 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+            <path d="M 975 155 L 1025 155" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+            <!-- Backprop Loop Line (Return Path) -->
+            <path d="M 1040 120 C 1040 40, 70 40, 70 120" stroke="#EF4444" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-rose)"/>
+            <text x="540" y="32" fill="#EF4444" font-family="'JetBrains Mono', monospace" font-size="11" text-anchor="middle" font-weight="600">Stage 00: Defect Backpropagation Loop (Bug Escape Invariants)</text>
+
+            <!-- Node 00: Backprop -->
+            <g class="node-group backprop-node" onclick="selectStage('00')" id="node-00">
+              <rect class="node-rect" x="15" y="120" width="110" height="70"/>
+              <text x="70" y="142" class="node-badge" text-anchor="middle" fill="#EF4444">00</text>
+              <text x="70" y="160" class="node-title" text-anchor="middle">backprop</text>
+              <text x="70" y="176" class="node-sub" text-anchor="middle">Defect → Spec</text>
+            </g>
+
+            <!-- Node 01: Brainstorming -->
+            <g class="node-group active" onclick="selectStage('01')" id="node-01">
+              <rect class="node-rect" x="175" y="120" width="120" height="70"/>
+              <text x="235" y="142" class="node-badge" text-anchor="middle">01</text>
+              <text x="235" y="160" class="node-title" text-anchor="middle">brainstorming</text>
+              <text x="235" y="176" class="node-sub" text-anchor="middle">Socratic + Shadow</text>
+            </g>
+
+            <!-- Node 02: Adversarial -->
+            <g class="node-group" onclick="selectStage('02')" id="node-02">
+              <rect class="node-rect" x="345" y="120" width="120" height="70"/>
+              <text x="405" y="142" class="node-badge" text-anchor="middle">02</text>
+              <text x="405" y="160" class="node-title" text-anchor="middle">contracts</text>
+              <text x="405" y="176" class="node-sub" text-anchor="middle">Machine Synthesis</text>
+            </g>
+
+            <!-- Node 03: Wireframing -->
+            <g class="node-group" onclick="selectStage('03')" id="node-03">
+              <rect class="node-rect" x="515" y="120" width="120" height="70"/>
+              <text x="575" y="142" class="node-badge" text-anchor="middle">03</text>
+              <text x="575" y="160" class="node-title" text-anchor="middle">wireframing</text>
+              <text x="575" y="176" class="node-sub" text-anchor="middle">WYSIWYG HTML</text>
+            </g>
+
+            <!-- Node 04: Implementation Phases -->
+            <g class="node-group" onclick="selectStage('04')" id="node-04">
+              <rect class="node-rect" x="685" y="120" width="120" height="70"/>
+              <text x="745" y="142" class="node-badge" text-anchor="middle">04</text>
+              <text x="745" y="160" class="node-title" text-anchor="middle">test_oracle</text>
+              <text x="745" y="176" class="node-sub" text-anchor="middle">specs/fixtures/</text>
+            </g>
+
+            <!-- Node 05: Dev Swarm -->
+            <g class="node-group" onclick="selectStage('05')" id="node-05">
+              <rect class="node-rect" x="855" y="120" width="120" height="70"/>
+              <text x="915" y="142" class="node-badge" text-anchor="middle">05</text>
+              <text x="915" y="160" class="node-title" text-anchor="middle">dev_swarm</text>
+              <text x="915" y="176" class="node-sub" text-anchor="middle">Test-Consumer</text>
+            </g>
+
+            <!-- Node 06/07: Verification -->
+            <g class="node-group" onclick="selectStage('07')" id="node-07">
+              <rect class="node-rect" x="1025" y="120" width="70" height="70"/>
+              <text x="1060" y="142" class="node-badge" text-anchor="middle">06/07</text>
+              <text x="1060" y="160" class="node-title" text-anchor="middle">verify</text>
+              <text x="1060" y="176" class="node-sub" text-anchor="middle">Equivalence</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Stage Detail Panel -->
+        <div class="stage-detail-panel" id="stage-detail-display">
+          <!-- Dynamic Content Rendered Here via JS -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- 4-Layer Architecture Section -->
+  <section class="doc-section" id="architecture">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Foundational Science</span>
+        <h2 class="section-title">The 4-Layer ICM Architecture</h2>
+        <p class="section-description">
+          Based on the Interpretable Context Methodology paper, the orchestration machinery lives in the project's filesystem structure rather than global configuration.
+        </p>
+      </div>
+
+      <div class="grid-4layer">
+        <div class="layer-card">
+          <span class="layer-card-num">Layer 0</span>
+          <h3>Identity & Header</h3>
+          <p>Tells the agent what workspace it is in, pipeline versioning, and initial instructions via HTML comments.</p>
+          <span class="file-path">specs/.sdd/WORKSPACE_ROUTING.md (L1-L4)</span>
+        </div>
+
+        <div class="layer-card">
+          <span class="layer-card-num">Layer 1</span>
+          <h3>Routing Registry</h3>
+          <p>Universal entrypoint that maps user requests to the correct pipeline stage folder and enforces state tracking.</p>
+          <span class="file-path">specs/.sdd/WORKSPACE_ROUTING.md</span>
+        </div>
+
+        <div class="layer-card">
+          <span class="layer-card-num">Layer 2</span>
+          <h3>Stage Contracts</h3>
+          <p>Self-contained contracts declaring precise Inputs, Process steps, Execution Gates, and Output expectations per stage.</p>
+          <span class="file-path">specs/.sdd/NN_stage/CONTEXT.md</span>
+        </div>
+
+        <div class="layer-card">
+          <span class="layer-card-num">Layer 3</span>
+          <h3>Reference Materials</h3>
+          <p>Detailed checklists, rubrics, persona prompts, and templates loaded strictly on-demand to save context tokens.</p>
+          <span class="file-path">specs/.sdd/_config/</span>
+        </div>
+
+        <div class="layer-card" style="grid-column: 1 / -1;">
+          <span class="layer-card-num">Layer 4</span>
+          <h3>Working Spec Artifacts</h3>
+          <p>The single source of truth produced and updated across the pipeline lifecycle:</p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px;">
+            <span class="file-path">specs/SPEC.md</span>
+            <span class="file-path">specs/DESIGN.md</span>
+            <span class="file-path">specs/DECISION_LOG.md</span>
+            <span class="file-path">specs/IMPLEMENTATION_PHASES.md</span>
+            <span class="file-path">specs/wireframes/*.html</span>
+            <span class="file-path">specs/backprop-log.md</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Requirements to Invariants Transformation Section -->
+  <section class="doc-section" id="invariants">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Core Spec Theory</span>
+        <h2 class="section-title">From Requirements to Invariants (§V)</h2>
+        <p class="section-description">
+          Understanding the fundamental distinction between loose user requirements and formal spec invariants, and how the SDD pipeline converts high-level intent into mathematical invariants in <code>specs/SPEC.md</code>.
+        </p>
+      </div>
+
+      <!-- Comparative Cards: Requirements vs Invariants -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-top: 4px solid var(--skymantics-yellow); border-radius: var(--radius-md); padding: 28px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-family: 'Albert Sans', sans-serif; font-size: 1.3rem; color: var(--text-bright);">
+              📋 User Requirement
+            </h3>
+            <span style="background: rgba(255, 176, 0, 0.15); color: var(--skymantics-yellow); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-family: 'JetBrains Mono', monospace;">Stage 01 Input</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+            A high-level statement of <strong>user intent, capability, or functional goal</strong> written in natural language.
+          </p>
+          <ul style="color: var(--text-main); font-size: 0.9rem; padding-left: 20px; line-height: 1.7;">
+            <li><strong>Focus:</strong> What the system <em>should do</em> when everything goes right (happy path).</li>
+            <li><strong>Format:</strong> Natural prose, user story ("As a user, I want..."), or feature brief.</li>
+            <li><strong>Vulnerability:</strong> Often ambiguous, underspecified, leaves boundaries open to interpretation, and fails to declare error bounds or edge-case behavior.</li>
+            <li><strong>Example:</strong> <em>"Users can upload profile avatar pictures up to 5MB."</em></li>
+          </ul>
+        </div>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-top: 4px solid var(--cyan); border-radius: var(--radius-md); padding: 28px; box-shadow: 0 0 25px var(--cyan-glow);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-family: 'Albert Sans', sans-serif; font-size: 1.3rem; color: var(--text-bright);">
+              🛡️ System Invariant (§V)
+            </h3>
+            <span style="background: rgba(0, 223, 255, 0.15); color: var(--cyan); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-family: 'JetBrains Mono', monospace;">SPEC.md Invariant</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+            A formal, non-negotiable <strong>mathematical assertion or boundary property</strong> that MUST NEVER be violated under any state transition.
+          </p>
+          <ul style="color: var(--text-main); font-size: 0.9rem; padding-left: 20px; line-height: 1.7;">
+            <li><strong>Focus:</strong> What MUST ALWAYS hold true across all execution paths, error states, and attack attempts.</li>
+            <li><strong>Format:</strong> Formal assertion ($V_1, V_2, \dots, V_n$), explicit constraints, binary validation rules.</li>
+            <li><strong>Power:</strong> Unbreakable execution guardrail. If an invariant fails, runtime/tests halt immediately; code generation is rejected.</li>
+            <li><strong>Example:</strong> <em>"$V_1$: <code>file.size &lt;= 5,242,880 B</code> AND $V_2$: <code>magic_bytes IN [FF D8 FF, 89 50 4E 47]</code> AND $V_3$: <code>file_extension IN ['.jpg', '.png']</code>."</em></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- The 3-Step Transformation Process -->
+      <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;">
+        <h3 style="font-family: 'Albert Sans', sans-serif; font-size: 1.6rem; color: var(--text-bright); margin-bottom: 12px;">
+          The Transformation Pipeline: Requirement &rarr; Invariant
+        </h3>
+        <p style="color: var(--text-muted); margin-bottom: 28px;">
+          How raw ideas pass through the SDD stage gates to become hardened invariants in <code>specs/SPEC.md</code>:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+          <!-- Step 1 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+            <div style="background: var(--cyan); color: #0C1387; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">1</div>
+            <h4 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); font-size: 1.1rem; margin-bottom: 8px;">
+              Brainstorming &amp; Extraction (Stage 01)
+            </h4>
+            <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
+              Gather informal requirements from the user. Run Confidence Self-Assessment (&ge; 85%) to clarify ambiguities and identify core system inputs and state targets.
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative; border-color: rgba(0, 162, 253, 0.4);">
+            <div style="background: var(--skymantics-blue); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">2</div>
+            <h4 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); font-size: 1.1rem; margin-bottom: 8px;">
+              Adversarial Red Team Attack (Stage 02)
+            </h4>
+            <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
+              The Critic Council attacks the requirement with boundary probes, malicious inputs, concurrency races, and null states. Every discovered flaw is converted into a formal invariant rule ($V_n$).
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative; border-color: rgba(34, 197, 94, 0.4);">
+            <div style="background: var(--emerald); color: #060A24; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">3</div>
+            <h4 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); font-size: 1.1rem; margin-bottom: 8px;">
+              Defect Backpropagation (Stage 00)
+            </h4>
+            <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
+              If a defect ever escapes in testing or production, Stage 00 traces which invariant was missing, logs it in <code>backprop-log.md</code>, and appends a new mandatory invariant ($V_{n+1}$) to <code>SPEC.md</code>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Real-world Code Transformation Example -->
+        <div style="margin-top: 32px; background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <span style="font-family: 'Albert Sans', sans-serif; font-weight: 700; color: var(--text-bright); font-size: 0.95rem;">
+              Real-World Transformation Example: Password Reset Token
+            </span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--cyan);">specs/SPEC.md &sect;V Invariants</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <span style="color: var(--skymantics-yellow); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; display: block; margin-bottom: 6px;">❌ Raw Requirement (Informal Intent)</span>
+              <pre style="color: var(--text-muted); font-size: 0.82rem; white-space: pre-wrap;">"Users can request a password reset email containing a link to reset their account password."</pre>
+            </div>
+
+            <div>
+              <span style="color: var(--cyan); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; display: block; margin-bottom: 6px;">✅ Transformed Invariants in SPEC.md (&sect;V)</span>
+              <pre style="color: var(--cyan); font-size: 0.82rem; white-space: pre-wrap;">$V_1$: Reset token MUST be single-use (invalidated on 1st submit).
+$V_2$: Expiration time t_exp MUST NOT exceed 15 mins (t_now - t_created &lt;= 900s).
+$V_3$: Token payload MUST hash user_id + password_hash (invalidated if pwd changes).
+$V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Token Efficiency & Caveman Notation Section -->
+  <section class="doc-section" id="token-efficiency">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Optimization & Mechanics</span>
+        <h2 class="section-title">Token Efficiency & Caveman Notation</h2>
+        <p class="section-description">
+          How ICM achieves up to 75% reduction in context window token usage compared to monolithic system prompts while maintaining absolute execution precision.
+        </p>
+      </div>
+
+      <div class="comparison-grid">
+        <div class="comp-card">
+          <h3>Monolithic System Prompt</h3>
+          <p>All instructions, personas, and guidelines loaded on every single LLM call.</p>
+          <div class="stat-badge">~15,000 Tokens</div>
+          <p style="font-size: 0.85rem; color: var(--text-dim);">High cost, high latency, context dilution & instruction drift.</p>
+        </div>
+
+        <div class="comp-card">
+          <h3>Global Skills Setup</h3>
+          <p>Skills loaded from local user config folders when activated by agent heuristics.</p>
+          <div class="stat-badge">~4,500 Tokens</div>
+          <p style="font-size: 0.85rem; color: var(--text-dim);">Not portable, invisible in git code review, platform dependent.</p>
+        </div>
+
+        <div class="comp-card recommended">
+          <h3>ICM Workspace Template</h3>
+          <p>Progressive stage loading + compressed Caveman notation contract encoding.</p>
+          <div class="stat-badge">~1,100 Tokens</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);"><strong>100% Portable</strong>, zero global config, git-versioned.</p>
+        </div>
+      </div>
+
+      <!-- Caveman Notation Guide -->
+      <div style="margin-top: 40px;">
+        <h3 style="font-family: 'Albert Sans', sans-serif; font-size: 1.5rem; color: var(--text-bright); margin-bottom: 16px;">
+          Caveman Encoding Syntax
+        </h3>
+        <p style="color: var(--text-muted);">
+          Each <code>CONTEXT.md</code> stage contract uses Caveman notation to replace verbose prose with mathematical and logical symbols:
+        </p>
+
+        <table class="caveman-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Meaning</th>
+              <th>Example Usage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="caveman-symbol">!</td>
+              <td>MUST / Required</td>
+              <td><code>! reach Confidence Score ≥85 before proposing approaches</code></td>
+            </tr>
+            <tr>
+              <td class="caveman-symbol">⊥</td>
+              <td>FORBIDDEN / Never</td>
+              <td><code>⊥ generate code before SPEC.md updated & approved</code></td>
+            </tr>
+            <tr>
+              <td class="caveman-symbol">→</td>
+              <td>Leads to / Yields</td>
+              <td><code>Idea → Draft SPEC.md & DESIGN.md</code></td>
+            </tr>
+            <tr>
+              <td class="caveman-symbol">∀</td>
+              <td>For all / Every</td>
+              <td><code>∀ UI proposal ! present via visual companion</code></td>
+            </tr>
+            <tr>
+              <td class="caveman-symbol">∃</td>
+              <td>Exists / Has</td>
+              <td><code>∃ enabled visual companion → present mockups</code></td>
+            </tr>
+            <tr>
+              <td class="caveman-symbol">§</td>
+              <td>Section Reference</td>
+              <td><code>Check §V Invariants in SPEC.md</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Adversarial & Development Swarm Personas Matrix -->
+  <section class="doc-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Multi-Agent Governance</span>
+        <h2 class="section-title">The Swarm Persona Matrix</h2>
+        <p class="section-description">
+          SDD avoids single-perspective bias by deploying distinct Creator (Blue) and Critic (Red) agent swarms during spec hardening and code generation.
+        </p>
+      </div>
+
+      <div class="swarm-matrix">
+        <div class="swarm-column blue-team">
+          <h4>
+            <span style="color: var(--cyan);">🔵 Blue Team</span> (Creator Swarms)
+          </h4>
+          <div class="persona-tag">
+            <span>Domain Architect</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--cyan);">Structure & Contract</span>
+          </div>
+          <div class="persona-tag">
+            <span>UI/UX Designer</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--cyan);">Token & Ergonomics</span>
+          </div>
+          <div class="persona-tag">
+            <span>Systems Engineer</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--cyan);">Performance & Data Flow</span>
+          </div>
+          <div class="persona-tag">
+            <span>Code Builder</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--cyan);">Implementation</span>
+          </div>
+        </div>
+
+        <div class="swarm-column red-team">
+          <h4>
+            <span style="color: var(--rose);">🔴 Red Team</span> (Critic Councils)
+          </h4>
+          <div class="persona-tag">
+            <span>Security Auditor</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--rose);">Vulnerabilities & Invariants</span>
+          </div>
+          <div class="persona-tag">
+            <span>Scale & Edge Case Critic</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--rose);">Boundaries & Nulls</span>
+          </div>
+          <div class="persona-tag">
+            <span>Accessibility (a11y) Critic</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--rose);">Keyboard & ARIA</span>
+          </div>
+          <div class="persona-tag">
+            <span>Design Token Auditor</span>
+            <span class="mono" style="font-size: 0.75rem; color: var(--rose);">DESIGN.md Compliance</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start & Adoption Section -->
+  <section class="doc-section" id="quickstart">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Portability in Action</span>
+        <h2 class="section-title">Applying SDD to Any Repository</h2>
+        <p class="section-description">
+          Copy Wilberto Lopez's ICM template into any existing or new project in seconds. No global config or IDE extension required.
+        </p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div>
+          <h3 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); margin-bottom: 12px;">Step 1: Copy Template Files</h3>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Copy the <code>.cursorrules</code>, <code>CLAUDE.md</code>, and <code>specs/</code> directory into your project root:
+          </p>
+          <div class="code-snippet-box">
+            <button class="copy-btn" onclick="copyCommand('cp-cmd')">Copy</button>
+            <pre id="cp-cmd">cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,specs} ./your-project/</pre>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); margin-bottom: 12px;">Step 2: Prompt Your Agent</h3>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Open your project in Cursor, VS Code, Gemini CLI, or Claude Code, and issue your prompt:
+          </p>
+          <div class="code-snippet-box">
+            <pre style="color: var(--cyan);">"Agent, please start the project by reading specs/.sdd/WORKSPACE_ROUTING.md and beginning Stage 01."</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        Spec-Driven Development (SDD) & ICM Framework — Personal Implementation by <strong>Wilberto Lopez</strong> / <strong>Skymantics</strong>
+      </p>
+      <p style="margin-top: 6px; font-size: 0.85rem; color: var(--skymantics-blue); font-weight: 600;">
+        🏷️ Release Version: 2026.09.28-v2 • September 28, 2026
+      </p>
+      <p style="margin-top: 6px; font-size: 0.8rem;">
+        Code is a byproduct of the spec. Built for maximum portability, auditability, and LLM steerability.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Interactive JavaScript for Dynamic Stage Display & Controls -->
+  <script>
+    const stageData = {
+      '00': {
+        name: '00_backprop',
+        title: 'Defect Backpropagation Loop',
+        subtitle: 'Bug → Root Cause Analysis → Spec Invariant → Phase Fix',
+        badgeColor: 'var(--rose)',
+        gate: '<strong>⛔ GATE:</strong> Never fix a bug post-deployment by editing code directly. You MUST trace the defect to the spec layer that failed to prevent it, log the defect in <code>backprop-log.md</code>, append a new invariant <code>V_n</code> to <code>SPEC.md</code>, and append a bugfix phase to <code>IMPLEMENTATION_PHASES.md</code>.',
+        inputs: ['Bug report / Error log', 'specs/SPEC.md', 'specs/IMPLEMENTATION_PHASES.md'],
+        outputs: ['specs/backprop-log.md', 'Updated specs/SPEC.md (Invariants §V)', 'Updated specs/IMPLEMENTATION_PHASES.md (Fix Phase)'],
+        contractCaveman: `! trace defect → root cause in spec
+! write entry in specs/backprop-log.md
+! append invariant V_n to specs/SPEC.md
+! append Phase N (Fix Defect) to specs/IMPLEMENTATION_PHASES.md
+! write regression test FIRST in Stage 05`,
+        contractProse: `1. Trace the defect to its root cause in the specification.
+2. Create a log entry in specs/backprop-log.md detailing root cause and stage failure.
+3. Append a new mandatory invariant rule (V_n) to specs/SPEC.md.
+4. Append a bug-fix phase to specs/IMPLEMENTATION_PHASES.md.
+5. Require Stage 05 to write a failing regression test before writing fix code.`
+      },
+      '01': {
+        name: '01_brainstorming',
+        title: 'Socratic Brainstorming & Shadow Critic',
+        subtitle: 'Idea → Shadow Critic Gap Hunter → Extraction Closure (0 Gaps) → SPEC.md',
+        badgeColor: 'var(--cyan)',
+        gate: '<strong>⛔ GATE:</strong> FORBIDDEN to propose approaches or present design until domain model passes ALL 4 Extraction Closure dimensions (Entity Lifecycle, Negative Space, Fork Test, Policy vs Mechanics) with ZERO open domain gaps. Subjective confidence scoring = FORBIDDEN.',
+        inputs: ['User brief / raw requirements', 'specs/.sdd/_config/references/extraction-closure.md', 'specs/.sdd/_config/references/systems-standards.md'],
+        outputs: ['specs/SPEC.md', 'specs/DESIGN.md (10 Token Categories)', 'specs/DECISION_LOG.md', 'Extraction Closure Report'],
+        contractCaveman: `! interview via Socratic Shadow-Critic loop
+! Lead Architect asks ONE question per turn
+! Shadow Critic concurrently probes edge cases & negative space
+! audit domain model against 4 Extraction Closure dimensions
+⊥ propose approaches until Extraction Closure Report passes with ZERO gaps
+! merge decisions into specs/SPEC.md`,
+        contractProse: `1. Lead Architect conducts single-question Socratic interview with user.
+2. Background Shadow Critic actively probes entity state lifecycles and negative space.
+3. Pass all 4 empirical Extraction Closure gates (zero unconstrained domain gaps).
+4. Auto-default technical plumbing trivia (pagination, UUIDs, retry backoff) with 1-sentence confirmation.
+5. Merge finalized architectural decisions into specs/SPEC.md.`
+      },
+      '02': {
+        name: '02_adversarial_swarm_analysis',
+        title: 'Machine Contract Synthesis & Technical Hardening',
+        subtitle: 'Autonomous Schema Compiler & Red Team Invariant Verification',
+        badgeColor: 'var(--skymantics-blue)',
+        gate: '<strong>⛔ GATE:</strong> Blue Team draft missing even ONE required machine contract artifact (openapi.yaml, schema.sql, statecharts.json, errors.json) → auto-reject. Must comply strictly with systems-standards.md (idempotency, OCC versioning, tie-breaker sorting).',
+        inputs: ['specs/SPEC.md', 'specs/contracts/*', 'specs/.sdd/_config/references/completeness-checklist.md', 'specs/.sdd/_config/references/systems-standards.md'],
+        outputs: ['Hardened specs/SPEC.md', 'specs/contracts/openapi.yaml', 'specs/contracts/schema.sql (OCC)', 'specs/contracts/statecharts.json', 'specs/contracts/errors.json'],
+        contractCaveman: `! Blue Team compiles machine contracts in specs/contracts/
+! Red Team attacks schemas, OCC versioning, tie-breakers, idempotency
+! run ≥3 attack iterations (autonomous, human-free)
+! verify zero vague parameters ("approximately", "fast" = FAIL)`,
+        contractProse: `1. Blue Team synthesizes typed machine contracts (openapi.yaml, schema.sql, statecharts.json, errors.json).
+2. Red Team attacks contracts against systems-standards.md (idempotency keys, OCC versioning, tie-breaker sorting).
+3. Execute at least 3 iterative refinement loops autonomously without user interrogation.
+4. Pass machine contract consistency gates before advancing.`
+      },
+      '03': {
+        name: '03_interactive_wireframing',
+        title: 'Interactive WYSIWYG Wireframing',
+        subtitle: 'Screen-by-Screen HTML Mockups from DESIGN.md Tokens',
+        badgeColor: 'var(--emerald)',
+        gate: '<strong>⛔ GATE:</strong> (UI Projects Only) FORBIDDEN to begin React/Next.js/HTML implementation code until interactive HTML wireframes are built in <code>specs/wireframes/</code> and approved by the user.',
+        inputs: ['specs/DESIGN.md tokens', 'specs/SPEC.md component hierarchy'],
+        outputs: ['specs/wireframes/*.html (Approved screen mockups)'],
+        contractCaveman: `! build screen-by-screen HTML wireframes
+! use exact DESIGN.md tokens & CSS variables
+! enable interactive user feedback loop in browser`,
+        contractProse: `1. Create standalone HTML wireframes for every screen defined in SPEC.md.
+2. Apply exact visual tokens from specs/DESIGN.md.
+3. Present wireframes to user for visual confirmation before code generation.`
+      },
+      '04': {
+        name: '04_writing_implementation_phases',
+        title: 'Phase Breakdown & Immutable Test Oracle',
+        subtitle: 'Spec & Contracts → specs/fixtures/ Black-Box Test Suite + Sequenced Phases',
+        badgeColor: 'var(--skymantics-yellow)',
+        gate: '<strong>⛔ GATE:</strong> Every phase MUST bind to an immutable test fixture in <code>specs/fixtures/</code>. Stage 04 must generate the test oracle BEFORE code generation. Coders are forbidden from writing their own acceptance criteria.',
+        inputs: ['Hardened specs/SPEC.md', 'specs/contracts/*'],
+        outputs: ['specs/IMPLEMENTATION_PHASES.md', 'specs/fixtures/api_cases.json', 'specs/fixtures/db_seed.sql', 'specs/fixtures/state_transitions.json'],
+        contractCaveman: `! compile Immutable Test Oracle in specs/fixtures/
+! generate api_cases.json (happy + error + idempotency)
+! generate db_seed.sql & state_transitions.json
+! decompose system into dependency-ordered phases
+! bind EVERY phase verification command to specs/fixtures/`,
+        contractProse: `1. Generate black-box acceptance test fixtures in specs/fixtures/ prior to any code generation.
+2. Define happy path, error envelope, idempotency, and OCC collision test cases.
+3. Break implementation into dependency-ordered phases bound directly to test fixtures.
+4. Verify phase integrity check tracker before handoff.`
+      },
+      '05': {
+        name: '05_development_swarm',
+        title: 'Strict Test-Fulfillment Dev Swarm',
+        subtitle: 'Builder vs Critic Test-Consumer Loop & Anti-Tampering Gate',
+        badgeColor: 'var(--cyan)',
+        gate: '<strong>⛔ IMMUTABLE GATE:</strong> Builder is strictly forbidden from modifying any file under <code>specs/</code> or <code>specs/fixtures/</code>. If a test fails, the code is defective, NOT the test. Code must strictly follow pinned scaffolding and pass 100% of pre-existing fixtures.',
+        inputs: ['specs/IMPLEMENTATION_PHASES.md', 'specs/contracts/*', 'specs/fixtures/* (Immutable Test Oracle)'],
+        outputs: ['Verified source code', 'Passing test suite', 'specs/dev-swarm-reconciliation.md', 'README.md'],
+        contractCaveman: `! Builder writes code to fulfill specs/fixtures/ & specs/contracts/
+⊥ modify | delete any file in specs/ or specs/fixtures/
+! adhere strictly to pinned directory layout & dependencies
+! run empirical verification commands against fixtures
+! execute full post-implementation reconciliation`,
+        contractProse: `1. Builder Team writes implementation code strictly fulfilling pre-existing fixtures.
+2. Enforce Anti-Tampering Gate: coders cannot modify or relax test fixtures.
+3. Follow pinned project scaffolding and dependency manifests without drift.
+4. Run automated test runner against specs/fixtures/ and verify 100% pass rate.
+5. Reconcile implementation against contracts and reach zero drift entries.`
+      },
+      '07': {
+        name: '06_07_verification',
+        title: 'Observational Equivalence Verification',
+        subtitle: '100% Pass on Immutable Fixtures & Schema Validation Proof',
+        badgeColor: 'var(--emerald)',
+        gate: '<strong>⛔ GATE:</strong> FORBIDDEN to claim completion without proving 100% pass on <code>specs/fixtures/</code>, clean compilation, and zero schema drift against <code>specs/contracts/</code>. Evidence before assertions always.',
+        inputs: ['Generated codebase', 'specs/fixtures/*', 'specs/contracts/*'],
+        outputs: ['Verified production-ready repository', 'Execution logs', 'sdd-state.json'],
+        contractCaveman: `! run test suite against specs/fixtures/ (100% pass)
+! run production build & tsc --noEmit (0 errors)
+! verify zero schema drift vs specs/contracts/
+⊥ declare complete without clean empirical execution evidence`,
+        contractProse: `1. Execute full test suite against immutable fixtures and confirm 100% pass.
+2. Verify zero TypeScript errors and successful production build.
+3. Validate runtime API/DB boundaries against specs/contracts/.
+4. Present verified empirical execution log to user before finalizing.`
+      }
+    };
+
+    let activeStage = '01';
+    let isCaveman = true;
+
+    function selectStage(stageId) {
+      activeStage = stageId;
+      
+      // Update SVG active classes
+      document.querySelectorAll('.node-group').forEach(node => {
+        node.classList.remove('active');
+      });
+      const selectedNode = document.getElementById(`node-${stageId}`);
+      if (selectedNode) selectedNode.classList.add('active');
+      
+      renderStageDetail();
+    }
+
+    function toggleCavemanMode() {
+      isCaveman = !isCaveman;
+      renderStageDetail();
+    }
+
+    function renderStageDetail() {
+      const data = stageData[activeStage];
+      const displayPanel = document.getElementById('stage-detail-display');
+      
+      if (!data) return;
+
+      displayPanel.innerHTML = `
+        <div class="stage-meta-info">
+          <h4>
+            <span class="stage-num-tag" style="background: ${data.badgeColor}">${data.name}</span>
+            ${data.title}
+          </h4>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">${data.subtitle}</p>
+          
+          <div class="gate-alert">
+            ${data.gate}
+          </div>
+
+          <div style="margin-top: 20px;">
+            <strong style="color: var(--text-bright); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 8px;">
+              Input Artifacts:
+            </strong>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+              ${data.inputs.map(inp => `<span class="file-path">${inp}</span>`).join('')}
+            </div>
+
+            <strong style="color: var(--text-bright); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 8px;">
+              Output Artifacts:
+            </strong>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${data.outputs.map(out => `<span class="file-path" style="color: var(--skymantics-blue); border-color: rgba(0, 162, 253, 0.3);">${out}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-box">
+          <div class="contract-header">
+            <span>Stage Execution Contract (${isCaveman ? 'Caveman Notation' : 'Plain English'})</span>
+            <button class="toggle-btn" onclick="toggleCavemanMode()">
+              Switch to ${isCaveman ? 'Plain English' : 'Caveman Notation'}
+            </button>
+          </div>
+          <pre style="color: var(--text-main); font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap;">${isCaveman ? data.contractCaveman : data.contractProse}</pre>
+        </div>
+      `;
+    }
+
+
+
+    function copyCommand(elementId) {
+      const text = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied command to clipboard!');
+      });
+    }
+
+    // Initialize default view on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      selectStage('01');
+    });
+  </script>
+</body>
+</html>

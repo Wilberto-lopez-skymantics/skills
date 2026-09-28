@@ -4,7 +4,7 @@
 
 A curated set of AI agent skills that enforce a rigorous **Spec-Driven Development (SDD)** pipeline. Every skill ensures specifications are written, hardened, and phase-planned *before* implementation code is generated. If your project has a `specs/` folder, these skills govern the entire lifecycle — from ideation through adversarial review to verified, production-ready code.
 
-**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification**
+**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification** · **🏷️ Release `2026.09.28-v2`** · [**📖 Interactive Visual Guide**](./sdd-icm-documentation.html)
 
 ## Quick Start
 
@@ -60,54 +60,41 @@ The skills are the source of truth. The ICM template is a portable view of the s
 
 These skills form a sequential, gated pipeline. Each skill produces artifacts that the next consumes. Skipping a step or writing code before the spec is updated is a violation.
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                        SDD PIPELINE                           │
-│                                                               │
-│  1. brainstorming                                             │
-│     ├─ Explore context, ask questions, propose approaches     │
-│     ├─ Confidence Self-Assessment (≥85 to proceed)            │
-│     ├─ Theme & Vibe (UI: iterate colors/aesthetic)            │
-│     ├─ Decision Log (specs/DECISION_LOG.md)                   │
-│     ├─ DESIGN.md (UI: 10 token categories + State Matrix)     │
-│     └─ Spec Merge (update specs/SPEC.md)                      │
-│                          │                                    │
-│             ──── Execution Gate ────                           │
-│                          │                                    │
-│  2. adversarial-swarm-analysis                                │
-│     ├─ Creator Swarm (Blue Team) drafts spec                  │
-│     ├─ Critic Council (Red Team) attacks spec                 │
-│     ├─ Minimum 3 iterations, Completeness Checklist           │
-│     ├─ Project-type adapters (backend/fullstack/client/game)  │
-│     └─ Output: hardened specs/SPEC.md                         │
-│                          │                                    │
-│             ──── Execution Gate ────                           │
-│                          │                                    │
-│  3. interactive-wireframing (UI projects only)                │
-│     ├─ Screen-by-screen WYSIWYG HTML wireframes               │
-│     ├─ Iterative user feedback loop                           │
-│     └─ Output: specs/wireframes/*.html                        │
-│                          │                                    │
-│             ──── Execution Gate ────                           │
-│                          │                                    │
-│  4. writing-implementation-phases                             │
-│     ├─ Decompose spec into dependency-ordered phases          │
-│     ├─ Phase Integrity Check (coverage, ordering, sizing)     │
-│     └─ Output: specs/IMPLEMENTATION_PHASES.md                 │
-│                          │                                    │
-│             ──── Execution Gate ────                           │
-│                          │                                    │
-│  5. development-swarm                                         │
-│     ├─ Builder (Blue Team) generates code per phase           │
-│     ├─ Critic (Red Team) attacks code (8 personas)            │
-│     ├─ Design Token Auditor enforces DESIGN.md tokens         │
-│     ├─ Visual Acceptance Testing (browser screenshots)        │
-│     ├─ Post-Implementation Reconciliation (SPEC + DESIGN)     │
-│     └─ Output: hardened, verified code                        │
-│                          │                                    │
-│  6. verification-before-completion                            │
-│     └─ Empirical proof: builds pass, tests pass, browser ok   │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Start(["💡 Feature Request / User Brief"]) --> S01["<b>Stage 01: Socratic Brainstorming</b><br/>Lead Architect + Shadow Critic"]
+    Adoption["Existing Codebase"] --> S01b["<b>Stage 01b: Codebase Adoption</b><br/>Reverse-engineer specs & contracts"]
+    S01b --> S01
+
+    S01 --> G01{"<b>Gate 1: 4 Extraction Closures</b><br/>• Entity Lifecycle • Negative Space<br/>• Fork Test • Policy vs Mechanics"}
+    
+    G01 -- "0 Open Gaps" --> S02["<b>Stage 02: Adversarial Swarm Analysis</b><br/>Autonomous Contract Compiler"]
+    
+    S02 --> C_OUT["<b>Machine Contracts in specs/contracts/</b><br/>• openapi.yaml (RFC 9457 errors)<br/>• schema.sql (OCC + Idempotency)<br/>• statecharts.json • errors.json"]
+    
+    C_OUT --> UI_CHECK{"UI Project?"}
+    
+    UI_CHECK -- "Yes" --> S03["<b>Stage 03: Interactive Wireframing</b><br/>WYSIWYG HTML wireframes from tokens"]
+    UI_CHECK -- "No" --> S04["<b>Stage 04: Implementation Phases</b><br/>& Immutable Test Oracle Synthesis"]
+    S03 --> S04
+
+    S04 --> F_OUT["<b>Immutable Test Oracle in specs/fixtures/</b><br/>• api_cases.json (Exact I/O envelopes)<br/>• db_seed.sql • state_transitions.json"]
+    
+    F_OUT --> G_WALL{"<b>🔒 Anti-Tampering Wall</b><br/>Specs & Fixtures are strictly READ-ONLY"}
+    
+    G_WALL --> S05["<b>Stage 05: Development Swarm</b><br/>Test-Consumer Coders (Pass Oracle)"]
+    
+    S05 --> UI_TEST{"UI Project?"}
+    UI_TEST -- "Yes" --> S06["<b>Stage 06: Visual Acceptance Testing</b><br/>Browser-based visual validation against tokens"]
+    UI_TEST -- "No" --> S07["<b>Stage 07: Verification Before Completion</b><br/>Empirical Evidence & Bisimulation Proof"]
+    S06 --> S07
+
+    S07 --> G_FINAL{"<b>Bisimulation Gate</b><br/>100% Test Oracle Pass • Zero Drift"}
+    
+    G_FINAL -- "Passed" --> DONE(["🚀 Production / Shipped"])
+    
+    G_FINAL -. "Runtime Defect Escape" .-> S00["<b>Stage 00: Defect Backprop</b><br/>Trace Root Cause → Append §V Invariant"]
+    S00 -. "Spec Patch & Regression Fixture" .-> S01
 ```
 
 **Execution Gates:** Before each major step, the agent presents the user with a gate showing what's about to happen, its token budget (🟢/🟡/🔴), whether it's skippable, and adjustable parameters. The user decides to proceed, skip, or adjust.

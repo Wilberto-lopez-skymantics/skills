@@ -1,5 +1,7 @@
 # SDD ICM Workspace Template
 
+> **Release Version:** `2026.09.28-v2` (Updated September 28, 2026)
+
 A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure alone — no global agent configuration required.
 
 Based on the [Interpretable Context Methodology (ICM)](https://arxiv.org/html/2603.16021) paper's principle: _"If the context is interpretable, the agent is steerable."_
@@ -16,6 +18,21 @@ Based on the [Interpretable Context Methodology (ICM)](https://arxiv.org/html/26
 3. **Ask** your agent to start the project — it will read `CLAUDE.md` or `.cursorrules`, discover `specs/.sdd/WORKSPACE_ROUTING.md`, and begin at Stage 01.
 
 That's it. No global rules. No plugin install. No config files.
+
+## The Core Mission: Observational & Semantic Equivalence
+
+The fundamental failure mode of AI-assisted engineering is **The Ambiguity Gap**: when a specification is written in natural language prose, two independent coding agents (or two runs of the same model) make diverging assumptions about database schemas, error formats, state machines, and concurrency handling. Both agents claim success, yet their codebases are incompatible.
+
+**This template solves that non-determinism.**
+
+The explicit goal of this framework is **Observational and Semantic Equivalence (Bisimulation)**:
+> *A specification is only complete if handing it to two independent coding agents produces systems whose external observable behavior, public API contracts, data schemas, failure handling, and state transitions are mathematically indistinguishable—even if internal implementation idioms vary.*
+
+### The Three Architectural Laws of SDD v2
+
+1. **Zero Unconstrained Degrees of Freedom:** Every business decision, edge case, and failure path must be pinned in Stage 01–02. The coding agent in Stage 05 is an executor, not a domain policy maker.
+2. **Machine Contracts over Natural Language:** API routes, database schemas, state machines, and error taxonomies are compiled into typed, machine-validatable artifacts in `specs/contracts/` (`openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`), never left as loose Markdown descriptions.
+3. **The Immutable Test Oracle (No Self-Grading Coders):** Acceptance test fixtures are generated in Stage 04 (`specs/fixtures/`) *before* implementation begins. The coding agent in Stage 05 is strictly forbidden from authoring or editing acceptance tests—it only fulfills pre-existing fixtures.
 
 ## Why ICM?
 
@@ -79,33 +96,72 @@ ICM is designed to minimize context window consumption:
 | Global skills | Relevant skill + dependencies (~3-8K tokens) | Tied to user's config |
 | **ICM template** | Routing (~300 tokens) + 1 stage (~800 tokens) + refs as needed | **Fully portable** |
 
-### The Pipeline Stages
+### The Pipeline Stages (SDD v2: Equivalence & Determinism)
+
+The SDD lifecycle enforces deterministic gates, machine-checkable contracts, and an immutable test oracle to guarantee observational equivalence across independent coding agents:
+
+```mermaid
+flowchart TD
+    Start(["💡 Feature Request / User Brief"]) --> S01["<b>Stage 01: Socratic Brainstorming</b><br/>Lead Architect + Shadow Critic"]
+    Adoption["Existing Codebase"] --> S01b["<b>Stage 01b: Codebase Adoption</b><br/>Reverse-engineer specs & contracts"]
+    S01b --> S01
+
+    S01 --> G01{"<b>Gate 1: 4 Extraction Closures</b><br/>• Entity Lifecycle • Negative Space<br/>• Fork Test • Policy vs Mechanics"}
+    
+    G01 -- "0 Open Gaps" --> S02["<b>Stage 02: Adversarial Swarm Analysis</b><br/>Autonomous Contract Compiler"]
+    
+    S02 --> C_OUT["<b>Machine Contracts in specs/contracts/</b><br/>• openapi.yaml (RFC 9457 errors)<br/>• schema.sql (OCC + Idempotency)<br/>• statecharts.json • errors.json"]
+    
+    C_OUT --> UI_CHECK{"UI Project?"}
+    
+    UI_CHECK -- "Yes" --> S03["<b>Stage 03: Interactive Wireframing</b><br/>WYSIWYG HTML wireframes from tokens"]
+    UI_CHECK -- "No" --> S04["<b>Stage 04: Implementation Phases</b><br/>& Immutable Test Oracle Synthesis"]
+    S03 --> S04
+
+    S04 --> F_OUT["<b>Immutable Test Oracle in specs/fixtures/</b><br/>• api_cases.json (Exact I/O envelopes)<br/>• db_seed.sql • state_transitions.json"]
+    
+    F_OUT --> G_WALL{"<b>🔒 Anti-Tampering Wall</b><br/>Specs & Fixtures are strictly READ-ONLY"}
+    
+    G_WALL --> S05["<b>Stage 05: Development Swarm</b><br/>Test-Consumer Coders (Pass Oracle)"]
+    
+    S05 --> UI_TEST{"UI Project?"}
+    UI_TEST -- "Yes" --> S06["<b>Stage 06: Visual Acceptance Testing</b><br/>Browser-based visual validation against tokens"]
+    UI_TEST -- "No" --> S07["<b>Stage 07: Verification Before Completion</b><br/>Empirical Evidence & Bisimulation Proof"]
+    S06 --> S07
+
+    S07 --> G_FINAL{"<b>Bisimulation Gate</b><br/>100% Test Oracle Pass • Zero Drift"}
+    
+    G_FINAL -- "Passed" --> DONE(["🚀 Production / Shipped"])
+    
+    G_FINAL -. "Runtime Defect Escape" .-> S00["<b>Stage 00: Defect Backprop</b><br/>Trace Root Cause → Append §V Invariant"]
+    S00 -. "Spec Patch & Regression Fixture" .-> S01
+```
 
 | Stage | Purpose | Gate |
 |-------|---------|------|
-| `00_backprop` | Bug → trace to source → fix pipeline, not just code | On defect |
-| `01_brainstorming` | Ideas → requirements → draft SPEC.md + DESIGN.md | Always first |
-| `02_adversarial_swarm_analysis` | Harden spec via Creator vs Critic (≥3 iterations) | Spec exists |
+| `00_backprop` | Bug → trace to source → fix spec invariants, not just code | On defect |
+| `01_brainstorming` | Socratic interview with Shadow Critic → policy extraction | All 4 Extraction Closure gates pass (0 domain gaps) |
+| `01b_adoption` | Reverse-engineer specs & contracts from existing codebase | Adoption complete |
+| `02_adversarial_swarm_analysis` | Autonomous technical hardening & Machine Contract synthesis | Machine contracts in `specs/contracts/` + `systems-standards.md` |
 | `03_interactive_wireframing` | WYSIWYG HTML wireframes from design tokens | UI projects only |
-| `04_writing_implementation_phases` | Spec → dependency-ordered, testable phase checklist | Spec hardened |
-| `05_development_swarm` | Code via Builder vs Critic with reconciliation | Phases exist |
+| `04_writing_implementation_phases` | Phase breakdown & Immutable Test Oracle synthesis | Black-box fixtures in `specs/fixtures/` |
+| `05_development_swarm` | Strict test-fulfillment code generation (anti-tampering gate) | 100% pass on pre-existing test oracle |
 | `06_visual_acceptance_testing` | Browser-based visual QA against design tokens | UI projects only |
-| `07_verification_before_completion` | Evidence-based completion proof | Before done claim |
+| `07_verification_before_completion` | Independent evidence-based completion proof | Zero drift + test proofs |
 
 ## Directory Structure
 
 ```
 icm-workspace-template/
-├── CLAUDE.md              ← Agent entry point (Claude Code)
-├── .cursorrules           ← Agent entry point (Cursor)
+├── CLAUDE.md                   ← Agent entry point (Claude Code)
+├── .cursorrules                ← Agent entry point (Cursor)
+├── README.md                   ← Workspace template guide
 └── specs/
-    └── .sdd/              ← Pipeline machinery (dot-prefix = infrastructure)
+    └── .sdd/                   ← Pipeline machinery (dot-prefix = infrastructure)
         ├── WORKSPACE_ROUTING.md    ← Layer 0+1: version + routing
         ├── scripts/                ← Visual Companion server scripts
-        │   ├── start-server.sh
-        │   └── ...
         ├── _config/                ← Layer 3: reference material
-        │   ├── references/         ← Checklists, rubrics
+        │   ├── references/         ← Checklists, rubrics, systems standards
         │   ├── design-template.md
         │   ├── iteration-log-format.md
         │   └── ...
@@ -123,9 +179,18 @@ After running the pipeline, your project will also have:
 ```
 specs/
 ├── SPEC.md                  ← Hardened specification
+├── contracts/               ← Machine-checkable formal contracts
+│   ├── openapi.yaml         ← Strict API schemas, headers, query params
+│   ├── schema.sql           ← Database DDL, OCC versioning, indices
+│   ├── statecharts.json     ← Event-driven finite state machines
+│   └── errors.json          ← Canonical RFC 7807/9457 error taxonomy
+├── fixtures/                ← Immutable Test Oracle (generated before code)
+│   ├── api_cases.json       ← Request/response golden test cases
+│   ├── db_seed.sql          ← Initial state database fixtures
+│   └── state_transitions.json ← State machine sequence assertions
 ├── DESIGN.md                ← Design tokens (UI projects)
 ├── DECISION_LOG.md          ← Architectural decisions
-├── IMPLEMENTATION_PHASES.md ← Build checklist
+├── IMPLEMENTATION_PHASES.md ← Build checklist bound to fixtures
 ├── .sdd/_config/sdd-state.json ← Pipeline checkpoint (created at runtime)
 ├── wireframes/              ← Approved HTML wireframes (UI projects)
 └── backprop-log.md          ← Bug → source fix log
@@ -179,7 +244,7 @@ The skills are the source of truth. Run the drift validator to check alignment:
 Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 ```html
 <!-- sdd-icm-template -->
-<!-- version: 2026.05.27 -->
+<!-- version: 2026.09.28-v2 -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 ```
 
