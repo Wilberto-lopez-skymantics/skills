@@ -1,7 +1,10 @@
 # VAT Report Formats
 
-Shared format templates for Visual Acceptance Testing reports. Referenced by:
-- `visual-acceptance-testing/SKILL.md` — Screen Walk, Interaction Audit, Design Token, Debug Artifact reports
+Shared format templates for Visual Acceptance Testing reports. Used by Stage 06 (`06_visual_acceptance_testing`) to write `specs/VAT_REPORT.md`. The report ! end with a verdict line — `sdd.cjs transition --completed 06` reads it:
+
+```markdown
+**Verdict:** PASS
+```
 
 ---
 
@@ -10,11 +13,11 @@ Shared format templates for Visual Acceptance Testing reports. Referenced by:
 ```markdown
 ## 🖥️ Screen Walk Report
 
-| Screen | Component | Present? | Visible? | Has Content? | Status |
-|--------|-----------|----------|----------|--------------|--------|
-| TitleScreen | Logo | ✅ | ✅ | ✅ "COFFEE RUSH" | PASS |
-| LevelComplete | StarAnimation | ✅ | ❌ | ❌ empty div | FAIL |
-| LevelComplete | Stats | ❌ | — | — | FAIL |
+| Screen | Component | Present? | Visible? | Has Content? | Test id / copy match? | Status |
+|--------|-----------|----------|----------|--------------|-----------------------|--------|
+| TitleScreen | Logo | ✅ | ✅ | ✅ "COFFEE RUSH" | ✅ `logo` | PASS |
+| LevelComplete | StarAnimation | ✅ | ❌ | ❌ empty div | ✅ `star-animation` | FAIL |
+| LevelComplete | Stats | ❌ | — | — | — | FAIL |
 ```
 
 ## Interaction Audit

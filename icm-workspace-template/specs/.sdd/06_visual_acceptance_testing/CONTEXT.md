@@ -1,21 +1,30 @@
-<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | & = and | | = or -->
+<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | ∄ = does not exist | ∈ = in | § = section ref | & = and | | = or -->
 
 # Stage 06: Visual Acceptance Testing (VAT)
 
 Browser-based visual acceptance testing for UI projects. Walks every screen in the spec's Component Hierarchy, screenshots each, verifies element presence and visibility, tests interactions, and flags debug artifacts.
 
-**Why:** Unit tests verify logic. TypeScript verifies types. Neither verifies button visible, screen has content, animation plays. This stage does.
+**Why:** Unit tests verify logic. TypeScript verifies types. Neither verifies button visible, screen has content, animation plays. This stage does — and it checks that the rendered UI matches the frozen visual contract (tokens, wireframes, test ids, copy), which is what makes two UI builds look and behave alike.
 
 ## Inputs
 - Layer 4 (working): Source code / Deployed application
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/DESIGN.md` (if UI project)
 - Layer 4 (working): `specs/wireframes/*.html` (? exists)
+- Layer 4 (frozen): `specs/fixtures/ui/*.spec.ts` (black-box UI specs)
 - Layer 3 (reference): `../_config/vat-report-format.md`
+- Layer 3 (reference): `../_config/references/systems-standards.md` §11 (UI-1…UI-4)
 
 ## Process
 
-**MANDATORY** ∀ projects with UI (web apps, games, PWAs). Skip for `backend-service`.
+**MANDATORY** ∀ UI project types (`fullstack-app`, `client-side-app`, `game`). Non-UI projects skip this stage (`sdd.cjs transition --completed 05` skips it automatically).
+
+#### Step 0: Frozen UI Specs
+Run the black-box UI specs and keep the report as evidence:
+```bash
+ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-e2e.json npx playwright test --config specs/fixtures/ui/playwright.config.ts --reporter=json
+```
+Any failed or flaky test = VAT FAIL. ⊥ edit the specs to make them pass (frozen set).
 
 ### VAT Protocol
 
@@ -31,7 +40,7 @@ Read spec's **Component Hierarchy**. Extract ∀ screens & child components → 
 ```
 
 #### Step 2: Screen Walk (Visual Presence Audit)
-∀ screen ∈ checklist, use `browser_subagent` (or Puppeteer/Playwright script if unavailable):
+∀ screen ∈ checklist, use the agent's browser tool (or a Puppeteer/Playwright script if none is available):
 
 1. **Navigate** to screen
 2. **Screenshot** the screen
@@ -39,6 +48,7 @@ Read spec's **Component Hierarchy**. Extract ∀ screens & child components → 
    - Present ∈ DOM
    - Visually visible (not `display: none`, not 0-height, not transparent)
    - Non-empty
+   - Carries its pinned `data-testid` (UI-1) and copy-table text (UI-2)
 4. **Record** PASS/FAIL per component
 
 #### Step 3: Interaction Contract Audit
@@ -64,21 +74,21 @@ Search visible DOM for elements ⊥ be exposed ∈ production:
 4. Placeholder text
 
 #### Step 5: Screenshot Evidence Archive
-Save ∀ screenshots taken during Screen Walk → conversation artifacts directory. 
+Save ∀ screenshots taken during Screen Walk → `specs/logs/vat/<screen>.png` (in the repo, so Stage 07 can cite them).
 
 ### Verdict Rules
 
-- **PASS:** ∀ screen walk components present + visible + has content. ∀ tested interactions produce expected result. Zero high-severity debug artifacts.
-- **FAIL:** Any screen walk FAIL | interaction FAIL | high-severity debug artifact. Failing items = mandatory fixes before dev swarm issues final report.
+- **PASS:** Frozen UI specs green (0 failed, 0 flaky). ∀ screen walk components present + visible + has content + correct test ids and copy. ∀ tested interactions produce expected result. Zero token mismatches. Zero high-severity debug artifacts.
+- **FAIL:** Any of the above fails.
 
-**⛔ GATE:** VAT verdict feeds into dev swarm Post-Implementation Reconciliation. VAT FAIL → Blue Team ! fix visual defects & re-run VAT.
+**⛔ GATE:** VAT FAIL → ⊥ transition. Return to Stage 05 with the VAT report as the defect list: fix the code, re-run Stage 05's final evidence and reconciliation, then re-run this stage from Step 0. A failure the frozen visual contract cannot explain (two acceptable renderings, missing copy, undefined state) = spec gap → Stage 00.
 
 ## Outputs
 - `specs/vat-checklist.md`
-- VAT Report (printed or saved as `specs/VAT_REPORT.md` using `vat-report-format.md`)
-- Saved screenshots
-- `specs/.sdd/_config/sdd-state.json`
+- `specs/VAT_REPORT.md` (format: `vat-report-format.md`, ending in a `**Verdict:** PASS | FAIL` line)
+- `specs/logs/ui-e2e.json`, `specs/logs/vat/*.png`
+- `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)
 
 ### Handoff / Transitions
-1. **Update state:** Update `specs/.sdd/_config/sdd-state.json` (schema: `specs/.sdd/_config/sdd-state.json.template`) with `lastCompletedStep: 6` & `stepName: "06_visual_acceptance_testing"`.
+1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 06` (refuses unless `vat-checklist.md` exists and `VAT_REPORT.md` says `**Verdict:** PASS`).
 2. **Handoff:** Prompt user to proceed `07_verification_before_completion`.

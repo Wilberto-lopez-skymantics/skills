@@ -1,8 +1,10 @@
 # Iteration Log Format
 
-Shared format templates for adversarial swarm and development swarm iteration logs. Referenced by:
-- `adversarial-swarm-analysis/SKILL.md` — Red Team attack iteration logs
-- `development-swarm/SKILL.md` — Builder vs. Critic iteration logs
+Shared format templates for adversarial swarm and development swarm iteration logs. Used by:
+- Stage 02 — appended to `specs/logs/02-swarm.md`
+- Stage 05 — appended to `specs/logs/05-swarm.md`
+
+Logs are persisted to those files (the audit trail); the chat shows a summary. Logs are working files, never builder inputs: a Stage 05 builder ⊥ reads `02-swarm.md` (spec-only rule).
 
 ---
 
@@ -20,11 +22,24 @@ Shared format templates for adversarial swarm and development swarm iteration lo
 | ...       | ...               | ...              | ...            | ...      |
 
 ### Resolution Actions
-| Finding # | Resolution | Escalation Required? |
-|-----------|------------|----------------------|
-| ...       | ...        | Yes/No               |
+| Finding # | Kind (Technical / Policy) | Resolution | Escalation Required? |
+|-----------|---------------------------|------------|----------------------|
+| ...       | ...                       | ...        | Yes → user question (DECnnn) / No |
+
+### Machine Validation
+[Paste `node specs/.sdd/scripts/sdd.cjs check --contracts` output]
 
 ### Verdict: PASS / FAIL (N findings remaining)
+```
+
+The final iteration additionally contains the **Outcome Table** consumed by Stage 04:
+
+```markdown
+### Outcome Table
+| Operation / command | Outcome | Status / exit | Error code | Trigger |
+|---------------------|---------|---------------|------------|---------|
+| createOrder | created | 201 | — | valid body, new Idempotency-Key |
+| createOrder | invalid body | 422 | VALIDATION_ERROR | qty < 1 |
 ```
 
 ## Development Swarm Iteration Log
@@ -41,7 +56,7 @@ Shared format templates for adversarial swarm and development swarm iteration lo
 | ...           | ...               | ...                        |
 
 ### Verification Evidence
-[Paste output of terminal command used to test the code, e.g., pytest, npm test, or curl]
+[Paste output of `node specs/.sdd/scripts/oracle.cjs run --phase N` (and build/typecheck output)]
 
 ### Verdict: PASS / FAIL
 ```
@@ -69,6 +84,6 @@ Shared format templates for adversarial swarm and development swarm iteration lo
 
 ## Rules
 
-- Every iteration MUST be printed to the user in the format above. You are FORBIDDEN from claiming you "internally looped."
+- Every iteration MUST be written in full, in the format above, to the stage's log file (`specs/logs/02-swarm.md` | `specs/logs/05-swarm.md`); the chat shows a summary. You are FORBIDDEN from claiming you "internally looped."
 - You MUST use Markdown Tables for findings, not bullet points.
 - If any iteration log is missing or summarized as "resolved internally," the entire swarm run is invalid.

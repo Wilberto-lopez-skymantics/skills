@@ -1,70 +1,81 @@
 # Mandatory Completeness Checklist
 
-<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | & = and | | = or -->
+<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | ∈ = in | § = section ref | & = and | | = or -->
 
 ## Project Type Classification (Step 0c)
-Classify project before applying checklist:
 
-| Project Type | How to Identify | Checklist Variant |
-|---|---|---|
-| `backend-service` | API-only, no frontend, server-side logic | Base Checklist as-is |
-| `fullstack-app` | Backend + frontend, database, possibly auth | Base Checklist as-is |
-| `client-side-app` | Browser-only, no server, no database | Client-Side Adapter |
-| `game` | Interactive game loop, levels, scoring | Game Adapter (extends Client-Side) |
+One vocabulary, used by every stage, `sdd.cjs` and the manifest. The required and conditional machine contracts per type live in `../contract-matrix.json` (single source of truth; `sdd.cjs check --contracts` enforces it).
 
-Unclear type → default `fullstack-app` (most comprehensive).
-
-## Base Checklist (Machine Contract Standard)
-Before ANY Red Team pass, Blue Team draft ! produce `specs/SPEC.md` AND formal artifacts in `specs/contracts/`. Missing | placeholder only → auto-reject.
-
-| # | Required Section | Persona | What ! Be Defined & Generated | Required Machine Artifact |
-|---|---|---|---|---|
-| 1 | **System Architecture** | Core Architect | ∀ services, communication protocols, network boundaries, deployment topology | Diagram + port allocation table |
-| 2 | **API & Wire Contracts** | Core Architect | Strict types, paths, status codes, query params, headers, pagination, error schemas. Ref `../_config/references/systems-standards.md` | `specs/contracts/openapi.yaml` (or `.proto`) |
-| 2b | **State Machine & Events** | Core Architect | Finite state machine transitions for all lifecycle entities: state, trigger, guard, target, action, rollback policy | `specs/contracts/statecharts.json` |
-| 3 | **Data Models & Persistence** | Data Specialist | Pinned DB engine, exact column types, primary keys (UUIDv7 vs autoincrement pinned), foreign keys, nullability, unique indices, ON DELETE rules, retention/purging window | `specs/contracts/schema.sql` (or `.prisma`) |
-| 4 | **Auth & Authorization** | Security Auditor | Auth mechanism (JWT/Session/API key), token TTL, header name, RBAC permission matrix (role $\times$ resource $\to$ allow/deny), or explicit "none" + justification | Security contract in `openapi.yaml` |
-| 5 | **LLM/AI Configuration** | AI/MLOps Engineer | Provider, model, temperature, token limits, system prompt location, fallback models, cost guardrails | Config schema in `SPEC.md` |
-| 6 | **Frontend Component Hierarchy** | UX/UI Lead | Named components, state management, layout specs. Ref `specs/DESIGN.md` tokens | Component hierarchy in `SPEC.md` |
-| 7 | **Infrastructure & DevOps** | Core Architect | Docker Compose services, env vars table (key, required, format, default), port mappings, volume mounts, `.dockerignore` rules | `docker-compose.yml` draft |
-| 8 | **Systems Resilience & Errors** | Edge-Case Hunter | Idempotency keys, OCC versioning (`version INT`), tie-breaker pagination (`(sort_col, id)`), retry curves, timeout budgets. Ref `../_config/references/systems-standards.md` | `specs/contracts/errors.json` |
-| 9 | **Cross-Section Consistency** | Reconciler | Field names, types, port mappings, env vars ! be identical across `SPEC.md` and ∀ files in `specs/contracts/` | Zero drift report |
-| 10 | **Visual Design & Styling** | UX/UI Lead | Color palette, typography, spacing, dark/light mode, animation style — ! ref user direction | brand guide. Ref `specs/DESIGN.md` | `specs/DESIGN.md` |
-
-## Adapter: `client-side-app`
-Apply these substitutions to Base Checklist:
-
-| Base Section | Replaced With | What ! Be Defined | Required Machine Artifact |
+| Project type | How to identify | Default interfaces | UI stages (03, 06) |
 |---|---|---|---|
-| 2. API Contracts | **State Machine & Event Contracts** | ∀ app states, valid transitions, trigger events, payloads | `specs/contracts/statecharts.json` |
-| 3. Data Models | **Client Storage & Schema** | LocalStorage/IndexedDB/state store schemas with types | `specs/contracts/types.ts` |
-| 4. Auth | **N/A — Justification Required** | Explicit: "No auth required because [reason]." ⊥ silently omit. | N/A |
-| 5. LLM/AI | **N/A — Justification Required** | Explicit: "No AI/LLM because [reason]." ⊥ silently omit. | N/A |
-| 7. Infrastructure | **Build & Deployment Target** | Build tool (Vite, Webpack), output format, deployment target, env vars | `package.json` config |
-| 8. Resilience | **Client Error Handling & Recovery** | Network offline handling, validation errors, error boundaries | `specs/contracts/errors.json` |
+| `backend-service` | API-only, server-side logic | http | no |
+| `fullstack-app` | Backend + frontend, possibly auth & database | http, browser | yes |
+| `client-side-app` | Browser-only, no server | browser | yes |
+| `game` | Interactive game loop, levels, scoring | browser, cli (headless simulation) | yes |
+| `cli-tool` | Command-line program | cli | no |
+| `library` | Package consumed through a public API | library (via frozen adapter) | no |
 
-## Adapter: `game`
-Apply ALL `client-side-app` substitutions PLUS:
+Unclear → ask the user. ⊥ default silently: the type decides which contracts exist.
 
-| # | Additional Section | Persona | What ! Be Defined | Required Machine Artifact |
+Record the type and interfaces in `specs/contracts/manifest.json` (`../schemas/contract-manifest.schema.json`). Conditional artifacts that do not apply ! be listed in `manifest.notApplicable` with a justification.
+
+## Base Checklist
+
+Before ANY Red Team pass, the Blue Team draft ! produce every SPEC section of `../spec-template.md` AND the machine contracts the matrix requires. Missing | placeholder → auto-reject.
+
+| # | Section (SPEC §) | Persona | What ! be defined | Machine artifact |
 |---|---|---|---|---|
-| 11 | **Game Loop Spec** | Core Architect | Tick rate (rAF vs fixed timestep), update/render separation, pause/resume, frame budget | Game loop contract |
-| 12 | **Level/Config Schema** | Data Specialist | Exact JSON schema ∀ level config: fields, types, valid ranges, complete example | `specs/contracts/levels.schema.json` |
-| 13 | **Scoring & Progression** | Data Specialist | Exact formula with ∀ variables defined, star/rank thresholds as concrete numbers, unlock conditions | Scoring contract |
-| 14 | **Screen Flow Diagram** | UX/UI Lead | ∀ screens, transitions between them, triggers | State diagram |
-| 15 | **Input & Interaction Contract** | Core Architect | ∀ user input (tap/swipe/click/key), behavior per game state, valid/invalid feedback, debounce/cooldown | Input contract |
+| 1 | System Architecture (§0, §10) | Core Architect | Services, protocols, network boundaries, deployment topology, port table | SPEC + `manifest.json` |
+| 2 | API & Wire Contracts (§5) | Core Architect | Strict types, paths, statuses, params, headers, pagination, error schemas per `systems-standards.md` | `openapi.yaml` (http) · `cli.json` (cli) · `api.d.ts` (library) |
+| 2b | State Machines (§4) | Core Architect | ∀ lifecycle entity: states, triggers, guards, targets, actions, illegal-transition error, terminal retention | `statecharts.json` |
+| 3 | Data & Persistence (§6) | Data Specialist | Pinned engine, column types, keys, nullability, unique indices, ON DELETE rules, OCC `version`, retention | `schema.sql` · `storage.schema.json` |
+| 4 | Auth & Authorization (§3) | Security Auditor | Mechanism, token TTL, header, permission matrix including denials | openapi `securitySchemes` | SPEC |
+| 5 | LLM/AI Configuration | AI/MLOps Engineer | Provider, model, temperature, token limits, prompt location, fallbacks, cost guardrails — or `N/A — reason` | SPEC §12 config schema |
+| 6 | Frontend Component Hierarchy (§14) | UX/UI Lead | Named components (↔ DESIGN.md keys ↔ `data-testid`), state management, layout, copy table | SPEC + `DESIGN.md` |
+| 7 | Infrastructure & Configuration (§12) | Core Architect | Env var table (key, required, format, default), ports, volumes, build/deploy target | SPEC §12 |
+| 8 | Systems Resilience & Errors (§7, §13) | Edge-Case Hunter | Idempotency, OCC, pagination, retries, timeouts — profile defaults or documented overrides | `errors.json` |
+| 9 | Cross-Section Consistency | Reconciler | Field names, types, ports, env vars identical across SPEC and every contract | `sdd.cjs check --contracts` clean |
+| 10 | Visual Design (UI) | UX/UI Lead | Palette, typography, spacing, motion — from user direction | `DESIGN.md` |
+| 11 | Invariants (§8) | Data Specialist | ∀ business rule that must never break, as `- **Vn:**` bullets | SPEC §8 |
+| 12 | Equivalence Boundary (§9) | Reconciler | Observable surfaces, declared degrees of freedom, internal freedoms | SPEC §9 (→ `variablePaths`) |
+| 13 | Observable Environment (§10) | Core Architect | Runtime, DB engine/version, collation, TZ, PRNG | SPEC §10 |
 
-**⛔ GATE:** Blue Team draft missing even ONE required section or machine contract artifact → Critic Council ! reject entire draft. ⊥ proceed to adversarial pass with incomplete draft.
+## Type Adapters
+
+### `client-side-app`
+| Base section | Replaced with | What ! be defined |
+|---|---|---|
+| 2. API | State Machine & Event Contracts | ∀ app state, transition, trigger event, payload (`statecharts.json`) |
+| 3. Data | Client Storage Schema | localStorage / IndexedDB shapes (`storage.schema.json`) |
+| 4. Auth | `N/A — Justification Required` | "No auth because …" ⊥ silently omit |
+| 7. Infrastructure | Build & Deployment Target | Build tool, output, hosting target, env vars |
+| 8. Resilience | Client Error Handling | Offline handling, validation errors, error boundaries (`errors.json`) |
+
+### `game` (all `client-side-app` substitutions, plus)
+| # | Additional section | What ! be defined | Artifact |
+|---|---|---|---|
+| 14 | Game Loop | Tick rate (rAF vs fixed timestep), update/render split, pause/resume, frame budget | SPEC |
+| 15 | Level/Config Schema | JSON schema ∀ level config with a complete example | `levels.schema.json` |
+| 16 | Scoring & Progression | Exact formulas, thresholds as numbers, unlock conditions | SPEC + oracle cases |
+| 17 | Deterministic Simulation | Headless `cli` entry point: seed + input sequence → final state JSON (profile ENV-4) | `cli.json` |
+| 18 | Input & Interaction Contract | ∀ input × game state → behavior, feedback, debounce | SPEC §14 |
+
+### `cli-tool`
+Section 2 = `cli.json`: ∀ command, argument, flag (type, default), exit code (profile CLI-1), stdout format (text and `--json`), stderr usage. Section 3 only if it persists data.
+
+### `library`
+Section 2 = `api.d.ts` (or language equivalent): ∀ public function/class, signatures, thrown errors ↔ `errors.json` codes. Stage 04 adds a frozen adapter (`specs/fixtures/adapters/`) mapping JSON requests to calls so the oracle can grade it.
+
+**⛔ GATE:** Blue Team draft missing even ONE required section or matrix-required artifact → Critic Council ! reject the entire draft.
 
 ---
 
-## Machine Contract Linting & Consistency Gate
-Before PASS verdict, Reconciler & Critic Council ! execute:
-1. **Machine Artifact Existence:** `specs/contracts/` contains valid `openapi.yaml`, `schema.sql`, `statecharts.json`, and `errors.json`.
-2. **Field Name & Type Symmetry:** ∀ field in `openapi.yaml` ! match `schema.sql` and `SPEC.md` exactly. (e.g. `user_id` vs `userId` = FAIL).
-3. **Systems Invariants Audit:** Check compliance with `../_config/references/systems-standards.md`:
-   - State-mutating endpoints have `Idempotency-Key` declared.
-   - Mutable tables have `version INT NOT NULL DEFAULT 1` for OCC.
-   - List endpoints have cursor pagination and deterministic tie-breaker sorting.
-   - Error responses conform to `errors.json` schema.
-4. **Quantification Rule:** Quantifier ! scan ENTIRE spec and contracts for vague language. "approximately" | "around" | "e.g." | "periodically" | "sometimes" | "fast" | "slow" | "large" | "small" (as parameter values) → ! be replaced with exact values | ranges | formulas. Spec with vague parameters = FAILED spec.
+## Machine Contract Gate
+
+Before a PASS verdict, the Reconciler ! run `node specs/.sdd/scripts/sdd.cjs check --contracts` and paste its output into the iteration log. It verifies the manifest, the matrix-required artifacts, openapi operationIds and declared statuses, errors.json against the profile's canonical codes, and statechart integrity (declared, reachable, non-dangling states; deterministic transitions; valid error references).
+
+The script cannot judge semantics. The Critic Council additionally verifies:
+1. **Field name & type symmetry:** ∀ field in openapi ↔ schema.sql ↔ SPEC identical (SER-6; `user_id` vs `userId` = FAIL).
+2. **Profile compliance:** Idempotency-Key on every POST (IDEM-1), `version` + ETag/If-Match on mutable resources (OCC), cursor pagination + tie-breaker on collections (PAGE), RFC 9457 envelope (ERR-1).
+3. **Quantification:** the Quantifier scans the entire spec and contracts for vague language — "approximately", "around", "e.g.", "periodically", "sometimes", "fast", "slow", "large", "small" as parameter values → replace with exact values, ranges or formulas.
+4. **Outcome enumeration:** ∀ operation, every observable outcome (success + each reachable error with its trigger) is declared in the contract — the basis of oracle coverage.

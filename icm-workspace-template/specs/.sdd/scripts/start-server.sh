@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the brainstorm server and output connection info
+# Start the SDD Visual Companion server and output connection info
 # Usage: start-server.sh [--project-dir <path>] [--host <bind-host>] [--url-host <display-host>] [--foreground] [--background]
 #
 # Starts server on a random high port, outputs JSON with URL.
@@ -90,13 +90,6 @@ LOG_FILE="${STATE_DIR}/server.log"
 # Create fresh session directory with content and state peers
 mkdir -p "${SESSION_DIR}/content" "$STATE_DIR"
 
-# Kill any existing server
-if [[ -f "$PID_FILE" ]]; then
-  old_pid=$(cat "$PID_FILE")
-  kill "$old_pid" 2>/dev/null
-  rm -f "$PID_FILE"
-fi
-
 cd "$SCRIPT_DIR"
 
 # Resolve the harness PID (grandparent of this script).
@@ -109,9 +102,9 @@ fi
 
 # Foreground mode for environments that reap detached/background processes.
 if [[ "$FOREGROUND" == "true" ]]; then
+  # exec keeps the PID written below pointing at the node process itself.
   echo "$$" > "$PID_FILE"
-  env BRAINSTORM_DIR="$SESSION_DIR" BRAINSTORM_PROJECT_DIR="$PROJECT_DIR" BRAINSTORM_HOST="$BIND_HOST" BRAINSTORM_URL_HOST="$URL_HOST" BRAINSTORM_OWNER_PID="$OWNER_PID" node server.cjs
-  exit $?
+  exec env BRAINSTORM_DIR="$SESSION_DIR" BRAINSTORM_PROJECT_DIR="$PROJECT_DIR" BRAINSTORM_HOST="$BIND_HOST" BRAINSTORM_URL_HOST="$URL_HOST" BRAINSTORM_OWNER_PID="$OWNER_PID" node server.cjs
 fi
 
 # Start server, capturing output to log file

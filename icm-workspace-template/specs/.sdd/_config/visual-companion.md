@@ -45,7 +45,11 @@ Save `screen_dir` & `state_dir`. Tell user to open URL.
 
 **Connection info:** Server writes startup JSON → `$STATE_DIR/server-info`. If launched ∈ background without capturing stdout, read that file. With `--project-dir`, check `<project>/specs/brainstorming/` for session directory.
 
-**Note:** Pass project root as `--project-dir` → mockups persist ∈ `specs/brainstorming/`. Without → `/tmp`, gets cleaned up. Remind user: add `specs/brainstorming/` to `.gitignore`.
+**Note:** Pass project root as `--project-dir` → mockups persist ∈ `specs/brainstorming/` (ignored by the shipped `specs/.gitignore`). Without → `/tmp`, gets cleaned up.
+
+**Wireframes (Stage 03):** with `--project-dir`, the server also serves `specs/wireframes/<screen>.html` at `<url>/wireframes/<screen>.html` and reloads the page whenever that file is saved. Edit wireframes in place there; `screen_dir` is for throwaway option pages.
+
+**Security:** the server only serves files inside the session directory and `specs/`, and accepts browser events only from its own pages.
 
 **Platform launch:**
 
@@ -91,7 +95,7 @@ specs/.sdd/scripts/start-server.sh \
    - Before each write, check `$STATE_DIR/server-info` ∃. ∄ (or `server-stopped` ∃) → restart via `specs/.sdd/scripts/start-server.sh`. Server auto-exits after 30min inactivity.
    - Semantic filenames: `platform.html`, `visual-style.html`, `layout.html`
    - ⊥ reuse filenames — each screen = fresh file
-   - Use Write tool — ⊥ cat/heredoc (dumps noise into terminal)
+   - Use the editor's file-write tool — ⊥ cat/heredoc (dumps noise into terminal)
    - Server auto-serves newest file
 
 2. **Tell user what to expect, end turn:**

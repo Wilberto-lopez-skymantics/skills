@@ -4,6 +4,10 @@
 
 Empirical replacement for subjective confidence scoring. Guarantees zero unconstrained domain degrees of freedom before design presentation.
 
+**Scope by project type:** apply every item that the project type can exhibit. Items that cannot apply (authorization boundaries in a single-user offline game, idempotency windows in a pure library) are answered `N/A — <reason>` in the report, never skipped silently.
+
+**Plumbing is pre-decided:** the technical variance vectors (concurrency control, pagination, tie-breakers, idempotency, serialization) are pinned by the Equivalence Profile (`systems-standards.md`). Stage 01 only confirms the profile fits the user's needs; it asks the user only where a business requirement conflicts with a profile default (→ override).
+
 **⛔ GATE:** ⊥ propose approaches (Step 4) | write design until domain model passes ALL 4 Extraction Closure dimensions with zero remaining gaps. Self-assessed numeric scores (e.g. "85/100") = FORBIDDEN.
 
 ---
@@ -32,19 +36,20 @@ System definition ! define what is strictly forbidden, not just happy-path featu
 ### 3. The Fork Test (Degree-of-Freedom Audit)
 Adversarial check: *"Could Coder A and Coder B reasonably implement conflicting business behaviors given the extracted requirements?"*
 Audit the domain model against these variance vectors:
-- [ ] **Deletion Semantics:** Soft-delete (`is_deleted`) vs hard-delete vs GDPR cryptoshredding?
-- [ ] **Concurrency Conflict Resolution:** Optimistic concurrency (version/ETag) vs pessimistic lock vs last-write-wins?
+- [ ] **Deletion Semantics:** Soft-delete (`is_deleted`) vs hard-delete vs GDPR cryptoshredding? (business policy — ask)
+- [ ] **Concurrency Conflict Resolution:** profile default = OCC (OCC-1…4). Does any workflow need something else? (ask only on conflict)
 - [ ] **Consistency Bounds:** Strong read-after-write vs eventual consistency tolerance?
-- [ ] **Ordering & Tie-Breakers:** Multi-item queries ! specify deterministic secondary sort (e.g. `created_at DESC, id ASC`).
-- [ ] **Idempotency Window:** Repeated mutation submissions within $N$ seconds ! specify deduplication behavior.
+- [ ] **Ordering:** profile default = `created_at DESC, id DESC` (PAGE-3). Which business listings need a different primary order?
+- [ ] **Idempotency Window:** profile default = 24 h per principal (IDEM-2). Does any operation need a different window or none?
+- [ ] **Visible text & formats:** user-facing messages, number/date display formats, rounding of displayed values — pinned (copy table, SPEC)?
 *Any unpinned variance vector that alters user-observable behavior = GATE FAIL.*
 
 ### 4. Policy vs. Mechanics Separation Protocol
 Prevent user interview fatigue while enforcing rigor:
 - **Domain & Business Policy (Human Authority):** Business rules, permissions, pricing, legal boundaries, workflow triggers, domain entities.
   - Rule: AI ⊥ guess | assume. ! ask user directly (one question per message).
-- **Technical Plumbing & Mechanics (AI Synthesizer):** Pagination standards (cursor-based), UUIDv7 vs NanoID, HTTP status mappings, retry backoff algorithms, date serialization formats.
-  - Rule: AI ! propose industry-standard default, explain rationale in 1 sentence, and ask user only for confirmation or override. ⊥ interrogate user with open-ended technical plumbing questions.
+- **Technical Plumbing & Mechanics (pinned by the Equivalence Profile):** Pagination, id formats, HTTP status mappings, error envelope, retry backoff, date serialization — already decided in `systems-standards.md`.
+  - Rule: ⊥ ask the user about plumbing. Only when a business requirement conflicts with a profile rule, explain the conflict in 1 sentence and ask whether to override it (→ DECISION_LOG + `manifest.json#profileOverrides`).
 
 ---
 

@@ -1,49 +1,98 @@
 # SDD ICM Workspace Template
 
-> **Release Version:** `2026.09.28-v2` (Updated September 28, 2026)
+> **Release Version:** `2026.10.01-v3` (Updated October 1, 2026)
 
-A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure alone — no global agent configuration required.
+A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure and a small set of zero-dependency tools, so that independent coding agents built from the same spec produce **observationally equivalent** systems — and so that claim can be checked.
 
 Based on the [Interpretable Context Methodology (ICM)](https://arxiv.org/html/2603.16021) paper's principle: _"If the context is interpretable, the agent is steerable."_
 
 ## Quick Start
 
-1. **Copy** the template contents into your new project root:
+1. **Copy** the template contents into your project root:
    ```bash
-   cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,specs} /path/to/your-project/
+   cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,AGENTS.md,specs} /path/to/your-project/
    ```
+   `CLAUDE.md`, `AGENTS.md` and `.cursorrules` are identical copies of `specs/.sdd/_config/entrypoint.md`. If your project already has one of these files, append the entrypoint's content instead of overwriting it.
 
-2. **Open** the project in your AI-assisted editor (Cursor, VS Code + Gemini, Claude Code, etc.)
+2. **Requirements:** Node.js ≥ 18 for the tools (`specs/.sdd/scripts/*.cjs`, no `npm install`). Playwright only for UI projects.
 
-3. **Ask** your agent to start the project — it will read `CLAUDE.md` or `.cursorrules`, discover `specs/.sdd/WORKSPACE_ROUTING.md`, and begin at Stage 01.
+3. **Open** the project in your AI-assisted editor (Claude Code, Codex, Cursor, Gemini, …) and ask your agent to start. It reads its entry file, runs `node specs/.sdd/scripts/sdd.cjs status`, and begins at Stage 01 (or 01b for an existing codebase).
 
-That's it. No global rules. No plugin install. No config files.
+No global rules. No plugin install.
 
-## The Core Mission: Observational & Semantic Equivalence
+## The Core Mission: Observational Equivalence
 
-The fundamental failure mode of AI-assisted engineering is **The Ambiguity Gap**: when a specification is written in natural language prose, two independent coding agents (or two runs of the same model) make diverging assumptions about database schemas, error formats, state machines, and concurrency handling. Both agents claim success, yet their codebases are incompatible.
+The fundamental failure mode of AI-assisted engineering is **the ambiguity gap**: a prose specification leaves choices open — error formats, null vs absent fields, ordering, rounding, which error wins when two apply — and two independent agents (or two runs of one agent) fill them differently. Both claim success; their systems are incompatible.
 
-**This template solves that non-determinism.**
+SDD v3 defines equivalence operationally:
 
-The explicit goal of this framework is **Observational and Semantic Equivalence (Bisimulation)**:
-> *A specification is only complete if handing it to two independent coding agents produces systems whose external observable behavior, public API contracts, data schemas, failure handling, and state transitions are mathematically indistinguishable—even if internal implementation idioms vary.*
+> **Two builds are observationally equivalent iff, for every case and probe in `specs/fixtures/`, they produce identical observations at the declared interfaces, after masking only the values the spec explicitly declares variable** (SPEC §9 Equivalence Boundary: server-generated ids, timestamps, cursor values, free-text error details).
 
-### The Three Architectural Laws of SDD v2
+Equivalence is therefore relative to the oracle and its probes — the stronger the oracle, the stronger the claim — and it is *measured*:
 
-1. **Zero Unconstrained Degrees of Freedom:** Every business decision, edge case, and failure path must be pinned in Stage 01–02. The coding agent in Stage 05 is an executor, not a domain policy maker.
-2. **Machine Contracts over Natural Language:** API routes, database schemas, state machines, and error taxonomies are compiled into typed, machine-validatable artifacts in `specs/contracts/` (`openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`), never left as loose Markdown descriptions.
-3. **The Immutable Test Oracle (No Self-Grading Coders):** Acceptance test fixtures are generated in Stage 04 (`specs/fixtures/`) *before* implementation begins. The coding agent in Stage 05 is strictly forbidden from authoring or editing acceptance tests—it only fulfills pre-existing fixtures.
+| Level | Evidence |
+|---|---|
+| **L1 Oracle-conformant** | Frozen set intact + `oracle.cjs run` 100% green against the current lock |
+| **L2 Equivalence-verified** (default target) | L1 + a second build made from the frozen set alone, in a fresh agent session, and `oracle.cjs diff` (and `diff-ui` for UIs) reporting zero divergences between the two |
+
+Every divergence `diff` finds is an unconstrained degree of freedom the spec forgot to pin. It goes back into the spec (Stage 00), not into the code.
+
+### Diff early: measuring divergence before code exists
+
+Most divergences start as ambiguous spec text, so v3 measures them at every stage, cheapest first:
+
+| Stage | Diff | Catches |
+|---|---|---|
+| 01 | Two fresh agents predict outcomes of 3–5 scenarios per interview topic, with citations | Business-policy gaps → next interview question |
+| 02 | `diff-expect` on request-only cases from the Outcome Table (gated) | Contract and plumbing ambiguity |
+| 04 | Oracle written twice independently + `diff-expect` (gated); `gen-probes` widens the measured surface | Remaining ambiguity; unpinned response fields |
+| 05 | Builder's decision inventory per phase; optional lockstep build B with `diff --phase N` | Gaps while little code depends on them |
+| 07 | Full dual-build `diff` / `diff-ui` (gated for L2) | The evidence |
+
+A predicting author writes `{"$unspecified": "…"}` where the spec does not decide a value; agreement without citations counts as a gap, because two identical guesses are still guesses.
+
+### Reference example
+
+[`specs/.sdd/_config/examples/notes-service/`](specs/.sdd/_config/examples/notes-service/) is a complete frozen spec set — SPEC, decision log, contracts, 55 derived cases plus 100 generated probes — validated against an independent reference implementation (55/55 green, zero divergences between two instances over all 155 cases, and every deliberately broken variant caught). Agents imitate examples more reliably than they follow rules.
+
+**Contracts parse the same everywhere.** OpenAPI YAML is always read by the bundled `yaml-lite` parser, which rejects plain scalars that YAML 1.1 and 1.2 tools read differently (`yes`/`no`/`on`/`off`, `1_000`, `0755`, unquoted dates) — quote them — so the contract means the same thing to the tools and to every builder's YAML library.
+
+### The Six Laws of SDD v3
+
+1. **Zero unconstrained degrees of freedom — outside a declared boundary.** Every business decision is made with the user in Stages 01–02. What may legitimately vary is listed explicitly (SPEC §9); everything else is pinned.
+2. **Pinned defaults for plumbing.** The [Equivalence Profile](specs/.sdd/_config/references/systems-standards.md) fixes the choices where builders typically diverge — error envelope (RFC 9457), status codes and error precedence, timestamps, ids, null handling, pagination, idempotency, concurrency, string normalization. Deviations are explicit overrides tied to a decision-log entry.
+3. **Machine contracts over prose — and machine-checked.** Operations, storage, lifecycles and errors live in `specs/contracts/`; `sdd.cjs check` validates them against [JSON Schemas](specs/.sdd/_config/schemas/) and each other.
+4. **One grader, never the builder.** The oracle is data (`specs/fixtures/`), written in Stage 04 before any code, and executed by the shipped, implementation-agnostic `oracle.cjs`. No stage writes its own grader. Expected values must be *derivable* from the spec (`derivedFrom`); a value the oracle author had to invent is a spec gap.
+5. **The spec is the only channel.** Stage 05 builders use only the frozen set — no conversation history, no swarm logs, no other implementation. Whatever they would have to guess is raised as a spec gap instead.
+6. **Change control with a lock.** `sdd.cjs freeze` hashes the frozen set into `specs/spec.lock.json` after user approval. After that, frozen files change only through a Class 1 iteration or a Stage 00 Spec Change Request, each ending in a user-approved re-freeze. `sdd.cjs verify` detects anything else, and gates refuse to advance on a broken lock.
+
+## Tooling
+
+All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
+
+| Command | Purpose |
+|---|---|
+| `sdd.cjs status` | Current stage, lock state, latest evidence, and the next stage's exit gates |
+| `sdd.cjs check [--contracts]` | Validate manifest, contracts, oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code) and phase binding |
+| `sdd.cjs freeze --reason R --approved-by U` | Lock the frozen set (refused unless `check` passes) |
+| `sdd.cjs verify` | Exit 1 if any frozen file changed since the last freeze |
+| `sdd.cjs transition --completed <stage>` | Record a completed stage — refused if out of order (unless `--override DECnnn`) or until that stage's exit gates pass |
+| `sdd.cjs export <dir> [--update]` | Copy only the frozen set into `<dir>` for an independent (L2) build; `--update` resyncs it after a re-freeze, keeping B's code and progress |
+| `oracle.cjs run [--phase N]` | Grade a build: HTTP, SQL and CLI steps with matchers, captures and templates |
+| `oracle.cjs diff --a a --b b` | Run the same cases and probes against two builds; report every undeclared difference |
+| `oracle.cjs diff-ui --a A.jsonl --b B.jsonl --b-root DIR` | Compare two builds' UI observations (ARIA snapshots + test ids from `ui-observe.cjs`) |
+| `oracle.cjs gen-probes` | Derive edge-case probes from the OpenAPI contract (boundaries, nulls, Unicode, content types, idempotency, preconditions, pagination, routing) |
+| `oracle.cjs diff-expect --a A --b B` | Interpretation diff: compare two independently written expectation sets; every disagreement, `$unspecified` or uncited case is a spec gap |
+| `oracle.cjs strip-expect --from A --out DIR` | Request-only skeletons with neutral titles for an independent second author |
+| `oracle.cjs env` | Print the frozen build environment every graded build is started with |
+| `oracle.cjs record --target T --out F` | Characterize an existing system (Stage 01b) by filling expectations from observed behavior |
+| `start-server.sh` / `stop-server.sh` | Visual Companion for brainstorming and live wireframes |
 
 ## Why ICM?
 
 ### The Problem with Global Skills
 
-Traditional AI agent workflows rely on global configuration:
-- **Gemini Code Assist** → `~/.gemini/config/skills/`
-- **Claude Code** → global `CLAUDE.md` rules
-- **Cursor** → `.cursorrules` with embedded instructions
-
-This creates three problems:
+Traditional AI agent workflows rely on global configuration (`~/.gemini/config/skills/`, global `CLAUDE.md` rules, editor-specific rule files). This creates three problems:
 
 1. **Not portable.** Share a project with a teammate? They need your exact skill setup.
 2. **Not auditable.** The instructions controlling code generation live outside the repo — invisible to code review.
@@ -51,201 +100,141 @@ This creates three problems:
 
 ### The ICM Solution
 
-ICM moves the orchestration logic **into the project's filesystem**:
-
-```
-your-project/
-├── specs/.sdd/                    ← pipeline instructions live HERE
-│   ├── WORKSPACE_ROUTING.md       ← "read me first" for any agent
-│   ├── 01_brainstorming/CONTEXT.md
-│   ├── 02_adversarial_swarm_analysis/CONTEXT.md
-│   └── ...
-├── specs/SPEC.md                  ← pipeline outputs
-└── your-code-here/
-```
-
-The agent discovers the pipeline by reading `WORKSPACE_ROUTING.md`. Each stage's `CONTEXT.md` is a self-contained contract declaring Inputs, Process, Outputs, and (where applicable) Verify steps. The filesystem is the orchestrator.
-
-**Result:** Any agent that can read markdown files — GPT, Claude, Gemini, Llama, Mistral — can execute the pipeline without any platform-specific configuration.
-
-## How It Works
-
-### The Four-Layer Architecture (from the ICM paper)
+ICM moves the orchestration logic **into the project's filesystem**. The agent discovers the pipeline by reading `WORKSPACE_ROUTING.md`; each stage's `CONTEXT.md` is a self-contained contract declaring Inputs, Process, Outputs and exit gates. The pipeline files are themselves part of the frozen set, so a project records — and locks — the exact pipeline version it was built with.
 
 | Layer | What it does | Where it lives |
 |-------|-------------|----------------|
-| **Layer 0: Identity** | Tells the agent what workspace it's in and what version of the pipeline | HTML comments in `WORKSPACE_ROUTING.md` |
-| **Layer 1: Routing** | Maps user requests to the correct stage | `WORKSPACE_ROUTING.md` body |
-| **Layer 2: Stage Contracts** | Detailed instructions for each pipeline stage | `NN_stage_name/CONTEXT.md` |
-| **Layer 3: Reference Material** | Templates, formats, checklists loaded on-demand | `_config/` directory |
-| **Layer 4: Working Artifacts** | The actual spec outputs (SPEC.md, DESIGN.md, etc.) | `specs/` root |
+| **Layer 0: Identity** | Workspace and pipeline version | HTML comments in `WORKSPACE_ROUTING.md` |
+| **Layer 1: Routing** | Entry protocol, change classes, stage map | `WORKSPACE_ROUTING.md` |
+| **Layer 2: Stage Contracts** | Detailed instructions per stage | `NN_stage_name/CONTEXT.md` |
+| **Layer 3: Reference Material** | Profile, schemas, templates, checklists — loaded on demand | `_config/` |
+| **Layer 4: Working Artifacts** | Spec, contracts, oracle, logs | `specs/` root |
 
-### Token Efficiency
+**Token efficiency.** The agent reads `WORKSPACE_ROUTING.md` (~80 lines) to route, then only the relevant stage's `CONTEXT.md`; heavy references load only when a stage asks for them. Stage contracts use a compressed notation (`!` = must, `⊥` = forbidden, `∀` = for all, …) with a decoder line in each file.
 
-ICM is designed to minimize context window consumption:
-
-- **Progressive loading.** The agent reads `WORKSPACE_ROUTING.md` (~30 lines) to route, then loads only the relevant stage's `CONTEXT.md`. A full pipeline has ~8 stages, but the agent only loads 1 at a time.
-- **Caveman encoding.** Stage contracts use a compressed notation (`!` = must, `⊥` = forbidden, `∀` = for all, etc.) that reduces token consumption ~42% vs prose while preserving precision. A decoder key is included in each file.
-- **Reference separation.** Heavy content (completeness checklists, design templates) lives in `_config/` and is loaded only when a stage's `CONTEXT.md` explicitly instructs the agent to read it.
-
-**Comparison:**
-
-| Approach | Tokens loaded per task | Portability |
-|----------|----------------------|-------------|
-| Monolithic system prompt | All instructions, always (~15K tokens) | Tied to platform |
-| Global skills | Relevant skill + dependencies (~3-8K tokens) | Tied to user's config |
-| **ICM template** | Routing (~300 tokens) + 1 stage (~800 tokens) + refs as needed | **Fully portable** |
-
-### The Pipeline Stages (SDD v2: Equivalence & Determinism)
-
-The SDD lifecycle enforces deterministic gates, machine-checkable contracts, and an immutable test oracle to guarantee observational equivalence across independent coding agents:
+## The Pipeline
 
 ```mermaid
 flowchart TD
-    Start(["💡 Feature Request / User Brief"]) --> S01["<b>Stage 01: Socratic Brainstorming</b><br/>Lead Architect + Shadow Critic"]
-    Adoption["Existing Codebase"] --> S01b["<b>Stage 01b: Codebase Adoption</b><br/>Reverse-engineer specs & contracts"]
-    S01b --> S01
-
-    S01 --> G01{"<b>Gate 1: 4 Extraction Closures</b><br/>• Entity Lifecycle • Negative Space<br/>• Fork Test • Policy vs Mechanics"}
-    
-    G01 -- "0 Open Gaps" --> S02["<b>Stage 02: Adversarial Swarm Analysis</b><br/>Autonomous Contract Compiler"]
-    
-    S02 --> C_OUT["<b>Machine Contracts in specs/contracts/</b><br/>• openapi.yaml (RFC 9457 errors)<br/>• schema.sql (OCC + Idempotency)<br/>• statecharts.json • errors.json"]
-    
-    C_OUT --> UI_CHECK{"UI Project?"}
-    
-    UI_CHECK -- "Yes" --> S03["<b>Stage 03: Interactive Wireframing</b><br/>WYSIWYG HTML wireframes from tokens"]
-    UI_CHECK -- "No" --> S04["<b>Stage 04: Implementation Phases</b><br/>& Immutable Test Oracle Synthesis"]
-    S03 --> S04
-
-    S04 --> F_OUT["<b>Immutable Test Oracle in specs/fixtures/</b><br/>• api_cases.json (Exact I/O envelopes)<br/>• db_seed.sql • state_transitions.json"]
-    
-    F_OUT --> G_WALL{"<b>🔒 Anti-Tampering Wall</b><br/>Specs & Fixtures are strictly READ-ONLY"}
-    
-    G_WALL --> S05["<b>Stage 05: Development Swarm</b><br/>Test-Consumer Coders (Pass Oracle)"]
-    
-    S05 --> UI_TEST{"UI Project?"}
-    UI_TEST -- "Yes" --> S06["<b>Stage 06: Visual Acceptance Testing</b><br/>Browser-based visual validation against tokens"]
-    UI_TEST -- "No" --> S07["<b>Stage 07: Verification Before Completion</b><br/>Empirical Evidence & Bisimulation Proof"]
-    S06 --> S07
-
-    S07 --> G_FINAL{"<b>Bisimulation Gate</b><br/>100% Test Oracle Pass • Zero Drift"}
-    
-    G_FINAL -- "Passed" --> DONE(["🚀 Production / Shipped"])
-    
-    G_FINAL -. "Runtime Defect Escape" .-> S00["<b>Stage 00: Defect Backprop</b><br/>Trace Root Cause → Append §V Invariant"]
-    S00 -. "Spec Patch & Regression Fixture" .-> S01
+    Start(["Feature request / brief"]) --> S01["<b>01 Brainstorming</b><br/>Lead Architect + Shadow Critic"]
+    Adopt["Existing codebase"] --> S01b["<b>01b Adoption</b><br/>spec + contracts + recorded oracle"]
+    S01b --> S02
+    S01 --> G01{"<b>Extraction Closure</b><br/>0 open domain gaps"}
+    G01 --> S02["<b>02 Adversarial Swarm</b><br/>contracts + Equivalence Profile"]
+    S02 --> C{"sdd.cjs check --contracts"}
+    C -- "UI" --> S03["<b>03 Wireframing</b><br/>tokens, test ids, copy"]
+    C -- "non-UI" --> S04
+    S03 --> S04["<b>04 Oracle + Phases</b><br/>derived cases, coverage"]
+    S04 --> F{"<b>User-approved freeze</b><br/>spec.lock.json"}
+    F --> S05["<b>05 Spec-only build</b><br/>oracle.cjs run per phase"]
+    S05 -- "UI" --> S06["<b>06 VAT</b><br/>UI specs + visual walk"]
+    S05 -- "non-UI" --> S07
+    S06 --> S07["<b>07 Certification</b><br/>L1 run · L2 dual build + diff"]
+    S07 --> DONE(["Certified L1 / L2"])
+    S05 -. "spec gap / disputed case" .-> S00
+    S07 -. "divergence / failure" .-> S00["<b>00 Backprop</b><br/>SCR → user approval → re-freeze"]
+    S00 -. "--resume" .-> S05
 ```
 
-| Stage | Purpose | Gate |
+| Stage | Purpose | Exit gate (`sdd.cjs transition`) |
 |-------|---------|------|
-| `00_backprop` | Bug → trace to source → fix spec invariants, not just code | On defect |
-| `01_brainstorming` | Socratic interview with Shadow Critic → policy extraction | All 4 Extraction Closure gates pass (0 domain gaps) |
-| `01b_adoption` | Reverse-engineer specs & contracts from existing codebase | Adoption complete |
-| `02_adversarial_swarm_analysis` | Autonomous technical hardening & Machine Contract synthesis | Machine contracts in `specs/contracts/` + `systems-standards.md` |
-| `03_interactive_wireframing` | WYSIWYG HTML wireframes from design tokens | UI projects only |
-| `04_writing_implementation_phases` | Phase breakdown & Immutable Test Oracle synthesis | Black-box fixtures in `specs/fixtures/` |
-| `05_development_swarm` | Strict test-fulfillment code generation (anti-tampering gate) | 100% pass on pre-existing test oracle |
-| `06_visual_acceptance_testing` | Browser-based visual QA against design tokens | UI projects only |
-| `07_verification_before_completion` | Independent evidence-based completion proof | Zero drift + test proofs |
+| `00_backprop` | Classify defect → Spec Change Request → approval → patch spec/contracts/oracle → re-freeze | Lock intact, backprop log, `--resume` target |
+| `01_brainstorming` | Socratic interview; all business policy extracted | SPEC, DECISION_LOG, (DESIGN), no placeholders |
+| `01b_adoption` | Reverse-engineer an existing codebase; record a characterization oracle | Same as 01 |
+| `02_adversarial_swarm_analysis` | Contracts + hardening against the Equivalence Profile | `check --contracts` passes, persisted swarm log |
+| `03_interactive_wireframing` | Wireframes with tokens, test ids and copy (UI only) | Wireframes + relative-linked DESIGN.md section |
+| `04_writing_implementation_phases` | Oracle synthesis, phases, user-approved freeze | Full `check` passes, lock intact |
+| `05_development_swarm` | Spec-only build until the oracle is green | Lock intact, current unfiltered oracle run green, zero drift |
+| `06_visual_acceptance_testing` | Frozen UI specs + visual walk (UI only) | VAT verdict PASS |
+| `07_verification_before_completion` | Fresh evidence; L1/L2 certification | Fresh green run, equivalence report, (L2) zero-divergence diff |
+
+## Change Classes
+
+| Class | Definition | Route |
+|---|---|---|
+| **0 Non-observable** | Refactor, dependency bump, performance, internal logging | 05 → 07; oracle must stay 100% green, lock unchanged |
+| **1 Observable** | Feature, behavior change, new error, UI change | 01 → 02 → (03) → 04 (re-freeze) → 05 → (06) → 07 |
+| **2 Defect** | Disputed case, `diff` divergence, escaped bug | 00 → re-freeze → resume |
+
+- **Adding a feature (Class 1):** extend SPEC and contracts through Stages 01–02, add cases and a new phase in Stage 04 (existing cases may only change where a decision-log entry declares the behavior change), re-freeze with approval, build the new phase. `--phase N` runs are cumulative, so old behavior keeps being re-graded.
+- **Fixing a bug (Class 2):** Stage 00 decides whether the code broke the spec (→ Stage 05) or the spec allowed the bug (→ pin it, add a case that fails on the buggy build, re-freeze, → Stage 05).
+- **Refactoring (Class 0):** no spec work at all — the frozen oracle proves the refactor changed nothing observable.
 
 ## Directory Structure
 
 ```
 icm-workspace-template/
-├── CLAUDE.md                   ← Agent entry point (Claude Code)
-├── .cursorrules                ← Agent entry point (Cursor)
-├── README.md                   ← Workspace template guide
+├── CLAUDE.md · AGENTS.md · .cursorrules   ← identical entry points (from _config/entrypoint.md)
+├── README.md
 └── specs/
-    └── .sdd/                   ← Pipeline machinery (dot-prefix = infrastructure)
-        ├── WORKSPACE_ROUTING.md    ← Layer 0+1: version + routing
-        ├── scripts/                ← Visual Companion server scripts
-        ├── _config/                ← Layer 3: reference material
-        │   ├── references/         ← Checklists, rubrics, systems standards
-        │   ├── design-template.md
-        │   ├── iteration-log-format.md
-        │   └── ...
-        ├── 00_backprop/CONTEXT.md
-        ├── 01_brainstorming/CONTEXT.md
-        ├── 02_adversarial_swarm_analysis/CONTEXT.md
-        ├── 03_interactive_wireframing/CONTEXT.md
-        ├── 04_writing_implementation_phases/CONTEXT.md
-        ├── 05_development_swarm/CONTEXT.md
-        ├── 06_visual_acceptance_testing/CONTEXT.md
-        └── 07_verification_before_completion/CONTEXT.md
+    ├── .gitignore                          ← ignores Visual Companion sessions
+    └── .sdd/                               ← pipeline machinery (frozen with the spec)
+        ├── WORKSPACE_ROUTING.md
+        ├── 00_backprop/ … 07_verification_before_completion/CONTEXT.md
+        ├── scripts/                        ← sdd.cjs, oracle.cjs, sdd-lib.cjs, Visual Companion
+        └── _config/
+            ├── references/                 ← Equivalence Profile, oracle standard, checklists
+            ├── schemas/                    ← JSON Schemas for manifest, errors, statecharts, oracle
+            ├── contract-matrix.json        ← required contracts per project type
+            ├── canonical-errors.json       ← profile error codes (machine-checked)
+            ├── spec-template.md · design-template.md · …
+            └── sdd-state.json.template
 ```
 
-After running the pipeline, your project will also have:
+After running the pipeline, a project also has:
+
 ```
 specs/
-├── SPEC.md                  ← Hardened specification
-├── contracts/               ← Machine-checkable formal contracts
-│   ├── openapi.yaml         ← Strict API schemas, headers, query params
-│   ├── schema.sql           ← Database DDL, OCC versioning, indices
-│   ├── statecharts.json     ← Event-driven finite state machines
-│   └── errors.json          ← Canonical RFC 7807/9457 error taxonomy
-├── fixtures/                ← Immutable Test Oracle (generated before code)
-│   ├── api_cases.json       ← Request/response golden test cases
-│   ├── db_seed.sql          ← Initial state database fixtures
-│   └── state_transitions.json ← State machine sequence assertions
-├── DESIGN.md                ← Design tokens (UI projects)
-├── DECISION_LOG.md          ← Architectural decisions
-├── IMPLEMENTATION_PHASES.md ← Build checklist bound to fixtures
-├── .sdd/_config/sdd-state.json ← Pipeline checkpoint (created at runtime)
-├── wireframes/              ← Approved HTML wireframes (UI projects)
-└── backprop-log.md          ← Bug → source fix log
+├── SPEC.md                    ← hardened spec (spec-template.md structure)      [frozen]
+├── DESIGN.md                  ← design tokens (UI)                               [frozen]
+├── contracts/                 ← manifest.json, openapi.yaml, schema.sql, statecharts.json, errors.json, …   [frozen]
+├── fixtures/                  ← oracle.config.json, cases/*.json, seed/, ui/*.spec.ts   [frozen]
+├── wireframes/                ← approved HTML wireframes (UI)                    [frozen]
+├── spec.lock.json             ← lock manifest (hashes, approvals, history)
+├── DECISION_LOG.md · IMPLEMENTATION_PHASES.md · backprop-log.md
+├── changes/SCR-*.md           ← Spec Change Requests
+├── logs/                      ← swarm logs, oracle/diff reports, transitions.jsonl, VAT screenshots
+├── dev-swarm-reconciliation.md · VAT_REPORT.md · EQUIVALENCE_REPORT.md
+└── .sdd/_config/sdd-state.json ← pipeline pointer (written by `sdd.cjs transition`)
 ```
 
+`sdd-state.json` keeps the five fields the SDD VS Code extension reads (`lastCompletedStep`, `stepName`, `projectType`, `timestamp`, `notes`); everything else lives in the lock and logs. A tool that advances the state directly (like the extension's advance action) bypasses the exit gates — prefer `sdd.cjs transition`.
 
-## Iterative Workflows (Features & Bugs)
+## What Changed in v3
 
-Once a project has completed its initial SDD cycle (`lastCompletedStep: 7`), subsequent changes (adding features, changing behaviors, or fixing bugs) trigger a new, scoped iteration of the pipeline.
+v3 challenges several v2 decisions that worked against the equivalence goal:
 
-### 1. Adding a New Feature or Change
-When the user requests a new feature or behavioral change:
-1. **Reset State:** Transition `specs/.sdd/_config/sdd-state.json` back to `lastCompletedStep: 1` (`01_brainstorming`).
-2. **Track Decisions:** Add a new numbered entry (e.g. `DEC005`) to `specs/DECISION_LOG.md` detailing the feature's design and options considered.
-3. **Update Specifications:** Edit `specs/SPEC.md` and `specs/DESIGN.md` directly (git tracks the diff).
-4. **Harden & Wireframe:** Run Stage 02 (Adversarial Swarm) on the spec changes and Stage 03 (Wireframing) for new screens.
-5. **Phase Scoping:** Instead of overwriting `specs/IMPLEMENTATION_PHASES.md`, **append a new Phase** (e.g. `## Phase 8: Feature X`) containing the tasks and verification commands for the feature.
-6. **Execution & QA:** Execute only the new phase (`- [ ]`) in Stage 05, run VAT in Stage 06, and reconcile in Stage 07.
-
-### 2. Fixing a Bug (Backprop)
-When a bug is discovered after completion:
-1. **Trace to Source:** Transition `specs/.sdd/_config/sdd-state.json` to `lastCompletedStep: 0` (`00_backprop`).
-2. **Log Backprop:** Create a new entry in `specs/backprop-log.md` detailing the defect, root cause, the stage that failed to catch it, the source fix, and the new invariant.
-3. **Harden Spec:** Append the new invariant rule (e.g. `V4: <invariant>`) to the Invariants section of `specs/SPEC.md`.
-4. **Phase Bug Fix:** Append a bug-fixing phase (e.g. `## Phase 9: Fix Bug X`) to `specs/IMPLEMENTATION_PHASES.md` containing tasks to write a regression test first, implement the fix, and verify it passes.
-5. **Execute & Close:** Implement the fix, run the tests (Stage 05), and verify everything compiles (Stage 07).
+| v2 | v3 | Why |
+|---|---|---|
+| Builders "forbidden" to edit `specs/`, but told to update SPEC.md on minor drift | Lock + `verify`; drift → fix code or SCR; SPEC never edited to match code | The builder rewriting the spec is self-grading |
+| Fixtures as free-form JSON; harness written by whoever | Schema'd cases executed by a shipped grader | Whoever writes the harness decides how strict grading is |
+| Backprop edits spec, tests and code without approval | SCR + user approval + discrimination check; no code in Stage 00 | Backprop was a way around the lock |
+| "≥ 3 iterations, iteration 1 always fails" | Objective exit criteria (`check`, zero-finding round, Outcome Table) | Forced failures produce manufactured findings |
+| State written, never read | `status` + gated `transition` | Gates that nothing checks are suggestions |
+| Equivalence asserted ("bisimulation proof") | Measured: L2 dual build + `oracle diff` | The claim needs evidence |
+| Plumbing left to "industry standard" | Equivalence Profile with rule ids | "Standard" differs between builders |
+| Error envelope labelled RFC 9457 but non-compliant; three codes for OCC conflicts | RFC 9457 problem details; one canonical code table | A self-contradictory standard forks builders |
+| Pinned directory layout and dependencies | Pinned *observable* environment; internals free | Layout is not observable; DB collation is |
 
 ## Relationship to SDD Skills
 
-This template implements the same pipeline as the [SDD skills](../README.md), delivered differently:
+This template implements the same pipeline as the [SDD skills](../README.md), delivered as files instead of global configuration.
 
 | | Skills (Option A) | ICM Template (Option B) |
 |---|---|---|
-| **Requires** | Global agent config | Nothing — just copy files |
-| **Orchestration** | Skill orchestrator invokes sub-skills | Agent reads CONTEXT.md from filesystem |
-| **Best for** | Consistent personal workflow | Portable projects, cross-team sharing |
-| **Source of truth** | SKILL.md files | CONTEXT.md files (derived from skills) |
+| **Requires** | Global agent config | Node.js ≥ 18; copy files |
+| **Orchestration** | Skill orchestrator invokes sub-skills | Agent reads CONTEXT.md; `sdd.cjs` enforces gates |
+| **Best for** | Consistent personal workflow | Portable projects, cross-team sharing, equivalence certification |
 
-Both options produce identical artifacts (`specs/SPEC.md`, `specs/DESIGN.md`, etc.) and enforce the same pipeline gates.
-
-### Keeping in Sync
-
-The skills are the source of truth. Run the drift validator to check alignment:
-
-```bash
-../scripts/validate-icm-sync.sh
-```
+**Source of truth (v3):** this template is ahead of the skills — the oracle, lock, Equivalence Profile and gated transitions exist only here. Two hand-maintained copies of one pipeline would give Option A and Option B users different pipelines, which is itself a source of non-equivalence, so the skills should be ported from this template. Until then `../scripts/validate-icm-sync.sh` reports drift by design.
 
 ## Version
 
 Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 ```html
 <!-- sdd-icm-template -->
-<!-- version: 2026.09.28-v2 -->
+<!-- version: 2026.10.01-v3 -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 ```
 
-Compare against the template in the skills repo to detect staleness.
+The lock (`specs/spec.lock.json`) records the hash of every pipeline file a project was built with; upgrading the template is a frozen-set change and requires a re-freeze.
