@@ -1,6 +1,6 @@
 # SDD ICM Workspace Template
 
-> **Release Version:** `2026.10.01-v3` (Updated October 1, 2026)
+> **Release Version:** `2026.10.01-v3+sky.1` — Skymantics CLI variant of `2026.10.01-v3`. Every difference from upstream `v3` is a labeled commit on `skymantics-cli/v3`.
 
 A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure and a small set of zero-dependency tools, so that independent coding agents built from the same spec produce **observationally equivalent** systems — and so that claim can be checked.
 
@@ -233,8 +233,8 @@ This template implements the same pipeline as the [SDD skills](../README.md), de
 Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 ```html
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.01-v3 -->
-<!-- source: github.com/Wilberto-lopez-skymantics/skills -->
+<!-- version: 2026.10.01-v3+sky.1 -->
+<!-- source: github.com/dalmeida2/skills@skymantics-cli/v3 (base: github.com/Wilberto-lopez-skymantics/skills@v3) -->
 ```
 
 The lock (`specs/spec.lock.json`) records the hash of every pipeline file a project was built with; upgrading the template is a frozen-set change and requires a re-freeze.
