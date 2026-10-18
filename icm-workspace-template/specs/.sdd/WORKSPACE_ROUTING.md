@@ -1,5 +1,5 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.18-v3.1-prototype-first -->
+<!-- version: 2026.10.18-v3.2-prototype-first -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 
 # Spec-Driven Development (SDD v3) Workspace
@@ -18,6 +18,7 @@
 **Tools** (Node.js ≥ 18, zero dependencies):
 - `node specs/.sdd/scripts/sdd.cjs status | check | readiness | freeze | verify | transition [--approved-by] [--release] | export [--update]`
 - `node specs/.sdd/scripts/oracle.cjs run | diff | diff-ui | diff-expect | strip-expect | gen-probes | record | env`
+- `node specs/.sdd/scripts/ui-capture.cjs --url … --name …` (Stage 03: wireframes captured from the prototype; needs Playwright)
 
 **Reference example:** `specs/.sdd/_config/examples/notes-service/` — a complete, validated frozen spec set. Imitate its precision, not its domain.
 
@@ -31,7 +32,7 @@
 2. Classify the request with **Change Classes** below.
 3. Read the target stage's `CONTEXT.md` before doing anything else.
 4. The target stage's inputs are missing → ⊥ proceed. Tell the user what is missing and which stage produces it. Skipping requires the user's explicit instruction, recorded in `specs/DECISION_LOG.md`.
-5. Finish a stage only with `sdd.cjs transition --completed <stage>`. It refuses a stage that is out of order and refuses until the exit gates pass, then records the transition in `specs/logs/transitions.jsonl`. A user-approved skip uses `--override DECnnn` (the decision ! exist in `specs/DECISION_LOG.md`); the exit gates still apply. ⊥ hand-edit `specs/.sdd/_config/sdd-state.json` (the SDD VS Code extension reads it).
+5. Finish a stage only with `sdd.cjs transition --completed <stage>`. It refuses a stage that is out of order and refuses until the exit gates pass, then records the transition in `specs/logs/transitions.jsonl`. A user-approved skip uses `--override DECnnn` (the decision ! exist in `specs/DECISION_LOG.md`); the exit gates still apply. ⊥ hand-edit `specs/.sdd/_config/sdd-state.json` (the tools and `transitions.jsonl` are its only writers; every transition also records stage metrics there).
 
 ## Change Classes
 
@@ -46,7 +47,7 @@ Unsure between Class 0 and 1 → Class 1.
 ## The Frozen Set
 
 `sdd.cjs freeze` (end of Stage 04) hashes these into `specs/spec.lock.json`:
-- `specs/SPEC.md`, `specs/DESIGN.md`, `specs/CODING_STANDARDS.md` (if used), `specs/contracts/**`, `specs/fixtures/**`, `specs/wireframes/**`
+- `specs/SPEC.md` (+ `specs/spec/**` modules, each linked from SPEC.md), `specs/DESIGN.md`, `specs/CODING_STANDARDS.md` (if used), `specs/contracts/**`, `specs/fixtures/**`, `specs/wireframes/**`
 - the pipeline itself: `specs/.sdd/**` except `_config/sdd-state.json`
 
 Working files outside the lock: `DECISION_LOG.md`, `GAPS.md`, `IMPLEMENTATION_PHASES.md` (only checkboxes change after freeze), `logs/**` (incl. `02-rulings.md`, `03p-prototype.md`, `03p-decisions.md`), `changes/**` (incl. `changes/oracle/**` scratch cases and tools), `backprop-log.md`, `phase-integrity-check.md`, `dev-swarm-reconciliation.md`, `vat-checklist.md`, `VAT_REPORT.md`, `EQUIVALENCE_REPORT.md`.

@@ -31,12 +31,14 @@ Approved wireframes are part of the frozen set: they pin layout, copy, state ids
 ### 2. Capture
 
 Start the prototype with its `Run:` line and the frozen build environment (`eval "$(node specs/.sdd/scripts/oracle.cjs env)"` once `oracle.config.json` exists; before that, SPEC §12 defaults). For each screen state:
-- Drive the prototype into the state (seed data, interaction), then save the rendered document: `document.documentElement.outerHTML` via Playwright (`page.content()`) or the browser's devtools.
-- **Inline the styles**: collect the computed stylesheet rules the page uses into one `<style>` block; remove `<script>` tags, framework attributes (`data-reactroot`, `ng-*`, `v-*`) and runtime ids. The wireframe is a static document: it must render from the file alone.
-- **Preserve**: every `data-testid` and `data-key`, ARIA roles and names, visible text, form controls and their states (disabled, invalid, checked), the DOM order.
-- **Semantic placeholders**: replace images, icons and media with `<div class="placeholder asset">Spaceship Icon</div>`; ⊥ base64 or complex SVGs.
-- Optional: `require('specs/.sdd/scripts/ui-observe.cjs')` `observe(page, '<screen-state>')` records the ARIA snapshot + test-id sequence; keep it next to the wireframe as `<screen-state>.aria.json` for `diff-ui` reference.
-- One file per screen state; edit in place on iterations. ⊥ hand-draw a screen the prototype does not have — build it in the prototype first (03p re-run).
+
+```bash
+node specs/.sdd/scripts/ui-capture.cjs --url <prototype url> --name <screen>[-<state>] [--wait "[data-testid=<id>]"] [--setup ./capture-setup.cjs] --aria
+```
+
+The tool (Playwright, already required for UI projects) performs the same capture for every agent: it inlines every same-origin stylesheet rule into one `<style>` block, removes scripts and framework attributes, replaces images/SVGs/media with `<div class="placeholder asset">` carrying their label, freezes form-control state into attributes, and keeps every `data-testid`, `data-key`, ARIA attribute, visible text and the DOM order. `--setup` runs a module `async (page) => {}` to drive the prototype into the state (log in, open a modal, trigger the empty state). `--aria` also writes `<name>.aria.json` (ARIA snapshot + test-id sequence, the `diff-ui` reference). It warns when a screen has no test ids.
+
+- One file per screen state in `specs/wireframes/`; re-capture in place on iterations. ⊥ hand-edit a capture into something the prototype does not do; ⊥ hand-draw a screen the prototype lacks — build it in the prototype first (03p re-run).
 
 ### 3. Verify the contract
 

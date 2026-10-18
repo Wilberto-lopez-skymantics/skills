@@ -133,7 +133,7 @@ Variable matchers are the declared degrees of freedom of the case. Use them only
 
 Frozen UI specs count too: a `// covers: transition:item.complete, inv:V2` comment inside a spec file in `specs/fixtures/ui/` covers those items (the refs are validated).
 
-Only `specs/contracts/manifest.json#coverageExempt` (with a justification) excuses an item, e.g. `error:INTERNAL_ERROR`.
+Only `specs/contracts/manifest.json#coverageExempt` excuses an item: the key is an item (`error:INTERNAL_ERROR`) or a `*` pattern (`op:*:503`), the value a justification (≥ 20 characters) or `{ "class": "<name>" }` citing `manifest.coverageExemptClasses`, where one justification covers every item of the class (`"fault-injection-only": "Cannot be triggered black-box without fault injection, which the spec does not define."`). `check` reports the exemptions per class so a reviewer reads one line per reason instead of hundreds of free-text entries.
 
 Mandatory case families. The Red Team checks these in Stage 04; they are not machine-enforced:
 - IDEM: replay (IDEM-6), fingerprint mismatch (IDEM-4), missing and malformed key (IDEM-1, reported in `errors[]`) ∀ POST operation group.

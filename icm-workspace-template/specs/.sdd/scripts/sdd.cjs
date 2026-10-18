@@ -71,12 +71,7 @@ function checkContracts(p, r) {
   ctx.matrix = matrix;
 
   if (!exists(p.spec)) r.error('missing specs/SPEC.md');
-  else {
-    // A spec no agent reads in one pass is read partially, and partial reading is itself a source of divergence.
-    const kb = Math.round(fs.statSync(p.spec).size / 1024);
-    if (kb > SPEC_SIZE_WARN_KB) r.warn(`specs/SPEC.md is ${kb} KB (> ${SPEC_SIZE_WARN_KB} KB): agents read a spec this large partially. Move restated tables (statuses, error codes, fields) into specs/contracts/ and point to them; split the rest into modules with SPEC.md as the index`);
-  }
-  if (!exists(p.manifest)) { r.error('missing specs/contracts/manifest.json (Stage 02 output)'); return ctx; }
+  if (!exists(p.manifest)) { r.error('missing specs/contracts/manifest.json (Stage 02 output)'); checkSpecText(p, ctx, r); return ctx; }
   let manifest;
   try { manifest = L.readJson(p.manifest); } catch (e) { r.error(e.message); return ctx; }
   const merrs = L.validateSchema(L.loadSchema(p, 'contract-manifest.schema.json'), manifest);
@@ -130,7 +125,114 @@ function checkContracts(p, r) {
     if (!d || !cites(d)) r.error('equivalenceTarget 1 requires manifest.equivalenceTargetDecision citing a DECnnn entry in specs/DECISION_LOG.md');
   }
   if (overrides.length) r.note(`${overrides.length} documented profile override(s)`);
+  checkSpecText(p, ctx, r);
   return ctx;
+}
+
+// ========== Spec text (the mechanical half of the former spec self-review) ==========
+
+const SPEC_SECTIONS = ['0. Meta', '1. Scope', '2. Glossary', '3. Actors', '4. Domain Model', '5. Operations', '6. Data', '7. Errors', '8. Invariants', '9. Equivalence Boundary', '10. Observable Environment', '11. Equivalence Profile Overrides', '12. Configuration', '13. Limits'];
+const HEDGES = [
+  [/\b(approximately|around|about|roughly|circa)\s+\d/i, 'approximate number'],
+  [/\b(e\.g\.|for example|such as)\b[^\n.]{0,40}\b\d+\s*(ms|s|sec|seconds?|min|minutes?|hours?|days?|KB|MB|GB|items?|rows?|requests?|%)\b/i, 'example standing in for a parameter value'],
+  [/\b(periodically|occasionally|sometimes|from time to time|regularly)\b/i, 'interval not defined'],
+  [/\b(fast|slow|quick|large|small|many|few|reasonable|appropriate|sufficient)\s+(enough|number|amount|size|limit|timeout|delay|window|batch|page)\b/i, 'adjective used as a parameter'],
+  [/\b(TBD|TODO|FIXME)\b/, 'placeholder'],
+];
+
+/** Lines of one spec file with their 1-based numbers, code fences excluded (examples legitimately contain hedges). */
+function specLines(text) {
+  const out = [];
+  let fence = false;
+  text.split(/\r?\n/).forEach((line, i) => {
+    if (/^\s*```/.test(line)) { fence = !fence; return; }
+    if (!fence) out.push([i + 1, line]);
+  });
+  return out;
+}
+
+/** Section body between `## N.` and the next `## ` heading, or null when the heading is missing. */
+function specSection(text, n) {
+  const m = text.match(new RegExp(`^##\\s+${n}\\.[^\\n]*\\n([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, 'm'));
+  return m ? m[1] : null;
+}
+
+const kebab = s => s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
+function checkSpecText(p, ctx, r) {
+  const files = L.specFiles(p.root);
+  if (!files.length) return;
+  const texts = files.map(f => [f, readText(path.join(p.root, f))]);
+  const all = texts.map(([, t]) => t).join('\n');
+  ctx.specText = all;
+  const index = texts[0][1];
+
+  // Modules: SPEC.md is the index and links each one; agents reading SPEC.md must learn that the module exists.
+  const modules = files.slice(1);
+  for (const m of modules) {
+    const relFromIndex = m.replace(/^specs\//, '');
+    if (!index.includes(`](${relFromIndex})`) && !index.includes(`](./${relFromIndex})`)) r.error(`${m} is not linked from specs/SPEC.md (SPEC.md is the index: add [title](${relFromIndex}))`);
+  }
+  // Size: a spec no agent reads in one pass is read partially, and partial reading is itself a source of divergence.
+  let totalKb = 0;
+  for (const [f, t] of texts) {
+    const kb = Math.round(Buffer.byteLength(t) / 1024);
+    totalKb += kb;
+    if (kb > SPEC_SIZE_WARN_KB) r.warn(`${f} is ${kb} KB (> ${SPEC_SIZE_WARN_KB} KB): agents read a file this large partially. Move restated tables (statuses, error codes, fields) into specs/contracts/ and point to them; split the rest into specs/spec/<module>.md with SPEC.md as the index`);
+  }
+  r.note(`spec: ${files.length} file(s), ${totalKb} KB${modules.length ? ` (${modules.length} module(s) under specs/spec/)` : ''}`);
+
+  // Placeholders and hedges, with file:line. Placeholders are errors; hedges are warnings (heuristic).
+  const hedgeHits = [];
+  for (const [f, t] of texts) {
+    for (const [n, line] of specLines(t)) {
+      for (const [re, why] of HEDGES) {
+        const m = line.match(re);
+        if (!m) continue;
+        if (why === 'placeholder') r.error(`${f}:${n}: placeholder "${m[0]}" — the spec is not finished`);
+        else hedgeHits.push(`${f}:${n} (${why}: "${m[0]}")`);
+      }
+    }
+  }
+  if (hedgeHits.length) r.warn(`${hedgeHits.length} unquantified parameter(s) — every number must be an exact value, bounded range or formula: ${hedgeHits.slice(0, 8).join('; ')}${hedgeHits.length > 8 ? '; …' : ''}`);
+
+  // Required sections (spec-template.md), anywhere in SPEC.md or a module; §14 for UI projects.
+  const missing = SPEC_SECTIONS.map(s => s.split('.')[0]).filter(n => !new RegExp(`^##\\s+${n}\\.`, 'm').test(all));
+  if (ctx.typeDef && ctx.typeDef.ui && !/^##\s+14\./m.test(all)) missing.push('14');
+  if (missing.length) r.error(`spec is missing section(s) ${missing.map(n => `§${n}`).join(', ')} (structure: specs/.sdd/_config/spec-template.md; "N/A — <why>" is an acceptable body, a missing heading is not)`);
+  const boundary = specSection(all, 9);
+  if (boundary !== null && !boundary.trim()) r.warn('§9 Equivalence Boundary is empty: list every declared degree of freedom (ids, timestamps, cursors, free text) or state "none"');
+
+  // Cross-artifact: the spec names every operation (it points to the contract instead of restating it, but it must point).
+  const unnamed = (ctx.ops || []).map(o => o.operationId).filter(id => !all.includes(id));
+  if (unnamed.length) r.warn(`spec never names operation(s) ${unnamed.slice(0, 8).join(', ')}${unnamed.length > 8 ? ', …' : ''} (§5 lists every operation by operationId and points to the contract)`);
+
+  // Profile overrides: SPEC §11 rows and manifest.profileOverrides carry the same rule ids.
+  const overrides = (ctx.manifest && ctx.manifest.profileOverrides) || [];
+  const sec11 = specSection(all, 11) || '';
+  const specRules = new Set([...sec11.matchAll(/^\|\s*`?([A-Z]+-\d+)`?\s*\|/gm)].map(m => m[1]));
+  for (const o of overrides) if (!specRules.has(o.rule) && !sec11.includes(o.rule)) r.error(`profile override ${o.rule} is in manifest.profileOverrides but not in SPEC §11 (both must list it, same rule id)`);
+  for (const rule of specRules) if (!overrides.some(o => o.rule === rule)) r.error(`profile override ${rule} is in SPEC §11 but not in manifest.profileOverrides`);
+
+  // UI: DESIGN.md components (kebab-case) ↔ SPEC §14 Component Hierarchy (PascalCase). Warnings: the extraction is heuristic.
+  if (ctx.typeDef && ctx.typeDef.ui && exists(p.design)) {
+    const design = readText(p.design);
+    const designKeys = new Set();
+    for (const block of design.matchAll(/```ya?ml\s*\n([\s\S]*?)```/g)) {
+      try {
+        const doc = L.parseYaml(block[1]);
+        if (doc && L.isPlainObject(doc.components)) for (const k of Object.keys(doc.components)) designKeys.add(k);
+      } catch { /* a malformed block is reported by the design checklist, not here */ }
+    }
+    const sec14 = specSection(all, 14) || '';
+    const specComponents = new Set([...sec14.matchAll(/^\s*(?:[-*]|\d+\.)\s+`?([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)`?\b/gm)].map(m => m[1]));
+    if (designKeys.size && specComponents.size) {
+      const noDesign = [...specComponents].filter(c => !designKeys.has(kebab(c)));
+      const noSpec = [...designKeys].filter(k => ![...specComponents].some(c => kebab(c) === k));
+      if (noDesign.length) r.warn(`SPEC §14 component(s) without a DESIGN.md components entry: ${noDesign.join(', ')} (kebab-case key = data-testid)`);
+      if (noSpec.length) r.warn(`DESIGN.md component(s) not in SPEC §14 Component Hierarchy: ${noSpec.join(', ')} (layout-only containers: justify in DESIGN.md)`);
+    }
+  }
 }
 
 const CONTRACT_CHECKS = {
@@ -303,7 +405,7 @@ function checkFixtures(p, ctx, r) {
   const needsCases = interfaces.some(i => i !== 'browser');
   if (!cases.length && needsCases) r.error('no oracle cases found in specs/fixtures/cases/');
 
-  const invariants = L.parseInvariants(readText(p.spec));
+  const invariants = L.parseInvariants(ctx.specText !== undefined ? ctx.specText : L.specText(p.root));
   const items = new Map();
   for (const op of ctx.ops) for (const st of op.statuses) if (st !== 'default') items.set(`op:${op.operationId}:${st}`, false);
   for (const id of ctx.transitions.keys()) items.set(`transition:${id}`, false);
@@ -440,11 +542,21 @@ function checkFixtures(p, ctx, r) {
     }
   }
 
+  // Exemptions: exact item keys or `*` wildcards; a value is a justification string, or { class } naming a
+  // manifest.coverageExemptClasses entry so related exemptions are reviewed as one class, not as free text.
   const exempt = (ctx.manifest && ctx.manifest.coverageExempt) || {};
-  for (const k of Object.keys(exempt)) {
-    if (!items.has(k)) r.warn(`manifest.coverageExempt lists "${k}", which is not a coverage item`);
-    else items.set(k, 'exempt');
+  const classes = (ctx.manifest && ctx.manifest.coverageExemptClasses) || {};
+  const perClass = new Map();
+  for (const [k, v] of Object.entries(exempt)) {
+    const cls = typeof v === 'object' && v ? v.class : null;
+    if (cls && !classes[cls]) r.error(`manifest.coverageExempt "${k}" cites class "${cls}", which is not in manifest.coverageExemptClasses`);
+    const re = new RegExp(`^${k.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
+    const hits = [...items.keys()].filter(i => re.test(i));
+    if (!hits.length) r.warn(`manifest.coverageExempt lists "${k}", which matches no coverage item`);
+    for (const i of hits) { items.set(i, 'exempt'); perClass.set(cls || '(uncategorized)', (perClass.get(cls || '(uncategorized)') || 0) + 1); }
   }
+  for (const cls of Object.keys(classes)) if (!perClass.has(cls)) r.warn(`manifest.coverageExemptClasses "${cls}" is used by no exemption`);
+  if (perClass.size) r.note(`coverage exemptions: ${[...perClass.entries()].map(([c, n]) => `${c} ${n}`).join(' · ')}`);
   const kinds = ['op', 'transition', 'illegal', 'inv', 'error', 'cmd'];
   const summary = kinds.map(k => {
     const all = [...items.entries()].filter(([i]) => i.startsWith(`${k}:`));
@@ -923,7 +1035,7 @@ function exitGates(stage, p, state, info, opts = {}) {
       add(fileGate(p, 'specs/SPEC.md'));
       add(fileGate(p, 'specs/DECISION_LOG.md'));
       if (info.ui) add(fileGate(p, 'specs/DESIGN.md', 'UI project'));
-      const spec = readText(p.spec);
+      const spec = L.specText(p.root);
       const placeholders = (spec.match(/\b(TBD|TODO|FIXME)\b/g) || []).length;
       add([!placeholders, placeholders ? `SPEC.md contains ${placeholders} TBD/TODO/FIXME placeholder(s)` : 'SPEC.md has no placeholders']);
       break;
@@ -1086,6 +1198,23 @@ const STAGES_03P = '03p_prototype';
 // Where the pipeline may continue after Stage 00 (00_backprop/CONTEXT.md §Handoff). The prototype and wireframes are reworked via 02.
 const RESUME_TARGETS = ['01', '01b', '02', '04', '05'];
 const PRE_FREEZE_ROUTE = `not a Class 2 change — edit the spec in the current stage and add (or close) a ${GAPS_FILE} row instead of running Stage 00`;
+
+/** Counts recorded with every transition (never a score): swarm rounds, gap register, rulings, declared outcomes, oracle cases. */
+function stageMetrics(p) {
+  const m = { swarmRounds: swarmRounds(p) };
+  const gaps = readGaps(p).rows;
+  if (gaps) { m.gapsOpen = gaps.filter(g => g.status === 'open').length; m.gapsDeferred = gaps.filter(g => g.status === 'deferred').length; m.gapsTotal = gaps.length; }
+  const rulings = exists(path.join(p.root, RULINGS_FILE)) ? ledgerRows(readText(path.join(p.root, RULINGS_FILE)), ['id', 'ruling', 'status']) : null;
+  if (rulings) m.rulings = rulings.length;
+  try {
+    if (exists(p.manifest)) {
+      const { r, ctx } = runCheck(p, { contractsOnly: true });
+      if (!r.errors.length) m.declaredOutcomes = declaredOutcomes(ctx).length;
+    }
+    if (exists(p.cases)) { const cs = L.loadCases(p).cases; m.cases = cs.length; m.probes = cs.filter(c => c.probe).length; }
+  } catch { /* metrics never block a transition */ }
+  return m;
+}
 
 function printGates(title, gates) {
   console.log(title);
@@ -1285,6 +1414,7 @@ function cmdTransition(p, args) {
   const record = { ts: now, completed: L.STAGES[stage].name, resume: resume ? L.STAGES[resume].name : null, lastCompletedStep: last, lockHash: v && v.valid ? v.lock.hash : null, note };
   if (stage === '03p') record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
   if (stage === '07') record.release = release;
+  record.metrics = stageMetrics(p); // where the time went: rounds, gaps, outcomes, cases per stage, comparable across projects
   // These open a new iteration: Stage 02's round cap counts swarm-log headings from here (swarmRounds).
   if (['00', '01', '01b'].includes(stage)) record.swarmHeadings = swarmHeadings(p);
   fs.appendFileSync(p.transitions, JSON.stringify(record) + '\n');

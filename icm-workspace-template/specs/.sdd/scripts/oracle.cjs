@@ -720,8 +720,22 @@ function isUnspecified(v) {
 }
 
 /** Canonical form for comparing predictions: {"$eq": x} is just x; header names are case-insensitive. */
+/** A regex that can only match one exact string (anchored, no metacharacters) is that literal in disguise. */
+function literalOfRegex(src) {
+  const m = String(src).match(/^\^((?:[^\\.*+?()[\]{}|$^]|\\[.*+?()[\]{}|$^\\\/-])*)\$$/);
+  return m ? m[1].replace(/\\(.)/g, '$1') : null;
+}
+
+/**
+ * Notational differences between two authors are not disagreements: `{"$eq": x}` is x, an anchored literal
+ * regex is its literal, and the order of `$oneOf` alternatives does not matter.
+ */
 function normalizePrediction(v, key) {
   if (L.isMatcher(v) && Object.keys(v).length === 1 && '$eq' in v) return normalizePrediction(v.$eq);
+  if (L.isMatcher(v) && Object.keys(v).length === 1 && typeof v.$regex === 'string' && literalOfRegex(v.$regex) !== null) return literalOfRegex(v.$regex);
+  if (L.isMatcher(v) && Object.keys(v).length === 1 && Array.isArray(v.$oneOf)) {
+    return { $oneOf: [...v.$oneOf].map(x => normalizePrediction(x)).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) };
+  }
   if (Array.isArray(v)) return v.map(x => normalizePrediction(x));
   if (L.isPlainObject(v) && !L.isMatcher(v) && !isUnspecified(v)) {
     const o = {};

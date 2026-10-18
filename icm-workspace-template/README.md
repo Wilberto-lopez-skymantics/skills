@@ -1,6 +1,6 @@
 # SDD ICM Workspace Template
 
-> **Release Version:** `2026.10.18-v3.1-prototype-first` (Updated October 18, 2026)
+> **Release Version:** `2026.10.18-v3.2-prototype-first` (Updated October 18, 2026)
 
 A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure and a small set of zero-dependency tools, so that independent coding agents built from the same spec produce **observationally equivalent** systems — and so that claim can be checked.
 
@@ -90,7 +90,7 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 | Command | Purpose |
 |---|---|
 | `sdd.cjs status` | Current stage, lock state, latest evidence, and the next stage's exit gates |
-| `sdd.cjs check [--contracts]` | Validate manifest, contracts, oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code) and phase binding |
+| `sdd.cjs check [--contracts]` | Validate manifest, contracts, the spec's structure (required sections, placeholders, hedged numbers, §11 ↔ manifest overrides, every operation named, UI components ↔ DESIGN.md, module links, size), oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code; exemptions by class) and phase binding |
 | `sdd.cjs readiness` | Report only (exit 0): slice size vs cap, gaps by kind (open and deferred), swarm rounds, coverage, latest diff-expect, failing gates for 02/03p/03/04 |
 | `sdd.cjs freeze --reason R --approved-by U` | Lock the frozen set (refused unless `check` passes) |
 | `sdd.cjs verify` | Exit 1 if any frozen file changed since the last freeze |
@@ -104,6 +104,7 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 | `oracle.cjs strip-expect --from A --out DIR` | Request-only skeletons with neutral titles for an independent second author |
 | `oracle.cjs env` | Print the frozen build environment every graded build is started with |
 | `oracle.cjs record --target T --out F` | Fill expectations from observed behavior: characterize an existing system (Stage 01b) or record interpretation A from the accepted prototype (Stage 04) |
+| `ui-capture.cjs --url U --name N [--aria]` | Capture one rendered screen state of the prototype as a static wireframe (styles inlined, scripts stripped, test ids kept; Stage 03, needs Playwright) |
 | `start-server.sh` / `stop-server.sh` | Visual Companion for brainstorming and live wireframes |
 
 ## Why ICM?
@@ -206,6 +207,7 @@ After running the pipeline, a project also has:
 ```
 specs/
 ├── SPEC.md                    ← hardened spec (spec-template.md structure)      [frozen]
+├── spec/<module>.md           ← optional spec modules, each linked from SPEC.md [frozen]
 ├── DESIGN.md                  ← design tokens (UI)                               [frozen]
 ├── contracts/                 ← manifest.json, openapi.yaml, schema.sql, statecharts.json, errors.json, …   [frozen]
 ├── fixtures/                  ← oracle.config.json, cases/*.json, seed/, ui/*.spec.ts   [frozen]
@@ -218,7 +220,7 @@ specs/
 └── .sdd/_config/sdd-state.json ← pipeline pointer (written by `sdd.cjs transition`)
 ```
 
-`sdd-state.json` keeps the five fields the SDD VS Code extension reads (`lastCompletedStep`, `stepName`, `projectType`, `timestamp`, `notes`); everything else lives in the lock and logs. 03p and 03 share step 3 (`stepName` and `specs/logs/transitions.jsonl` tell them apart; the user's prototype acceptance is recorded there too). A tool that advances the state directly (like the extension's advance action) bypasses the exit gates — prefer `sdd.cjs transition`.
+`sdd-state.json` is a small pointer (`lastCompletedStep`, `stepName`, `projectType`, `timestamp`, `notes`); everything else lives in the lock and logs. 03p and 03 share step 3 (`stepName` and `specs/logs/transitions.jsonl` tell them apart; the user's prototype acceptance and per-stage metrics are recorded there too). Only `sdd.cjs transition` writes the state, so the exit gates are never bypassed.
 
 ### Tests
 
@@ -240,17 +242,20 @@ v3 challenges several v2 decisions that worked against the equivalence goal:
 | Error envelope labelled RFC 9457 but non-compliant; three codes for OCC conflicts | RFC 9457 problem details; one canonical code table | A self-contradictory standard forks builders |
 | Pinned directory layout and dependencies | Pinned *observable* environment; internals free | Layout is not observable; DB collation is |
 
-## Relationship to SDD Skills
+## Operating playbook
 
-This template implements the same pipeline as the [SDD skills](../README.md), delivered as files instead of global configuration.
+What experience with real projects says about running the pipeline well:
 
-| | Skills (Option A) | ICM Template (Option B) |
-|---|---|---|
-| **Requires** | Global agent config | Node.js ≥ 18; copy files |
-| **Orchestration** | Skill orchestrator invokes sub-skills | Agent reads CONTEXT.md; `sdd.cjs` enforces gates |
-| **Best for** | Consistent personal workflow | Portable projects, cross-team sharing, equivalence certification |
+- **Slice small.** A first slice of 30–80 declared outcomes reaches a running prototype in one Stage 02 round. The cap of 150 is a ceiling, not a target; `sdd.cjs readiness` shows the count.
+- **Five user touchpoints per slice**, and only those: the Stage 01 interview (one question per message), the policy questions batched at the end of Red Team round 1, the Stage 03p demos ending in `--approved-by`, the Stage 04 freeze approval, and the Stage 07 report. Everything else runs without the user.
+- **Spend model strength where judgment is needed**: the Red Team critics, the spec-only predictor B (Stages 03p and 04) and the Stage 05 Decision Inventory. Generation (contract drafts, prototype code, build A phases) tolerates cheaper models. Build B should use a different model family than build A when available: two readings of the spec from the same model share its biases.
+- **Budget by stage, in counts.** Every transition records `metrics` in `specs/logs/transitions.jsonl` (rounds, gaps, rulings, outcomes, cases); compare them across projects to see where time goes before changing the pipeline.
+- **Keep the spec readable in one pass.** `check` warns above 120 KB per file; split into `specs/spec/<module>.md` with `SPEC.md` as the index (every module linked) before that, and keep tables in the contracts.
+- **Cadence is a decision.** Default is L2 on every slice. Teams shipping several slices before a release set `equivalenceCadence: "release"`, keep the lockstep build B green, and certify L2 once with `--release`. A pending slice is never called L2.
 
-**Source of truth (v3):** this template is ahead of the skills — the oracle, lock, Equivalence Profile and gated transitions exist only here. Two hand-maintained copies of one pipeline would give Option A and Option B users different pipelines, which is itself a source of non-equivalence, so the skills should be ported from this template. Until then `../scripts/validate-icm-sync.sh` reports drift by design.
+## Relationship to the SDD skills
+
+The template is the single source of the pipeline. The earlier global skills (`../brainstorming`, `../adversarial-swarm-analysis`, …) are not maintained against it: the oracle, lock, Equivalence Profile, prototype stage and gated transitions exist only here, and every project runs the workflow through these files. `../scripts/validate-icm-sync.sh` remains for anyone comparing the two.
 
 ## Version
 

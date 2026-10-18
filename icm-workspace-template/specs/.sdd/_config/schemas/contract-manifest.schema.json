@@ -3,40 +3,88 @@
   "title": "SDD contract manifest (specs/contracts/manifest.json)",
   "description": "Declares the project type, the observable interfaces, which machine contracts exist, and every deliberate deviation from the Equivalence Profile.",
   "type": "object",
-  "required": ["projectType", "interfaces", "artifacts", "equivalenceTarget"],
+  "required": [
+    "projectType",
+    "interfaces",
+    "artifacts",
+    "equivalenceTarget"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "projectType": { "enum": ["backend-service", "fullstack-app", "client-side-app", "game", "cli-tool", "library"] },
+    "$schema": {
+      "type": "string"
+    },
+    "projectType": {
+      "enum": [
+        "backend-service",
+        "fullstack-app",
+        "client-side-app",
+        "game",
+        "cli-tool",
+        "library"
+      ]
+    },
     "interfaces": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "enum": ["http", "cli", "browser", "library"] }
+      "items": {
+        "enum": [
+          "http",
+          "cli",
+          "browser",
+          "library"
+        ]
+      }
     },
     "artifacts": {
       "description": "Artifact key (see contract-matrix.json) -> file name inside specs/contracts/.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "openapi": { "type": "string", "pattern": "^openapi\\.(ya?ml|json)$" },
-        "errors": { "const": "errors.json" },
-        "statecharts": { "const": "statecharts.json" },
-        "schema": { "type": "string", "pattern": "^schema\\.(sql|prisma)$" },
-        "storage": { "const": "storage.schema.json" },
-        "levels": { "const": "levels.schema.json" },
-        "cli": { "const": "cli.json" },
-        "api": { "type": "string", "pattern": "^api\\.(d\\.ts|pyi|json)$" }
+        "openapi": {
+          "type": "string",
+          "pattern": "^openapi\\.(ya?ml|json)$"
+        },
+        "errors": {
+          "const": "errors.json"
+        },
+        "statecharts": {
+          "const": "statecharts.json"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^schema\\.(sql|prisma)$"
+        },
+        "storage": {
+          "const": "storage.schema.json"
+        },
+        "levels": {
+          "const": "levels.schema.json"
+        },
+        "cli": {
+          "const": "cli.json"
+        },
+        "api": {
+          "type": "string",
+          "pattern": "^api\\.(d\\.ts|pyi|json)$"
+        }
       }
     },
     "notApplicable": {
       "description": "Conditional artifact key -> justification for omitting it.",
       "type": "object",
-      "additionalProperties": { "type": "string", "minLength": 20 }
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 20
+      }
     },
     "equivalenceTarget": {
       "description": "1 = oracle-conformant (oracle 100% green). 2 = equivalence-verified (also requires a zero-divergence `oracle.cjs diff` / `diff-ui` between two independent builds). Lowering to 1 requires equivalenceTargetDecision.",
-      "enum": [1, 2]
+      "enum": [
+        1,
+        2
+      ]
     },
     "equivalenceTargetDecision": {
       "description": "DECISION_LOG id recording the user's decision to certify only L1 (required when equivalenceTarget is 1).",
@@ -45,7 +93,10 @@
     },
     "equivalenceCadence": {
       "description": "When L2 (dual build + zero-divergence diff) is required for an equivalenceTarget of 2. \"iteration\" (default): every slice. \"release\": intermediate slices certify L1 with an explicit \"L2 pending\" row in EQUIVALENCE_REPORT.md; L2 is certified with `transition --completed 07 --release` before a release. Never claim L2 for a pending slice.",
-      "enum": ["iteration", "release"]
+      "enum": [
+        "iteration",
+        "release"
+      ]
     },
     "sliceCap": {
       "description": "Maximum declared outcomes (operation statuses + CLI exit codes) this slice adds — those not recorded in the last spec.lock.json; default 150. Larger scope is split into slices, each running 02 → 07. Raising it requires sliceCapDecision.",
@@ -62,20 +113,66 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["rule", "override", "decision"],
+        "required": [
+          "rule",
+          "override",
+          "decision"
+        ],
         "additionalProperties": false,
         "properties": {
-          "rule": { "type": "string", "pattern": "^[A-Z]+-[0-9]+$" },
-          "override": { "type": "string", "minLength": 10 },
-          "decision": { "type": "string", "pattern": "^DEC[0-9]+$" }
+          "rule": {
+            "type": "string",
+            "pattern": "^[A-Z]+-[0-9]+$"
+          },
+          "override": {
+            "type": "string",
+            "minLength": 10
+          },
+          "decision": {
+            "type": "string",
+            "pattern": "^DEC[0-9]+$"
+          }
         }
       }
     },
     "coverageExempt": {
-      "description": "Coverage item (e.g. error:INTERNAL_ERROR, op:getHealth:503) -> why it cannot be exercised black-box.",
+      "description": "Coverage item (e.g. error:INTERNAL_ERROR, op:getHealth:503; `*` wildcards allowed) -> why it cannot be exercised black-box, or { class } naming a coverageExemptClasses entry that carries the justification.",
       "type": "object",
-      "propertyNames": { "pattern": "^(op|transition|illegal|inv|error|cmd):.+$" },
-      "additionalProperties": { "type": "string", "minLength": 20 }
+      "propertyNames": {
+        "pattern": "^(op|transition|illegal|inv|error|cmd):.+$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 20
+          },
+          {
+            "type": "object",
+            "required": [
+              "class"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "class": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "coverageExemptClasses": {
+      "description": "Named exemption classes (e.g. unreachable-5xx, fault-injection-only) -> one justification reviewed once for every coverageExempt item that cites the class.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 20
+      }
     }
   }
 }

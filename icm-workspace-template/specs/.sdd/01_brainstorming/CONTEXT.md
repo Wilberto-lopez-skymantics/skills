@@ -49,7 +49,7 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 
 **⛔ GATE:** DESIGN.md ⊥ be written until ∀ mandatory category ∈ Design Token Completeness Checklist has defined tokens. Agent ! generate best-practice defaults matching approved theme ∀ categories.
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
-9. **Spec Merge** — update `specs/SPEC.md` using the section structure of `../_config/spec-template.md`. Business invariants go in §8 as `- **Vn:**` bullets (fixtures cite them). §9 Equivalence Boundary records what the user accepts as free to vary.
+9. **Spec Merge** — update `specs/SPEC.md` using the section structure of `../_config/spec-template.md` (every `## N.` heading present; "N/A — <why>" is an acceptable body). Business invariants go in §8 as `- **Vn:**` bullets (fixtures cite them). §9 Equivalence Boundary records what the user accepts as free to vary. A spec that would exceed ~120 KB is split into `specs/spec/<module>.md` files, each linked from SPEC.md (`sdd.cjs check` enforces the links and warns on size).
 10. **User reviews spec** — ask user to review before proceeding
 11. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 01 --project-type <type>` (refuses while SPEC.md, DECISION_LOG.md, DESIGN.md (UI) are missing or SPEC.md has TBD/TODO placeholders).
 12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.

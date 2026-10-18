@@ -27,6 +27,9 @@
 ## 5. Operations
 All operations follow the Equivalence Profile; only deviations and domain rules are listed here. Every outcome → `openapi.yaml`.
 
+### 5.0 Service
+- `getHealth` — `GET /healthz`, no storage access, no input; `200 {"status":"ok"}`.
+
 ### 5.1 Notes collection
 - `createNote` — `POST /notes`, requires `Idempotency-Key`. Creates a draft with `version` 1; `created_at` = `updated_at` = creation time. Omitted `body` is stored as `""`.
 - `listNotes` — `GET /notes?limit&cursor&status`. Order `created_at DESC, id DESC` (PAGE-3). Optional `status` filter (`draft` | `published`).

@@ -464,7 +464,8 @@ function getPath(obj, expr) {
 // ========== Lock (frozen set) ==========
 
 const FROZEN_FILES = ['specs/SPEC.md', 'specs/DESIGN.md', 'specs/CODING_STANDARDS.md'];
-const FROZEN_DIRS = ['specs/contracts', 'specs/fixtures', 'specs/wireframes', 'specs/.sdd'];
+// specs/spec/ holds optional spec modules (SPEC.md stays the index and links each one).
+const FROZEN_DIRS = ['specs/spec', 'specs/contracts', 'specs/fixtures', 'specs/wireframes', 'specs/.sdd'];
 const FROZEN_EXCLUDE = new Set(['specs/.sdd/_config/sdd-state.json']);
 const IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'node_modules', '.git']);
 
@@ -487,6 +488,23 @@ function frozenFiles(root) {
   }
   for (const d of FROZEN_DIRS) walk(path.join(root, d), files);
   return files.map(f => rel(root, f)).filter(r => !FROZEN_EXCLUDE.has(r)).sort();
+}
+
+// ========== Spec text (SPEC.md + modules) ==========
+
+/** SPEC.md first, then every specs/spec/**\/*.md module, as project-relative paths. */
+function specFiles(root) {
+  const out = [];
+  if (fs.existsSync(path.join(root, 'specs/SPEC.md'))) out.push('specs/SPEC.md');
+  const mods = [];
+  walk(path.join(root, 'specs/spec'), mods);
+  for (const f of mods.map(f => rel(root, f)).filter(f => f.endsWith('.md')).sort()) out.push(f);
+  return out;
+}
+
+/** The whole spec as one text (modules appended to SPEC.md) — for invariants, placeholders, headings. */
+function specText(root) {
+  return specFiles(root).map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
 }
 
 function normalizeEol(buf) {
@@ -743,6 +761,7 @@ module.exports = {
   loadSchema,
   TYPE_PATTERNS,
   isPlainObject,
+  parseYaml,
   isMatcher,
   isVariableMatcher,
   lintMatchers,
@@ -757,6 +776,8 @@ module.exports = {
   getPath,
   listFiles,
   frozenFiles,
+  specFiles,
+  specText,
   currentLockState,
   manifestHash,
   verifyLock,

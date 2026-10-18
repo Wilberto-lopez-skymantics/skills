@@ -244,3 +244,83 @@ test('status: deferred gaps are shown as next-slice candidates', () => {
   p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Tags on notes | none (DEC001) | deferred |\n| G-002 | 03p | builder | Toast text | "Saved" | open |\n');
   assert.match(p.sdd('status').out, /gaps:\s+1 open in specs\/GAPS.md \(0 policy, need the user\), 1 deferred \(next-slice candidates\)/);
 });
+
+// ---------- Spec text checks (the mechanical half of the former self-review), modules, exemption classes ----------
+
+test('check: spec modules under specs/spec/ are frozen, must be linked from SPEC.md, and contribute invariants', () => {
+  const p = project({ example: true });
+  fs.mkdirSync(p.at('specs/spec'), { recursive: true });
+  p.write('specs/spec/publishing.md', '# Publishing\n\n- **V9:** a published note is never edited.\n');
+  let out = p.sdd('check').out;
+  assert.match(out, /✗ specs\/spec\/publishing.md is not linked from specs\/SPEC.md/);
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md') + '\n## Modules\n- [Publishing](spec/publishing.md)\n');
+  out = p.sdd('check').out;
+  assert.doesNotMatch(out, /is not linked/);
+  assert.match(out, /spec: 2 file\(s\), \d+ KB \(1 module\(s\)/);
+  assert.match(out, /invariants in SPEC.md: 5/);
+  assert.match(out, /uncovered .*inv:V9/, 'a module invariant needs coverage like any other');
+  p.write('specs/spec/publishing.md', '# Publishing\n\nPublished notes are read-only (SPEC §5.2, V2).\n');
+  freeze(p);
+  assert.match(p.read('specs/spec.lock.json'), /specs\/spec\/publishing.md/, 'modules are part of the frozen set');
+});
+
+test('check: placeholders are errors, hedged parameters are warnings, missing sections are errors', () => {
+  const p = project({ example: true });
+  const spec = p.read('specs/SPEC.md');
+  p.write('specs/SPEC.md', spec.replace('## 13. Limits & Non-Functional', '## 13. Limits & Non-Functional\n- Retention: TBD\n- Cleanup runs periodically, approximately 5 minutes apart\n'));
+  const out = p.sdd('check', '--contracts').out;
+  assert.match(out, /✗ specs\/SPEC.md:\d+: placeholder "TBD"/);
+  assert.match(out, /⚠ 2 unquantified parameter\(s\)/);
+  assert.match(out, /interval not defined: "periodically"/);
+  p.write('specs/SPEC.md', spec.replace('## 12. Configuration', '## Configuration'));
+  assert.match(p.sdd('check', '--contracts').out, /✗ spec is missing section\(s\) §12/);
+});
+
+test('check: profile overrides must agree between SPEC §11 and the manifest', () => {
+  const p = project({ example: true });
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, profileOverrides: [{ rule: 'PAGE-1', override: 'default page size 50 instead of 20', decision: 'DEC006' }] }));
+  assert.match(p.sdd('check', '--contracts').out, /✗ profile override PAGE-1 is in manifest.profileOverrides but not in SPEC §11/);
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md').replace('## 11. Equivalence Profile Overrides\nNone.', '## 11. Equivalence Profile Overrides\n| Rule | Override | Decision |\n|---|---|---|\n| PAGE-1 | default 50 | DEC006 |\n| IDEM-2 | 48h window | DEC006 |'));
+  const out = p.sdd('check', '--contracts').out;
+  assert.doesNotMatch(out, /PAGE-1 is in manifest/);
+  assert.match(out, /✗ profile override IDEM-2 is in SPEC §11 but not in manifest.profileOverrides/);
+});
+
+test('check: coverage exemptions accept wildcards and reviewable classes', () => {
+  const p = project({ example: true });
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({
+    ...m,
+    coverageExempt: { 'error:INTERNAL_*': { class: 'fault-injection-only' }, 'op:getHealth:422': 'Health takes no input, so its 422 is declared only by the shared Problem response and cannot be triggered.' },
+    coverageExemptClasses: { 'fault-injection-only': 'Cannot be triggered black-box without fault injection, which the spec does not define.', 'unused-class': 'A class nothing cites, to check the warning text here.' },
+  }));
+  const out = p.sdd('check').out;
+  assert.match(out, /coverage exemptions: fault-injection-only 1 · \(uncategorized\) 1/);
+  assert.match(out, /⚠ manifest.coverageExemptClasses "unused-class" is used by no exemption/);
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, coverageExempt: { 'error:INTERNAL_ERROR': { class: 'nope' } } }));
+  assert.match(p.sdd('check').out, /✗ manifest.coverageExempt "error:INTERNAL_ERROR" cites class "nope", which is not in manifest.coverageExemptClasses/);
+});
+
+test('transition: every record carries stage metrics (counts, never a score)', () => {
+  const p = project({ example: true });
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Tags | later (DEC001) | deferred |\n');
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  assert.equal(p.sdd('transition', '--completed', '01').code, 0);
+  const rec = JSON.parse(p.read('specs/logs/transitions.jsonl').trim().split('\n').pop());
+  assert.deepEqual(rec.metrics, { swarmRounds: 0, gapsOpen: 0, gapsDeferred: 1, gapsTotal: 1, rulings: 6, declaredOutcomes: 30, cases: 155, probes: 100 });
+});
+
+test('diff-expect: notational differences are not gaps (anchored literal regex, $eq, $oneOf order)', () => {
+  const p = project({ example: true });
+  const ORACLE = path.join(TEMPLATE, 'specs/.sdd/scripts/oracle.cjs');
+  const mk = (expectBody) => ({ suite: 'interp', cases: [{ id: 'X-001', title: 'Predict: GET /notes', phase: 1, derivedFrom: ['SPEC §5.1'], steps: [{ http: { method: 'GET', path: '/notes' }, expect: { status: 200, body: expectBody } }] }] });
+  fs.mkdirSync(p.at('a')); fs.mkdirSync(p.at('b'));
+  p.write('a/c.json', JSON.stringify(mk({ status: 'draft', kind: { $oneOf: ['a', 'b'] }, etag: '"v1"', n: 1 })));
+  p.write('b/c.json', JSON.stringify(mk({ status: { $regex: '^draft$' }, kind: { $oneOf: ['b', 'a'] }, etag: { $eq: '"v1"' }, n: 2 })));
+  const r = spawnSync(process.execPath, [ORACLE, 'diff-expect', '--a', p.at('a'), '--b', p.at('b'), '--label', 't', '--root', p.root], { encoding: 'utf8' });
+  const out = r.stdout + r.stderr;
+  assert.match(out, /1 case\(s\) compared: 1 with gaps, 1 gap\(s\)/, out);
+  assert.match(out, /steps\[0\]\.expect\.body\.n: different values/);
+  assert.doesNotMatch(out, /body\.status|body\.kind|body\.etag/);
+});

@@ -1,6 +1,6 @@
 # Future Work — SDD v3 ICM Workspace Template
 
-Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.18-v3.1-prototype-first`).
+Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.18-v3.2-prototype-first`).
 Every item must preserve the core goal: two builders given only the frozen set produce systems the oracle cannot tell apart (L2).
 
 Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first: bounded adversarial pass before building).
@@ -29,52 +29,37 @@ Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first:
 | Reference material | `oracle-standard.md` §Prototype recording + `recorded:`-only gap; iteration-log rounds note; 05 CONTEXT no longer contradicts itself about `03p-decisions.md` | — |
 | B9 (tooling side) | `validate-icm-sync.sh` knows `03p_prototype` (reports SKIP until a skill exists) | — |
 
+## Done in v3.2 (2026-10-18, same branch)
+
+| Item | What changed | Tests |
+|---|---|---|
+| C2 — self-review folded into `check` | `spec-self-review.md` deleted. Mechanical checks now in `sdd.cjs check`: required `## N.` sections, placeholders (error), hedged numbers (warning with file:line), §11 overrides ↔ manifest, every operation named in the spec, UI components ↔ DESIGN.md keys, module links, size. Judgment checks are the Round 1 checklist in the 02 contract | `check: placeholders…`, `check: profile overrides…` |
+| B6 — modular spec | `specs/spec/**/*.md` is frozen, must be linked from SPEC.md, contributes invariants and sections; size warning per file | `check: spec modules…` |
+| B5 — context diet | 02 → 9.9 KB, 04 → 9.7 KB, 05 → 8.7 KB (from 13–14 KB); references anchored to the sections a stage needs | — |
+| B4 — playbook | README §Operating playbook (slice size, five touchpoints, model strength, metrics, modules, cadence) | — |
+| Stage 03 capture tool | `scripts/ui-capture.cjs`: same capture for every agent (styles inlined, scripts stripped, media → placeholders, form state frozen, test ids kept, optional ARIA snapshot) | — (needs Playwright) |
+| D — coverage-exemption classes | `coverageExempt` keys accept `*`; values may cite `coverageExemptClasses`; `check` reports per class | `check: coverage exemptions…` |
+| D — per-stage metrics | every transition record carries `metrics` (rounds, gaps, rulings, outcomes, cases, probes) | `transition: every record carries stage metrics` |
+| D — notational matcher equality | `diff-expect` treats `{"$eq":x}`, an anchored literal `$regex`, and `$oneOf` order as the same prediction | `diff-expect: notational differences…` |
+| Dropped by decision (2026-10-18) | VS Code extension items (B9, readiness panel) and global-skills sync (B8): the workflow is used through the template only | — |
+
 ## Open
 
-### B4. Playbook in the README (rest)
-- Five user touchpoints (01 interview, end of round 1, 03p demos + acceptance, 04 freeze, 07 report); strong models for critic / predictor B, cheaper for generation; different model family for build B; per-stage token budget.
-- **Effort:** S · **Guarantee impact:** none
-
-### B5. Context diet for stage contracts
-- Measured before v3.1: 02 = 13.6 KB, 05 = 13.2 KB, 04 = 12.9 KB; each also loads `systems-standards.md` (17.7 KB) and/or `oracle-standard.md` (17 KB) whole. The templates (B2) moved formats out of 02/03p; section-anchored references ("read §PAGE, §ERR only") and duplicate rule blocks remain. Target ≤ 8 KB per CONTEXT.
-- **Effort:** M · **Guarantee impact:** none (verify with the test suite + a dry run)
-
-### B6. Modular spec (long term)
-- `specs/spec/<module>.md` with SPEC.md as index; frozen-set globs and `export` updated. The size warning is the short-term guard.
-- **Effort:** L · **Guarantee impact:** strengthens
-
-### B8. Single source for the global skills
-- The skills (`../brainstorming`, `../adversarial-swarm-analysis`, …) are a stage behind the template and have no `sdd-prototype`. Generate skill text from the template stage files, or make skills thin pointers to them. CI runs `validate-icm-sync.sh` as report-only until then.
-- **Effort:** M · **Guarantee impact:** strengthens
-
-### B9. VS Code extension awareness of 03p (extension repo)
-- 03p and 03 share `lastCompletedStep = 3`; the extension's "advance" can skip 03p without gates. Teach it `03p_prototype` (display + advance order 02 → 03p → 03 → 04), or disable advance past 2 unless `stepName` is `03p_prototype` / `03_interactive_wireframing`.
-- **Effort:** M · **Guarantee impact:** none
-
-### C2. Fold `spec-self-review.md` into `check` + the round 1 checklist
-- Move mechanical checks (placeholders, token completeness, cross-artifact names) into `sdd.cjs check` as errors; put the judgment checks into the round 1 critic brief; delete the separate pass.
-- **Effort:** M · **Guarantee impact:** strengthens
+### `oracle.cjs gen-profile-cases` built in
+- Projects write a local `specs/changes/oracle/tools/gen-profile.cjs`; Zenith hand-authored ~676 profile-generic rows. A built-in generator derives the mandatory profile families (IDEM, OCC, PAGE, validation order, precedence, round-trips) from `openapi.yaml` + the profile rules. Needs a bounded design pass: which families generalize across contracts, how a project excludes one.
+- **Effort:** M · **Guarantee impact:** strengthens (fewer hand-written generic cases)
 
 ### C6. State model: stop overloading `lastCompletedStep`
-- v3.1 reads `transitions.jsonl` (`iterationStages`) where `stepName` is not enough. A string `stage` field as the source of truth would remove the heuristics; keep the integer for the extension.
+- v3.1 reads `transitions.jsonl` (`iterationStages`) where `stepName` is not enough. A string `stage` field as the source of truth would remove the remaining heuristics. Low value now that nothing external reads the integer.
 - **Effort:** M · **Guarantee impact:** none
 
-### Stage 03 capture tooling
-- The wireframe capture (rendered HTML + inlined styles, scripts stripped, test ids kept) is described in prose. A `ui-capture.cjs` next to `ui-observe.cjs` would make captures identical across agents.
-- **Effort:** M · **Guarantee impact:** strengthens
+### Promote Zenith's author-harness tools
+- Reuse the request-skeleton and recording helpers instead of per-project reinvention.
+- **Effort:** M
 
----
-
-## D. Tooling backlog (phase 2)
-
-| Item | Why | Effort |
-|---|---|---|
-| `oracle.cjs gen-profile-cases` built in | Projects currently need a local `specs/changes/oracle/tools/gen-profile.cjs`; Zenith hand-authored ~676 profile-generic rows | M |
-| Semantic matcher equality in `diff-expect` | Many Zenith diff gaps were notational (equivalent matchers written differently) | M |
-| Coverage-exemption classes in the manifest | Zenith had 362 free-text exemptions; classes make them reviewable | S |
-| Promote Zenith's author-harness tools | Reuse instead of per-project reinvention | M |
-| Per-stage cost line in `transitions.jsonl` (rounds, cases, gaps) | See where time goes across projects | S |
-| `readiness` panel in the VS Code extension | Progress the user can see without a terminal | M |
+### Remaining hedge heuristics
+- `check` flags approximate numbers, examples standing for values, undefined intervals and adjective parameters. "based on" without a formula and config files named without a schema are still the Quantifier's job.
+- **Effort:** S
 
 ## E. Considered and kept
 
@@ -84,7 +69,6 @@ Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first:
 
 ## Suggested order
 
-1. B5 and the rest of B4 (cheap, pure ergonomics).
-2. C2 and the Stage 03 capture tool (both turn prose rules into machine checks).
-3. B6 (modular spec) and C6 after a bounded adversarial pass.
-4. B8, B9 and section D as separate work.
+1. `gen-profile-cases` after a bounded design pass (largest remaining token saving in Stage 04).
+2. Remaining hedge heuristics and the Zenith harness tools.
+3. C6 only if the stepName heuristics cause a defect.
