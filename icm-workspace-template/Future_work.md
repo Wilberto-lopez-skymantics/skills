@@ -1,6 +1,6 @@
 # Future Work — SDD v3 ICM Workspace Template
 
-Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.18-v3.2-prototype-first`).
+Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.18-v3.3-prototype-first`).
 Every item must preserve the core goal: two builders given only the frozen set produce systems the oracle cannot tell apart (L2).
 
 Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first: bounded adversarial pass before building).
@@ -43,7 +43,22 @@ Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first:
 | D — notational matcher equality | `diff-expect` treats `{"$eq":x}`, an anchored literal `$regex`, and `$oneOf` order as the same prediction | `diff-expect: notational differences…` |
 | Dropped by decision (2026-10-18) | VS Code extension items (B9, readiness panel) and global-skills sync (B8): the workflow is used through the template only | — |
 
+## Done in v3.3 (2026-10-18, same branch) — time to first prototype
+
+| Item | What changed | Tests |
+|---|---|---|
+| Stage 01 gate: zero *unrecorded* gaps | Core-flow questions answered; every other gap a `GAPS.md` row with a provisional assumption the prototype builds. `extraction-closure.md` and 01 CONTEXT updated; 01 gate requires `specs/logs/01-interview.md` (one row per question) and a well-formed GAPS.md with open rows allowed | `01: open policy gaps are allowed…` |
+| Stage 02 = contract compilation only | No Red Team before the prototype; all rounds (1 full, 2–3 delta) run in 03p via `_config/references/red-team.md`. 02 gate: check + slice cap + Outcome Table | `02: contracts + Outcome Table only…` |
+| Versioned demos | `03p-prototype.md` Versions table (gate requires ≥ 1 row); 03p gate requires ≥ 1 round and a fresh rulings ledger | `03p: acceptance…` |
+| `readiness` as the user's map | Budgets vs actuals, open policy questions verbatim with provisional answers, path to a frozen spec in plain words, the user's next action; 01 gates included | `readiness: budgets…` |
+| Budgets | `manifest.budgets` (interviewQuestions 20, prototypeVersions 3, swarmRounds 3); shown, never blocking; metrics record interview questions and prototype versions | metrics test |
+
 ## Open
+
+### Pilot run (measure before trusting)
+- Run one notes-service-sized slice end to end and read `metrics` in `transitions.jsonl` per stage. Every v3.1–v3.3 change is reasoned from the documents; the pilot gives the first wall-clock and token numbers. Adjust the default budgets from it.
+- **Effort:** one session · **Guarantee impact:** none
+
 
 ### `oracle.cjs gen-profile-cases` built in
 - Projects write a local `specs/changes/oracle/tools/gen-profile.cjs`; Zenith hand-authored ~676 profile-generic rows. A built-in generator derives the mandatory profile families (IDEM, OCC, PAGE, validation order, precedence, round-trips) from `openapi.yaml` + the profile rules. Needs a bounded design pass: which families generalize across contracts, how a project excludes one.

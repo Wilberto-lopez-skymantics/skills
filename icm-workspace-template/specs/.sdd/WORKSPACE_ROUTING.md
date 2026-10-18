@@ -1,5 +1,5 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.18-v3.2-prototype-first -->
+<!-- version: 2026.10.18-v3.3-prototype-first -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 
 # Spec-Driven Development (SDD v3) Workspace
@@ -22,9 +22,9 @@
 
 **Reference example:** `specs/.sdd/_config/examples/notes-service/` — a complete, validated frozen spec set. Imitate its precision, not its domain.
 
-**See it first, then harden it.** Stage 01 scopes a bounded slice; Stage 02 writes the contracts and runs one Red Team round; Stage 03p builds a working prototype of that slice for the user, then runs hardening rounds 2–3 against the running prototype and ends on the user's acceptance (`--approved-by`). UI projects capture their wireframes from the accepted prototype (Stage 03). `sdd.cjs readiness` reports, in counts, how far the slice is from a freezable spec (open gaps, coverage, latest diff-expect, failing gates).
+**See it first, then harden it.** Stage 01 scopes a bounded slice within an interview budget and ends on zero *unrecorded* gaps (core flow answered; other questions are `GAPS.md` rows with provisional assumptions); Stage 02 compiles the contracts (agent-only); Stage 03p shows the user numbered prototype versions, takes their policy answers at the demos, runs every Red Team round against the running prototype, and ends on the user's acceptance (`--approved-by`). UI projects capture their wireframes from the accepted prototype (Stage 03). `sdd.cjs readiness` is the user's map: budgets vs actuals, their open questions verbatim, the path to a frozen spec, their next action.
 
-**Diff early, not only at the end.** Divergence is measured at every stage, cheapest first: Stage 01 dual interpretation of scenarios (once per slice + high-risk topics) → Stage 02 fork-only findings on contracts → Stage 03p prototype Decision Inventory (uncited decisions → `GAPS.md`), executed Fork Tests against the prototype, sampled `diff-expect` by spec-only authors → Stage 04 two-interpretation oracle (A recorded from the prototype, B predicted from the spec alone) + generated probes → Stage 05 builder decision inventory and lockstep build B with per-phase `diff` → Stage 07 full dual-build `diff` (the evidence; per slice, or per release with `manifest.equivalenceCadence: "release"`).
+**Diff early, not only at the end.** Divergence is measured at every stage, cheapest first: Stage 01 dual interpretation of scenarios (once per slice + high-risk topics) → Stage 02 `check --contracts` → Stage 03p prototype Decision Inventory (uncited decisions → `GAPS.md`), Red Team rounds with executed Fork Tests against the prototype, sampled `diff-expect` by spec-only authors → Stage 04 two-interpretation oracle (A recorded from the prototype, B predicted from the spec alone) + generated probes → Stage 05 builder decision inventory and lockstep build B with per-phase `diff` → Stage 07 full dual-build `diff` (the evidence; per slice, or per release with `manifest.equivalenceCadence: "release"`).
 
 ## Entry Protocol (∀ requests, before anything else)
 
@@ -63,10 +63,10 @@ After the freeze, a frozen file changes through exactly two doors, both ending i
 Map the request to a stage and **read its `CONTEXT.md` before doing anything else.**
 
 0. **`specs/.sdd/00_backprop/CONTEXT.md`**: Defect backpropagation. Classify the root cause, write a Spec Change Request, get user approval, patch spec + contracts + oracle, re-freeze. Never writes implementation code.
-1. **`specs/.sdd/01_brainstorming/CONTEXT.md`**: Socratic dialogue with a real-time **Shadow Critic**. Scopes a bounded slice; ends when the 4 **Extraction Closure** dimensions pass with zero open domain gaps inside it.
+1. **`specs/.sdd/01_brainstorming/CONTEXT.md`**: Socratic dialogue with a real-time **Shadow Critic**, within an interview budget (`specs/logs/01-interview.md`). Scopes a bounded slice; ends when the 4 **Extraction Closure** dimensions pass with zero *unrecorded* gaps: core flow answered, the rest in `GAPS.md` with provisional assumptions for the prototype.
 1b. **`specs/.sdd/01b_adoption/CONTEXT.md`**: Bring an existing codebase under SDD: reverse-engineer spec and contracts, record a characterization oracle.
-2. **`specs/.sdd/02_adversarial_swarm_analysis/CONTEXT.md`**: **Machine contract synthesis** (`specs/contracts/`), validated by `sdd.cjs check --contracts`, plus Red Team **round 1** over the whole slice. Fork-only blocking findings, rulings ledger.
-3p. **`specs/.sdd/03p_prototype/CONTEXT.md`**: Working **prototype** of the slice for the user (every project type, right after 02); every uncited decision → `GAPS.md`; feedback edits the spec in the same step; hardening **rounds 2–3** run against the running prototype (cap 3 per iteration); sampled `diff-expect`; ends on the user's acceptance via `transition --completed 03p --approved-by`. The prototype becomes build A.
+2. **`specs/.sdd/02_adversarial_swarm_analysis/CONTEXT.md`**: **Contract compilation** (`specs/contracts/` + Outcome Table), validated by `sdd.cjs check --contracts`. Agent-only; no Red Team here.
+3p. **`specs/.sdd/03p_prototype/CONTEXT.md`**: Working **prototype** of the slice for the user (every project type, right after 02), shown as numbered **versions**; the user answers the open policy gaps at the demos; every uncited decision → `GAPS.md`; feedback edits the spec in the same step; **all Red Team rounds** (1 full, 2–3 delta, cap 3; `_config/references/red-team.md`) run against the running prototype; sampled `diff-expect`; ends on the user's acceptance via `transition --completed 03p --approved-by`. The prototype becomes build A.
 3. **`specs/.sdd/03_interactive_wireframing/CONTEXT.md`**: UI projects, after 03p — the frozen HTML wireframes are **captured from the accepted prototype's screens** (test ids, copy, tokens, states verified), reviewed by the user.
 4. **`specs/.sdd/04_writing_implementation_phases/CONTEXT.md`**: **Oracle synthesis** (`specs/fixtures/`) from two interpretations, phase breakdown, coverage check, zero open gaps, user-approved **freeze**.
 5. **`specs/.sdd/05_development_swarm/CONTEXT.md`**: Spec-only build, per phase: Decision Inventory → build → `oracle.cjs run --phase N` until green → one Red Team pass for what the oracle cannot see. Build A continues the accepted prototype; build B starts from `sdd.cjs export`. Builders never modify the frozen set.

@@ -2,12 +2,14 @@
 
 # Stage 01: Brainstorming Ideas Into Designs
 
-Turn ideas → fully formed designs & specs through collaborative dialogue. Every business decision is made here, with the user, so no later stage — and no builder — ever has to make one.
+Turn ideas → a spec draft the prototype can be built from, through collaborative dialogue. Every business decision is made with the user — here, or at a prototype demo in Stage 03p when the question is easier to answer with the product on screen. No later stage and no builder ever makes one: an unanswered question is a `GAPS.md` row with a provisional assumption, never a guess.
+
+**Budget:** 20 questions per slice (`manifest.budgets.interviewQuestions`; `sdd.cjs readiness` shows the count). The interview ends when the slice's core flow is pinned and every other gap is recorded, not when every question is answered.
 
 ## Inputs
 - Layer 4 (working): User request or brief
 - Layer 3 (reference): `../_config/spec-template.md` + `../_config/examples/notes-service/` (a complete reference spec set — imitate its precision, not its domain)
-- Layer 3 (reference): `../_config/decision-log-template.md`
+- Layer 3 (reference): `../_config/decision-log-template.md`, `../_config/interview-template.md`, `../_config/gaps-template.md`
 - Layer 3 (reference): `../_config/design-template.md`
 - Layer 3 (reference): `../_config/references/systems-standards.md` (Equivalence Profile: plumbing already decided — ⊥ ask the user about it)
 - Layer 3 (reference): `../_config/references/completeness-checklist.md` (project types)
@@ -38,10 +40,10 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 1c. **Scope the slice** — agree with the user on the smallest slice that is worth seeing working (the 03p prototype builds exactly this). Estimate its observable outcomes (operations/commands × their success, error and transition outcomes); a first slice of 30–80 outcomes reaches a running prototype fastest, and the cap (default 150, `manifest.json#sliceCap`; raising it needs `sliceCapDecision` DECnnn — Stages 02 and 03p enforce) is a ceiling, not a target. ∀ feature outside the slice → `specs/GAPS.md` row (kind `policy`, status `deferred`, cite the DECnnn that defers it; format in `../_config/gaps-template.md`). Steps 3–9 cover the slice only; deferred items get one line each, not an interview.
 2. **Offer visual companion** (if visual questions ahead) — own message, not combined with clarifying question. See Visual Companion section.
 2b. **Theme & Vibe Brainstorming** (UI only) — ask user for theme/aesthetic/vibe → propose 2-3 matching designs → iterate until approved. Read `../_config/references/theme-brainstorming.md`.
-3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time. Shadow Critic concurrently probes domain gaps, negative space, and edge cases.
-3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`. The Fork Test is answered by the end-of-slice Dual Interpretation run: it passes only when every scenario of every topic has matching, cited predictions.
+3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time; every question is a row in `specs/logs/01-interview.md` (`../_config/interview-template.md`). Shadow Critic concurrently probes domain gaps, negative space, and edge cases. Ask first what the prototype cannot be built without (actor, primary entity, lifecycle, the slice's core flow); questions better judged with the product on screen (edge policies, wording, limits) → `GAPS.md` row (kind `policy`, provisional assumption) instead of a message.
+3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`. The Fork Test is answered by the end-of-slice Dual Interpretation run: a scenario whose predictions differ is a gap — answered, or recorded with a provisional assumption.
 
-**⛔ GATE:** ⊥ propose approaches (Step 4) until Extraction Closure Report passes with ZERO open domain gaps inside the slice. Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
+**⛔ GATE:** ⊥ propose approaches (Step 4) until the Extraction Closure Report passes with **zero unrecorded gaps**: core-flow gaps answered, every other gap a `GAPS.md` row the prototype will build provisionally (Stage 04 refuses to freeze while any is open). Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
 6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md` (append new entries; ⊥ overwrite existing). See `../_config/decision-log-template.md`.
@@ -51,8 +53,8 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
 9. **Spec Merge** — update `specs/SPEC.md` using the section structure of `../_config/spec-template.md` (every `## N.` heading present; "N/A — <why>" is an acceptable body). Business invariants go in §8 as `- **Vn:**` bullets (fixtures cite them). §9 Equivalence Boundary records what the user accepts as free to vary. A spec that would exceed ~120 KB is split into `specs/spec/<module>.md` files, each linked from SPEC.md (`sdd.cjs check` enforces the links and warns on size).
 10. **User reviews spec** — ask user to review before proceeding
-11. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 01 --project-type <type>` (refuses while SPEC.md, DECISION_LOG.md, DESIGN.md (UI) are missing or SPEC.md has TBD/TODO placeholders).
-12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
+11. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 01 --project-type <type>` (refuses while SPEC.md, DECISION_LOG.md, DESIGN.md (UI) or `specs/logs/01-interview.md` are missing, SPEC.md has TBD/TODO placeholders, or `GAPS.md` is malformed; open gaps are allowed).
+12. **Transition** — show `sdd.cjs readiness` (the path to the prototype and the user's open questions); prompt the user to proceed to `02_adversarial_swarm_analysis` (agent-only contract compilation, then the first prototype demo).
 
 ### The Socratic Shadow-Critic Interview Process
 
@@ -78,7 +80,7 @@ Run it **once, when the interview for the slice is otherwise complete** (all top
 - Lead with recommended option & explain why.
 
 ### Presenting the design:
-- Present design when Extraction Closure Report passes with ZERO gaps.
+- Present design when the Extraction Closure Report passes (zero unrecorded gaps). Name the recorded gaps and their provisional assumptions: the user will see them in the prototype.
 - Scale each section to complexity: few sentences if straightforward, up to 200-300 words if nuanced.
 - Ask after each section whether it looks right.
 - Cover: architecture, components, data flow, error handling, testing.
@@ -102,7 +104,8 @@ After user approves design, merge decisions into spec:
 - `specs/SPEC.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/DECISION_LOG.md`
-- `specs/GAPS.md` (deferred out-of-slice items)
+- `specs/GAPS.md` (deferred out-of-slice items; open policy questions with provisional assumptions)
+- `specs/logs/01-interview.md`, `specs/logs/01-interpretations.md`
 - `specs/.sdd/_config/sdd-state.json`
 
 ### Handoff / Transitions

@@ -1,6 +1,6 @@
 # Rulings
 
-Every triaged Red Team finding of the current iteration (format: `specs/.sdd/_config/rulings-template.md`). Rounds 1 ran in Stage 02; rounds 2–3 in Stage 03p with the prototype running.
+Every triaged Red Team finding of the current iteration (format: `specs/.sdd/_config/rulings-template.md`). All rounds ran in Stage 03p with the prototype running (round 1 full, round 2 delta).
 
 | ID | Round | Persona | Finding | Fork | Ruling | Status |
 |---|---|---|---|---|---|---|

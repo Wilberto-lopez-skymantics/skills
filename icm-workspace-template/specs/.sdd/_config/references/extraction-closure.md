@@ -8,7 +8,7 @@ Empirical replacement for subjective confidence scoring. Guarantees zero unconst
 
 **Plumbing is pre-decided:** the technical variance vectors (concurrency control, pagination, tie-breakers, idempotency, serialization) are pinned by the Equivalence Profile (`systems-standards.md`). Stage 01 only confirms the profile fits the user's needs; it asks the user only where a business requirement conflicts with a profile default (→ override).
 
-**⛔ GATE:** ⊥ propose approaches (Step 4) | write design until domain model passes ALL 4 Extraction Closure dimensions with zero remaining gaps. Self-assessed numeric scores (e.g. "85/100") = FORBIDDEN.
+**⛔ GATE:** ⊥ propose approaches (Step 4) | write design until domain model passes ALL 4 Extraction Closure dimensions with **zero unrecorded gaps**: every remaining gap is either answered, or a `specs/GAPS.md` row (kind `policy`) with a provisional assumption the prototype will build and the user will judge at a demo. A gap that blocks the slice's core flow (who the actor is, what the primary entity is, its lifecycle states) ! be answered before the gate; everything else may be recorded. Self-assessed numeric scores (e.g. "85/100") = FORBIDDEN.
 
 ---
 
@@ -69,4 +69,4 @@ Before advancing to Step 4 (Propose Approaches), the Shadow Critic ! evaluate th
 **Verdict:** [PASS -> proceed to Step 4 | FAIL -> continue clarifying questions]
 ```
 
-**⛔ GATE:** Verdict = FAIL | Gaps > 0 → Agent ! convert highest-priority gap into the next single clarifying question to the user. ⊥ present design until Verdict = PASS.
+**⛔ GATE:** Verdict = FAIL | unrecorded gaps > 0 → Agent ! either convert the highest-priority gap into the next single clarifying question (within the interview budget, `sdd.cjs readiness`), or record it as a `GAPS.md` row with a provisional assumption for the prototype demo. ⊥ present design until Verdict = PASS (zero unrecorded gaps; core-flow gaps answered).

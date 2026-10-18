@@ -957,15 +957,34 @@ function sliceCapGate(p, ctx) {
 }
 
 const RUN_LINE = /^\**Run:?\**:?\s*\S+/mi;
+const PROTOTYPE_FILE = 'specs/logs/03p-prototype.md';
+const INTERVIEW_FILE = 'specs/logs/01-interview.md';
 
-/** Stage 03p: the prototype record says how to start the prototype (Stage 04 records the oracle against it). */
+// Budgets are counts shown against actuals (never a block); manifest.budgets overrides them per project.
+const DEFAULT_BUDGETS = { interviewQuestions: 20, prototypeVersions: 3, swarmRounds: SWARM_ROUND_CAP };
+function budgets(info) { return { ...DEFAULT_BUDGETS, ...((info && info.manifest && info.manifest.budgets) || {}) }; }
+
+/** Rows of the Stage 01 interview log: one question per row, with its answer and where it was recorded. */
+function interviewRows(p) {
+  const fp = path.join(p.root, INTERVIEW_FILE);
+  return exists(fp) ? ledgerRows(readText(fp), ['question', 'answer']) : null;
+}
+
+/** Rows of the prototype record's Versions table: one demo the user saw per row. */
+function prototypeVersions(p) {
+  const fp = path.join(p.root, PROTOTYPE_FILE);
+  return exists(fp) ? ledgerRows(readText(fp), ['version']) : null;
+}
+
+/** Stage 03p: the prototype record says how to start the prototype (Stage 04 records the oracle against it) and lists every demo. */
 function prototypeGate(p, freshAfter) {
-  const f = 'specs/logs/03p-prototype.md';
-  const fg = fileGate(p, f, 'prototype record', freshAfter);
+  const fg = fileGate(p, PROTOTYPE_FILE, 'prototype record', freshAfter);
   if (!fg[0]) return fg;
-  const text = readText(path.join(p.root, f));
-  if (!RUN_LINE.test(text)) return [false, `${f}: add a "**Run:** <start command>" line (Stage 04 records the oracle against the running prototype)`];
-  return [true, `${f}: run command recorded`];
+  const text = readText(path.join(p.root, PROTOTYPE_FILE));
+  if (!RUN_LINE.test(text)) return [false, `${PROTOTYPE_FILE}: add a "**Run:** <start command>" line (Stage 04 records the oracle against the running prototype)`];
+  const versions = prototypeVersions(p);
+  if (!versions || !versions.length) return [false, `${PROTOTYPE_FILE}: no Versions table (| Version | Date | Changed | Gaps closed | Decisions |) — every demo the user saw is one row`];
+  return [true, `${PROTOTYPE_FILE}: run command recorded, ${versions.length} prototype version(s) shown`];
 }
 
 /**
@@ -1038,21 +1057,28 @@ function exitGates(stage, p, state, info, opts = {}) {
       const spec = L.specText(p.root);
       const placeholders = (spec.match(/\b(TBD|TODO|FIXME)\b/g) || []).length;
       add([!placeholders, placeholders ? `SPEC.md contains ${placeholders} TBD/TODO/FIXME placeholder(s)` : 'SPEC.md has no placeholders']);
+      if (stage === '01') {
+        // The interview is the audit trail of "every business decision is made with the user"; its length is a budget, not a gate.
+        const ig = fileGate(p, INTERVIEW_FILE, 'one row per question asked', freshAfter);
+        if (!ig[0]) add(ig);
+        else {
+          const rows = interviewRows(p);
+          const b = budgets(info).interviewQuestions;
+          add([!!(rows && rows.length), rows && rows.length ? `${INTERVIEW_FILE}: ${rows.length} question(s) (budget ${b})${rows.length > b ? ' — over budget: the rest belongs in the prototype demos' : ''}` : `${INTERVIEW_FILE}: no table with columns # | Question | Answer | Recorded in`]);
+        }
+      }
+      // Open gaps are allowed: every unanswered question is a row with a provisional assumption the prototype will build.
+      add(gapsGate(p, { requireFile: false, allowOpen: true }));
       break;
     }
     case '02': {
       const { r, ctx } = runCheck(p, { contractsOnly: true });
       add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s)` : 'sdd.cjs check --contracts passes']);
       if (!r.errors.length) add(sliceCapGate(p, ctx));
-      const lg = fileGate(p, 'specs/logs/02-swarm.md', 'persisted iteration logs + Outcome Table', freshAfter);
+      // Stage 02 compiles contracts and the Outcome Table only; every Red Team round runs in Stage 03p against the prototype.
+      const lg = fileGate(p, 'specs/logs/02-swarm.md', 'Outcome Table (rounds are appended here in 03p)', freshAfter);
       add(lg);
-      if (lg[0]) {
-        // Stage 02 runs round 1 only (the whole slice); rounds 2–3 attack the delta in Stage 03p, with the prototype running.
-        const rounds = swarmRounds(p);
-        add([rounds >= 1, rounds ? `${rounds} Red Team round(s) logged (round 1 here; rounds 2–3 in 03p; cap ${SWARM_ROUND_CAP})` : 'no Red Team round logged (a `## 🔄 Iteration 1` heading in specs/logs/02-swarm.md)']);
-        add(outcomeTableGate(p, ctx));
-      }
-      add(rulingsGate(p, freshAfter));
+      if (lg[0]) add(outcomeTableGate(p, ctx));
       break;
     }
     case '03': {
@@ -1071,10 +1097,10 @@ function exitGates(stage, p, state, info, opts = {}) {
       if (!opts.report) add(acceptanceGate(opts));
       add(fileGate(p, 'specs/logs/03p-decisions.md', 'prototype Decision Inventory', freshAfter));
       add(gapsGate(p, { requireFile: true, allowOpen: true }));
-      // Hardening rounds 2–3 run here, against the running prototype; the cap counts every round of the iteration.
+      // Every hardening round runs here, against the running prototype: round 1 full, rounds 2–3 delta, cap 3 per iteration.
       const rounds = swarmRounds(p);
-      add([true, `${rounds} Red Team round(s) logged this iteration (cap ${SWARM_ROUND_CAP})${rounds > SWARM_ROUND_CAP ? ' — over the cap: blocking findings left after the cap go to the user, not to another round' : ''}`]);
-      add(rulingsGate(p, null));
+      add([rounds >= 1, rounds ? `${rounds} Red Team round(s) logged this iteration (cap ${SWARM_ROUND_CAP})${rounds > SWARM_ROUND_CAP ? ' — over the cap: blocking findings left after the cap go to the user, not to another round' : ''}` : 'no Red Team round logged (round 1 attacks the whole slice with the prototype running; `## 🔄 Iteration 1` heading in specs/logs/02-swarm.md)']);
+      add(rulingsGate(p, freshAfter));
       // Sample: one predicted case per operation/command, by authors who never saw the prototype. The full dual check runs once, in Stage 04.
       add(expectDiffGate(p, freshAfter, false, Math.max(1, ctx.ops.length + ctx.commands.length)));
       const rg = prototypeRegressionGate(p, freshAfter);
@@ -1206,6 +1232,10 @@ function stageMetrics(p) {
   if (gaps) { m.gapsOpen = gaps.filter(g => g.status === 'open').length; m.gapsDeferred = gaps.filter(g => g.status === 'deferred').length; m.gapsTotal = gaps.length; }
   const rulings = exists(path.join(p.root, RULINGS_FILE)) ? ledgerRows(readText(path.join(p.root, RULINGS_FILE)), ['id', 'ruling', 'status']) : null;
   if (rulings) m.rulings = rulings.length;
+  const questions = interviewRows(p);
+  if (questions) m.interviewQuestions = questions.length;
+  const versions = prototypeVersions(p);
+  if (versions) m.prototypeVersions = versions.length;
   try {
     if (exists(p.manifest)) {
       const { r, ctx } = runCheck(p, { contractsOnly: true });
@@ -1297,15 +1327,47 @@ function cmdReadiness(p) {
     console.log(`           closed: ${rows.filter(g => g.status === 'resolved' || g.status === 'confirmed').length} resolved/confirmed, ${rows.filter(g => g.status === 'deferred').length} deferred to a later slice`);
     if (errors.length) console.log(`           ⚠ ${errors.length} malformed row(s): ${errors[0]}`);
   }
+  // Budgets vs actuals: counts the user can read, never a score and never a block.
+  const b = budgets(info);
+  const q = interviewRows(p);
+  const versions = prototypeVersions(p);
   const rounds = swarmRounds(p);
-  if (rounds) console.log(`  swarm:   ${rounds} Red Team round(s) logged (cap ${SWARM_ROUND_CAP})`);
+  const over = (n, lim) => (n > lim ? ' ⚠ over budget' : '');
+  console.log(`  budget:  interview ${q ? q.length : 0}/${b.interviewQuestions} question(s)${q ? over(q.length, b.interviewQuestions) : ''} · prototype ${versions ? versions.length : 0}/${b.prototypeVersions} version(s)${versions ? over(versions.length, b.prototypeVersions) : ''} · Red Team ${rounds}/${b.swarmRounds} round(s)${over(rounds, b.swarmRounds)}`);
   const coverage = r.notes.find(n => n.startsWith('coverage:'));
   console.log(`  oracle:  ${coverage || 'no oracle cases yet (Stage 04)'}`);
   const ed = latestReport(p, 'expectdiff-', () => true);
   if (ed) console.log(`           latest diff-expect "${ed.label}": ${ed.totalCases} compared, ${ed.divergentCases} with gaps${ed.skippedGenerated ? `, ${ed.skippedGenerated} generated skipped` : ''}`);
+
+  // The user's own questions, verbatim: a policy gap is a decision only they can make; the prototype builds the provisional answer meanwhile.
+  const policy = (rows || []).filter(g => g.status === 'open' && g.kind === 'policy');
+  if (policy.length) {
+    console.log(`  your questions (${policy.length} open policy gap(s); the prototype builds the provisional answer until you decide):`);
+    for (const g of policy) console.log(`    ${g.id}: ${g.gap || '(no text)'} — provisional: ${g['draft assumption'] || '(none)'}`);
+  }
+  const otherOpen = (rows || []).filter(g => g.status === 'open' && g.kind !== 'policy').length;
+  if (otherOpen) console.log(`  agent questions: ${otherOpen} open technical/builder/ui/oracle gap(s) — resolved by the swarm via the profile, no user time`);
+
+  // Path to a full spec: the stages left before the freeze, in plain words, with the next action that is the user's.
+  const next = nextStage(state, info);
+  const SPEC_PATH = [
+    ['01', 'interview → spec draft, decisions, gap register', 'answer the interview, one question per message'],
+    ['02', 'contracts compiled from the spec + Outcome Table (agent only)', 'none'],
+    ['03p', 'prototype demos, your policy answers, Red Team rounds against the running prototype, your acceptance', 'try the prototype, answer the open policy questions, accept with `sdd.cjs transition --completed 03p --approved-by "<you>"`'],
+    ['03', 'wireframes captured from the accepted prototype', 'review each captured screen'],
+    ['04', 'oracle recorded from the prototype and predicted from the spec, phases, freeze', 'approve the freeze'],
+  ].filter(([s]) => info.ui || s !== '03');
+  const idx = next ? SPEC_PATH.findIndex(([s]) => s === next) : -1;
+  if (idx >= 0) {
+    console.log('  path to a full (frozen) spec:');
+    SPEC_PATH.slice(idx).forEach(([s, what], i) => console.log(`    ${i === 0 ? '→' : ' '} ${s}: ${what}`));
+    console.log('      then 05 build (agent only) → ' + (info.ui ? '06 visual acceptance → ' : '') + '07 certification report');
+    console.log(`  next action (yours): ${SPEC_PATH[idx][2]}`);
+  } else if (next) console.log(`  spec frozen; next stage ${next} (${next === '05' ? 'build, agent only' : next === '06' ? 'visual acceptance' : 'certification'})`);
+
   // Every gate of every spec stage, freshness ignored: the question is "what is still missing", not "what was done this stage".
-  const stages = ['02', '03p', ...(info.ui ? ['03'] : []), '04'];
-  console.log('  gates (all stages, freshness ignored):');
+  const stages = ['01', '02', '03p', ...(info.ui ? ['03'] : []), '04'];
+  console.log('  gates (all spec stages, freshness ignored):');
   for (const s of stages) {
     const gates = exitGates(s, p, { ...state, timestamp: null }, info, { report: true });
     const failing = gates.filter(([ok]) => !ok);

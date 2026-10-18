@@ -126,17 +126,17 @@ test('A2: a lock that predates outcome recording reports the slice as unknown', 
 test('A3: swarm rounds restart at the transition that opens a new iteration', () => {
   const p = project({ example: true });
   p.write('specs/logs/02-swarm.md', swarmLog(3));
-  assert.match(p.sdd('readiness').out, /swarm:\s+3 Red Team round\(s\)/);
+  assert.match(p.sdd('readiness').out, /Red Team 3\/3 round\(s\)/);
 
   p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
   const t = p.sdd('transition', '--completed', '01');
   assert.equal(t.code, 0, t.out);
   const last = p.read('specs/logs/transitions.jsonl').trim().split('\n').pop();
   assert.equal(JSON.parse(last).swarmHeadings, 3);
-  assert.doesNotMatch(p.sdd('readiness').out, /swarm:/, 'no rounds logged in the new iteration yet');
+  assert.match(p.sdd('readiness').out, /Red Team 0\/3 round\(s\)/, 'no rounds logged in the new iteration yet');
 
   p.write('specs/logs/02-swarm.md', swarmLog(3) + '\n' + swarmLog(1));
-  assert.match(p.sdd('readiness').out, /swarm:\s+1 Red Team round\(s\)/);
+  assert.match(p.sdd('readiness').out, /Red Team 1\/3 round\(s\)/);
 });
 
 // ---------- A4: Stage 00 needs a lock ----------
@@ -191,12 +191,18 @@ test('03p: acceptance comes from --approved-by, never from a line the agent type
   const p = project({ example: true });
   p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
   p.write('specs/logs/03p-prototype.md', '# Prototype record\n**Run:** docker compose up -d\n**User acceptance:** ACCEPTED\n');
-  const t = p.sdd('transition', '--completed', '03p');
+  let t = p.sdd('transition', '--completed', '03p');
   assert.equal(t.code, 1);
   assert.match(t.out, /✗ missing --approved-by "<user>"/);
-  assert.match(t.out, /✓ specs\/logs\/03p-prototype.md: run command recorded/);
+  assert.match(t.out, /✗ specs\/logs\/03p-prototype.md: no Versions table/);
+  assert.match(t.out, /✗ no Red Team round logged \(round 1 attacks the whole slice with the prototype running/);
+  p.write('specs/logs/03p-prototype.md', '# Prototype record\n**Run:** docker compose up -d\n\n| Version | Date | Changed | Gaps closed | Decisions |\n|---|---|---|---|---|\n| v0 | 2026-01-01 | first demo | — | — |\n');
+  p.write('specs/logs/02-swarm.md', swarmLog(1));
+  t = p.sdd('transition', '--completed', '03p');
+  assert.match(t.out, /✓ specs\/logs\/03p-prototype.md: run command recorded, 1 prototype version\(s\) shown/);
+  assert.match(t.out, /✓ 1 Red Team round\(s\) logged this iteration/);
   assert.match(p.sdd('transition', '--completed', '03p', '--approved-by', 'Wil').out, /✓ prototype accepted by Wil/);
-  assert.doesNotMatch(p.sdd('readiness').out, /approved-by/, 'readiness is a report, not a transition');
+  assert.doesNotMatch(p.sdd('readiness').out, /missing --approved-by/, 'readiness is a report, not a transition');
 });
 
 test('03p on an iteration: existing cases must stay green unless DECISION_LOG names them', () => {
@@ -308,7 +314,7 @@ test('transition: every record carries stage metrics (counts, never a score)', (
   p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
   assert.equal(p.sdd('transition', '--completed', '01').code, 0);
   const rec = JSON.parse(p.read('specs/logs/transitions.jsonl').trim().split('\n').pop());
-  assert.deepEqual(rec.metrics, { swarmRounds: 0, gapsOpen: 0, gapsDeferred: 1, gapsTotal: 1, rulings: 6, declaredOutcomes: 30, cases: 155, probes: 100 });
+  assert.deepEqual(rec.metrics, { swarmRounds: 0, gapsOpen: 0, gapsDeferred: 1, gapsTotal: 1, rulings: 6, interviewQuestions: 6, prototypeVersions: 3, declaredOutcomes: 30, cases: 155, probes: 100 });
 });
 
 test('diff-expect: notational differences are not gaps (anchored literal regex, $eq, $oneOf order)', () => {
@@ -323,4 +329,48 @@ test('diff-expect: notational differences are not gaps (anchored literal regex, 
   assert.match(out, /1 case\(s\) compared: 1 with gaps, 1 gap\(s\)/, out);
   assert.match(out, /steps\[0\]\.expect\.body\.n: different values/);
   assert.doesNotMatch(out, /body\.status|body\.kind|body\.etag/);
+});
+
+// ---------- Interactive path: open gaps allowed out of 01, interview budget, readiness path ----------
+
+test('01: open policy gaps are allowed (the prototype builds the provisional answer); the interview log is required', () => {
+  const p = project({ example: true });
+  fs.rmSync(p.at('specs/logs/01-interview.md'));
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Who may delete a shared note? | Owner only | open |\n');
+  let t = p.sdd('transition', '--completed', '01', '--project-type', 'backend-service');
+  assert.equal(t.code, 1);
+  assert.match(t.out, /✗ missing specs\/logs\/01-interview.md \(one row per question asked\)/);
+  assert.match(t.out, /✓ specs\/GAPS.md: 1 row\(s\), 1 open \(allowed until Stage 04\)/);
+  const rows = Array.from({ length: 22 }, (_, i) => `| ${i + 1} | Q${i + 1}? | A${i + 1} | DEC001 |`).join('\n');
+  p.write('specs/logs/01-interview.md', `# Interview\n| # | Question | Answer | Recorded in |\n|---|---|---|---|\n${rows}\n`);
+  t = p.sdd('transition', '--completed', '01', '--project-type', 'backend-service');
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /✓ specs\/logs\/01-interview.md: 22 question\(s\) \(budget 20\) — over budget: the rest belongs in the prototype demos/);
+});
+
+test('02: contracts + Outcome Table only; no Red Team round or ruling is required before the prototype', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  const out = p.sdd('status').out;
+  assert.match(out, /Exit gates for 02/);
+  assert.doesNotMatch(out, /Red Team round|rulings/);
+  assert.match(out, /missing specs\/logs\/02-swarm.md \(Outcome Table \(rounds are appended here in 03p\)\)/);
+});
+
+test('readiness: budgets, the user\'s open questions verbatim, and the path to a full spec', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Who may delete a shared note? | Owner only (DEC001, provisional) | open |\n| G-002 | 03p | builder | Toast text | "Saved" | open |\n');
+  const out = p.sdd('readiness').out;
+  assert.match(out, /budget:\s+interview 6\/20 question\(s\) · prototype 3\/3 version\(s\) · Red Team 0\/3 round\(s\)/);
+  assert.match(out, /your questions \(1 open policy gap\(s\)/);
+  assert.match(out, /G-001: Who may delete a shared note\? — provisional: Owner only \(DEC001, provisional\)/);
+  assert.match(out, /agent questions: 1 open technical\/builder/);
+  assert.match(out, /path to a full \(frozen\) spec:\n\s+→ 03p: prototype demos/);
+  assert.match(out, /\n\s+04: oracle recorded/);
+  assert.doesNotMatch(out, /\n\s+03: wireframes/, 'non-UI project has no Stage 03');
+  assert.match(out, /next action \(yours\): try the prototype/);
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, budgets: { interviewQuestions: 5 } }));
+  assert.match(p.sdd('readiness').out, /interview 6\/5 question\(s\) ⚠ over budget/);
 });

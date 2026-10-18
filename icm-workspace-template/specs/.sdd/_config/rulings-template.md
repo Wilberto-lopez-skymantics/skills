@@ -1,6 +1,6 @@
 # Rulings Ledger Format (`specs/logs/02-rulings.md`)
 
-Working file, never frozen. Every triaged Red Team finding of the current iteration gets exactly one row, whether it was raised in Stage 02 (round 1) or in Stage 03p (rounds 2–3, prototype running). Critics of later rounds receive the ledger; a finding that restates a ruled row without a new fork is dropped, not re-triaged. `sdd.cjs transition` refuses 02 and 03p while any row is `open`, and refuses a `gap` row without a matching `G-nnn` in `specs/GAPS.md`.
+Working file, never frozen. Every triaged Red Team finding of the current iteration gets exactly one row (all rounds run in Stage 03p with the prototype running: round 1 full, rounds 2–3 delta). Critics of later rounds receive the ledger; a finding that restates a ruled row without a new fork is dropped, not re-triaged. `sdd.cjs transition` refuses 02 and 03p while any row is `open`, and refuses a `gap` row without a matching `G-nnn` in `specs/GAPS.md`.
 
 ```markdown
 # Rulings
