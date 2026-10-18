@@ -11,25 +11,28 @@ Logs are persisted to those files (the audit trail); the chat shows a summary. L
 ## Adversarial Swarm Iteration Log
 
 ```markdown
-## 🔄 Iteration N
+## 🔄 Iteration N (round N of max 3 — full | delta)
 
 ### Blue Team Draft Changes
 [What was added or modified in this pass]
 
 ### Red Team Findings
-| Finding # | Attacking Persona | Section Attacked | Flaw/Ambiguity | Severity |
-|-----------|-------------------|------------------|----------------|----------|
-| ...       | ...               | ...              | ...            | ...      |
+| Finding # | Attacking Persona | Section Attacked | Blocking / Advisory | Fork (request → observation A vs B) | Flaw/Ambiguity |
+|-----------|-------------------|------------------|---------------------|--------------------------------------|----------------|
+| ...       | ...               | ...              | Blocking            | `POST /x {..}` → 409 vs 422          | ...            |
+| ...       | ...               | ...              | Advisory            | — (no observable fork)               | ...            |
+
+Blocking = a concrete request whose observation two spec-faithful builders could legitimately differ on. No fork → Advisory (backlog, never blocks the round).
 
 ### Resolution Actions
-| Finding # | Kind (Technical / Policy) | Resolution | Escalation Required? |
-|-----------|---------------------------|------------|----------------------|
-| ...       | ...                       | ...        | Yes → user question (DECnnn) / No |
+| Finding # | Kind (Technical / Policy) | Resolution | Ruling (`specs/logs/02-rulings.md` R-nnn) | Escalation Required? |
+|-----------|---------------------------|------------|-------------------------------------------|----------------------|
+| ...       | ...                       | ...        | R-nnn                                     | Yes → batched user question (DECnnn) / No |
 
 ### Machine Validation
 [Paste `node specs/.sdd/scripts/sdd.cjs check --contracts` output]
 
-### Verdict: PASS / FAIL (N findings remaining)
+### Verdict: PASS / FAIL (N blocking findings remaining; M advisory → backlog)
 ```
 
 The final iteration additionally contains the **Outcome Table** consumed by Stage 04:
@@ -45,18 +48,21 @@ The final iteration additionally contains the **Outcome Table** consumed by Stag
 ## Development Swarm Iteration Log
 
 ```markdown
-## 🔄 Development Iteration N for [Filename]
+## 🔄 Development Iteration N for Phase P
 
-### Blue Team Draft/Fix
-[Summary of the code written]
+### Decision Inventory
+[New rows added to `specs/logs/05-decisions.md` for this phase, or "none"; every SCR draft opened]
 
-### Red Team Findings
-| Line/Function | Attacking Persona | Vulnerability / Bug / Flaw |
-|---------------|-------------------|----------------------------|
-| ...           | ...               | ...                        |
+### Blue Team Build
+[Files written or changed; the oracle loop: `oracle.cjs run --phase P` runs and what each fix addressed]
 
-### Verification Evidence
-[Paste output of `node specs/.sdd/scripts/oracle.cjs run --phase N` (and build/typecheck output)]
+### Oracle Evidence
+[Paste the final `node specs/.sdd/scripts/oracle.cjs run --phase P` output: 0 failed, 0 errored (and build/typecheck output)]
+
+### Red Team Findings (what the oracle cannot see)
+| Line/Function | Attacking Persona | Vulnerability / Bug / Flaw | Fixed? |
+|---------------|-------------------|----------------------------|--------|
+| ...           | ...               | ...                        | yes / SCR-nnn |
 
 ### Verdict: PASS / FAIL
 ```
@@ -87,3 +93,5 @@ The final iteration additionally contains the **Outcome Table** consumed by Stag
 - Every iteration MUST be written in full, in the format above, to the stage's log file (`specs/logs/02-swarm.md` | `specs/logs/05-swarm.md`); the chat shows a summary. You are FORBIDDEN from claiming you "internally looped."
 - You MUST use Markdown Tables for findings, not bullet points.
 - If any iteration log is missing or summarized as "resolved internally," the entire swarm run is invalid.
+- Adversarial rounds: round 1 (Stage 02) attacks the whole slice; rounds 2–3 (Stage 03p, prototype running) attack only the delta (changed sections + rows of the rulings ledger + uncited prototype decisions). All rounds append to `specs/logs/02-swarm.md`. A finding that re-opens a ruled item without a new fork is out of order. Hard cap 3 rounds per iteration: blocking findings left after round 3 go to the user (one question per message, with a recommendation), not to a round 4.
+- Development iterations are per phase, not per file: the oracle run is the loop's inner check; the Red Team reviews once per phase, after the oracle is green, for what the oracle cannot observe.

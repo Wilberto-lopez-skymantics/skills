@@ -55,6 +55,8 @@ Run in order; stop at the first failure and route it (Failure Routing).
 5. UI projects: frozen UI specs → `specs/logs/ui-e2e.json` with 0 failed, 0 flaky; `VAT_REPORT.md` verdict PASS.
 6. `IMPLEMENTATION_PHASES.md`: every task `[x]`; `dev-swarm-reconciliation.md`: zero ❌.
 
+Build A that grew from the 03p prototype passing L1 proves the CODE conforms to the oracle — not that the spec alone determines it (the oracle's expectations were partly recorded from that same code). An L1-only certificate ! say so in `EQUIVALENCE_REPORT.md` (row "Build A origin"). Only L2 — a spec-only build B — certifies the spec as sufficient.
+
 **L2 — Equivalence-verified** (required when `manifest.json#equivalenceTarget` = 2, the default)
 1. `node specs/.sdd/scripts/sdd.cjs export ../<project>-eqb` — copies ONLY the frozen set (plus unchecked phases and regenerated entry files) into a fresh directory. If build B ran in lockstep (Stage 05 tip), run `sdd.cjs export ../<project>-eqb --update` instead to bring it to the current lock.
 2. In a **fresh agent session** opened on that directory — no access to the first implementation, its git history or this conversation; a different model or seed when available — run Stage 05 to completion there.
@@ -64,6 +66,8 @@ Run in order; stop at the first failure and route it (Failure Routing).
 6. Every divergence is an unconstrained degree of freedom: route it to Stage 00 as class C, even when both builds pass the oracle. A spec gap that builder B raises is handled the same way — in THIS workspace, never in B's copy — and B is re-exported afterwards. Re-certify after the SCR is applied and both builds are fixed.
 
 Lowering the target to L1 requires a DECISION_LOG entry and setting `equivalenceTarget: 1` in the manifest (a frozen change → user-approved re-freeze).
+
+**Equivalence cadence** (`manifest.json#equivalenceCadence`, default `iteration`): with `iteration`, every slice certifies L2 before it is complete. With `release`, intermediate slices certify **L1 only**: run the L1 list, keep the lockstep build B green (`sdd.cjs export --update` after each re-freeze, `oracle.cjs diff --phase N` as an early warning), and write `L2 pending` in the report's Certified level row — the gate refuses the report without it. Before a release (or whenever the user asks), run the L2 list and complete with `transition --completed 07 --release`, which requires the fresh zero-divergence diff. ⊥ claim L2 for a slice certified under a pending row; ⊥ release on a pending row.
 
 ### Equivalence Report
 
@@ -76,6 +80,7 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 |------|----------|
 | Lock | v<N> <hash12> — `sdd.cjs verify` ✓ |
 | Coverage | <coverage line from `sdd.cjs check`> |
+| Build A origin | prototype (03p) → Stage 05 / fresh Stage 05 build |
 | Oracle (build A) | <passed>/<total> — `specs/logs/oracle/run-default.json` @ <finishedAt> |
 | UI specs | <expected> passed, 0 failed, 0 flaky — `specs/logs/ui-e2e.json` (UI only) |
 | VAT | PASS — `specs/VAT_REPORT.md` (UI only) |
@@ -83,7 +88,8 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 | Diff A vs B | <totalCases> cases, 0 divergent — `specs/logs/oracle/diff-a-b.json` @ <finishedAt>, B lock <hash12> |
 | UI diff A vs B | <n> observations, 0 divergent — `specs/logs/oracle/uidiff-a-b.json` (UI only) |
 | Declared degrees of freedom | <variablePaths + variable matchers summary> |
-| Certified level | L2 Equivalence-verified / L1 Oracle-conformant (DECnnn) |
+| Certified level | L2 Equivalence-verified / L1 Oracle-conformant (DECnnn) / L1 Oracle-conformant, L2 pending (cadence `release`; lockstep diff: <n> cases, <d> divergent) |
+| Deferred to next slice | <`GAPS.md` deferred rows: G-nnn (DECnnn), …> |
 ```
 
 ### Common Failures
@@ -155,5 +161,5 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 - `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)
 
 ### Handoff / Transitions
-1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 07` (refuses unless the lock is intact, a fresh unfiltered oracle run is green, `EQUIVALENCE_REPORT.md` exists and — for target L2 — a fresh diff shows zero divergences).
-2. **Handoff:** Report the certified level with its evidence. Present walkthrough. Next change: Class 0 → Stage 05, Class 1 → Stage 01, Class 2 → Stage 00.
+1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 07 [--release]` (refuses unless the lock is intact, a fresh unfiltered oracle run is green, `EQUIVALENCE_REPORT.md` exists and — for target L2 with cadence `iteration`, or with `--release` — a fresh diff shows zero divergences; cadence `release` without `--release` requires the `L2 pending` row instead).
+2. **Handoff:** Report the certified level with its evidence. Present walkthrough. List the `deferred` rows of `specs/GAPS.md` (with their DECnnn) as the candidates for the next slice; the user picks, and Stage 01 of the next iteration starts from that list. Next change: Class 0 → Stage 05, Class 1 (next slice) → Stage 01, Class 2 → Stage 00.

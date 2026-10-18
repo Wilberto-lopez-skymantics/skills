@@ -162,11 +162,25 @@ Independence starts with the input: give the second author `node specs/.sdd/scri
 - one side declaring a degree of freedom (variable matcher) where the other pins a value;
 - `{"$unspecified": "<what is missing>"}` on either side — the author found no source; this is how a predicting author says "the spec does not decide this";
 - a case with no `derivedFrom` on either side — uncited agreement can be two identical guesses;
+- a case whose only citations are `recorded:…` — a recorded value says what a build did, not why the spec requires it (see §Prototype recording);
 - differing requests (both authors must predict the same requests).
+
+Generated profile cases (`"tags": ["generated"]`, citing only `profile XXX-n` rules and contracts) are skipped by `diff-expect` and `strip-expect`: their second interpretation is `oracle run` against the prototype (Stage 04 Part A step 4).
 
 Not gaps (normalized away): header-name case, `{"$eq": x}` vs `x`, the order of concurrent `responses`, headers or subset-mode keys that only one author chose to assert (asserting less is not a disagreement). Byte-identical A and B never satisfy a gate.
 
-Rules: each author works in a fresh context with only the spec files; ⊥ resolve a gap by picking one answer — fix the spec, re-predict, re-diff. `$unspecified` never enters `specs/fixtures/` (`sdd.cjs check` rejects it). Stage 02 gates on a fresh zero-gap diff of the Outcome Table cases; Stage 04 on a fresh zero-gap diff whose A side is the final `specs/fixtures/cases`.
+Rules: each author works in a fresh context with only the spec files; ⊥ resolve a gap by picking one answer — fix the spec, re-predict, re-diff. `$unspecified` never enters `specs/fixtures/` (`sdd.cjs check` rejects it). Stage 03p gates on a fresh zero-gap sampled diff (one case per operation/command, authors who never saw the prototype); Stage 04 on a fresh zero-gap diff whose A side is the final `specs/fixtures/cases`.
+
+## Prototype recording (Stage 04 interpretation A)
+
+Stage 04 gets its first interpretation of every domain case for free: `node specs/.sdd/scripts/oracle.cjs record --target default --cases-dir specs/changes/oracle/requests --out specs/changes/oracle/recorded.json` runs the request-only cases against the accepted Stage 03p prototype and fills `expect` from what it observed, generalizing ids and timestamps into matchers. `record` never writes into `specs/fixtures/`.
+
+Every recorded case carries a `recorded:<target>@<time>` entry in `derivedFrom`. **It is provenance, not a citation.** It says where the value came from; it cannot say why the spec requires it. Before a recorded case is compared (`diff-expect`) or moved into `specs/fixtures/`, its author adds SPEC, contract or profile citations for every expected value:
+- a value the spec pins → cite it (the prototype agreed with the spec);
+- a value the spec pins differently → prototype bug: fix the prototype, re-record;
+- a value nothing pins → spec gap (`GAPS.md`, kind `oracle`): the spec decides, then re-record. ⊥ keep the prototype's choice because it is already running.
+
+`diff-expect` reports a case whose only citations are `recorded:` as a gap, and `sdd.cjs check` treats `recorded:` like any other non-spec citation (it does not satisfy derivability). The second interpretation (B) is predicted by an author who never saw the prototype, its recordings or its code — the strip-expect skeletons carry neutral titles so the recording does not leak through the case names.
 
 ## Response-field coverage
 

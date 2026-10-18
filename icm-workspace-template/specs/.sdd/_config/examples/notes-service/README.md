@@ -15,6 +15,10 @@
 | `specs/fixtures/cases/*.json` | 55 derived cases: exact problem bodies, idempotency replay/mismatch/in-flight (`parallel`), OCC 428/412 and a concurrent race, pagination with tie-breaker and an exactly-full last page, validation ordering, precedence, unknown query parameters, empty headers, code-point lengths, NFC normalization, round-trips |
 | `specs/fixtures/cases/generated-probes.json` | 100 probes produced by `oracle.cjs gen-probes` (item probes create a real note first) |
 | `specs/IMPLEMENTATION_PHASES.md` | Phases bound to cumulative `oracle.cjs run --phase N` |
+| `specs/GAPS.md` | Gap register: a deferred feature citing its DECnnn, a technical gap resolved via the profile, two prototype decisions confirmed into the contracts |
+| `specs/logs/02-rulings.md` | Rulings ledger across round 1 (Stage 02) and round 2 (Stage 03p): fixed, rejected, advisory and gap rows with their forks |
+| `specs/logs/03p-prototype.md` | Prototype record: the `Run:` line Stage 04 starts the prototype with; acceptance lives in `transitions.jsonl`, not here |
+| `specs/logs/03p-decisions.md` | Prototype Decision Inventory: every observable decision with its SPEC / contract / profile citation or the gap it opened |
 
 Validated: `node specs/.sdd/scripts/sdd.cjs check --root specs/.sdd/_config/examples/notes-service` passes with full coverage (30/30 operation outcomes, every transition, invariant and error code, 254/254 response fields pinned). The cases were run against an independent reference implementation (55/55 green, stable across repeated runs including the concurrent cases); `oracle diff` between two instances of it reported zero divergences over all 155 cases and probes — also when one instance emits JSON keys in a different order — while variants that drop the id tie-breaker, the `has_more` look-ahead or NFC normalization were each caught.
 

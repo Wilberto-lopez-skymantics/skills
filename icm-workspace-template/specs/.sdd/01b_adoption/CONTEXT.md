@@ -85,6 +85,6 @@ Present all drafted artifacts and the recorded oracle. The user knows the codeba
 ### Handoff / Transitions
 1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 01b --project-type <type>`.
 2. **Handoff:** Present next-step options:
-   - **Option A (Harden Spec, recommended)**: Route `02_adversarial_swarm_analysis` — validate contracts, find gaps the characterization missed.
+   - **Option A (Harden Spec, recommended)**: Route `02_adversarial_swarm_analysis` — validate contracts, find gaps the characterization missed. After 02 the pipeline requires `03p_prototype`: the existing system IS the prototype — record its Run line, write `03p-decisions.md` citing the hardened spec, run hardening rounds 2–3 against it, and finish with the user's acceptance (`transition --completed 03p --approved-by "<user>"`). UI projects then capture the wireframes from it in Stage 03. Skipping 03p needs `--override DECnnn`.
    - **Option B (Expand Spec)**: Route `01_brainstorming` — the adopted spec is the baseline for new features (Class 1).
    - **Option C (Freeze as-is)**: Route `04_writing_implementation_phases` — the recorded cases replace Stage 02's Outcome Table; run `sdd.cjs check`, then freeze with the user's approval. Required before any Stage 05 work, including refactors (Class 0) that must stay equivalent to the original.

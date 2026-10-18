@@ -35,6 +35,7 @@ is_known_diff() {
 STAGES=(
   "01_brainstorming"
   "02_adversarial_swarm_analysis"
+  "03p_prototype"
   "03_interactive_wireframing"
   "04_writing_implementation_phases"
   "05_development_swarm"
@@ -44,6 +45,7 @@ STAGES=(
 SKILLS=(
   "brainstorming"
   "adversarial-swarm-analysis"
+  "sdd-prototype"
   "interactive-wireframing"
   "writing-implementation-phases"
   "development-swarm"

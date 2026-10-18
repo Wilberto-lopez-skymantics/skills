@@ -8,6 +8,7 @@
  *   node specs/.sdd/scripts/sdd.cjs freeze --reason "<why>" --approved-by "<who>"
  *   node specs/.sdd/scripts/sdd.cjs verify
  *   node specs/.sdd/scripts/sdd.cjs transition --completed <stage> [--resume <stage>] [--project-type <t>] [--note "<text>"]
+ *   node specs/.sdd/scripts/sdd.cjs readiness
  *   node specs/.sdd/scripts/sdd.cjs export <dir>
  *
  * Global flag: --root <project-dir> (default: three levels above this script).
@@ -22,11 +23,16 @@ const USAGE = `Usage:
   sdd.cjs freeze --reason R --approved-by U   Lock the frozen set (refused unless check passes)
   sdd.cjs verify                         Exit 1 if any frozen file changed since the last freeze
   sdd.cjs transition --completed S [--resume S] [--project-type T] [--note N] [--override DECnnn]
+                     [--approved-by U] [--release]
                                          Record a completed stage; refused unless it is the next stage
-                                         (or --override cites a DECISION_LOG entry) and its exit gates pass
+                                         (or --override cites a DECISION_LOG entry) and its exit gates pass.
+                                         03p needs --approved-by (the user who accepted the prototype);
+                                         07 with manifest.equivalenceCadence "release" needs --release to certify L2
   sdd.cjs export <dir> [--update]        Copy only the frozen set into <dir> for an independent build
                                          (--update resyncs an existing build-B workspace after a re-freeze)
-Stages: 00 01 01b 02 03 04 05 06 07`;
+  sdd.cjs readiness                      Report-only: how far the spec set is from freezable (open gaps,
+                                         policy questions for the user, coverage, failing gates per stage)
+Stages: 00 01 01b 02 03 03p 04 05 06 07`;
 
 // ========== Reporting ==========
 
@@ -54,6 +60,8 @@ function fail(msg) {
 function exists(f) { return fs.existsSync(f); }
 function readText(f) { return exists(f) ? fs.readFileSync(f, 'utf8') : ''; }
 
+const SPEC_SIZE_WARN_KB = 120;
+
 // ========== Contracts ==========
 
 function checkContracts(p, r) {
@@ -63,6 +71,11 @@ function checkContracts(p, r) {
   ctx.matrix = matrix;
 
   if (!exists(p.spec)) r.error('missing specs/SPEC.md');
+  else {
+    // A spec no agent reads in one pass is read partially, and partial reading is itself a source of divergence.
+    const kb = Math.round(fs.statSync(p.spec).size / 1024);
+    if (kb > SPEC_SIZE_WARN_KB) r.warn(`specs/SPEC.md is ${kb} KB (> ${SPEC_SIZE_WARN_KB} KB): agents read a spec this large partially. Move restated tables (statuses, error codes, fields) into specs/contracts/ and point to them; split the rest into modules with SPEC.md as the index`);
+  }
   if (!exists(p.manifest)) { r.error('missing specs/contracts/manifest.json (Stage 02 output)'); return ctx; }
   let manifest;
   try { manifest = L.readJson(p.manifest); } catch (e) { r.error(e.message); return ctx; }
@@ -659,7 +672,7 @@ function expectDiffGate(p, freshAfter, mustBindFixtures, minCases = 1) {
   if (!rep) return [false, `no ${what}: oracle.cjs diff-expect --a … --b … (two independent authors)`];
   if (freshAfter && !(rep.finishedAt > freshAfter)) return [false, `${what} predates this stage; re-run it`];
   if (rep.identical || rep.aHash === rep.bHash) return [false, `${what}: A and B are byte-identical — B must be predicted independently from a strip-expect skeleton`];
-  if ((rep.totalCases || 0) < minCases) return [false, `${what} compared ${rep.totalCases || 0} case(s); at least ${minCases} needed (one per declared outcome)`];
+  if ((rep.totalCases || 0) < minCases) return [false, `${what} compared ${rep.totalCases || 0} case(s); at least ${minCases} needed (one per operation/command)`];
   if (rep.divergentCases) return [false, `${what}: ${rep.gaps.length} gap(s) in ${rep.divergentCases} case(s) — resolve them in the spec`];
   return [true, `${what}: ${rep.totalCases} case(s), zero gaps`];
 }
@@ -708,6 +721,188 @@ function reconGate(p, freshAfter) {
   return [true, `reconciliation: ${rows} row(s), zero ❌ drift`];
 }
 
+// ========== Gap register, rulings ledger, slice cap (prototype-first pipeline) ==========
+
+const GAPS_FILE = 'specs/GAPS.md';
+const GAP_KINDS = ['policy', 'technical', 'builder', 'ui', 'oracle'];
+const GAP_STATUSES = ['open', 'resolved', 'confirmed', 'deferred'];
+const RULINGS_FILE = 'specs/logs/02-rulings.md';
+const RULING_STATUSES = ['fixed', 'rejected', 'advisory', 'gap', 'open'];
+const DEFAULT_SLICE_CAP = 150;
+const SWARM_ROUND_CAP = 3;
+
+function citesDecision(p, id) {
+  return !!id && new RegExp(`\\b${id}\\b`).test(readText(p.decisionLog));
+}
+
+/** Rows of the first table carrying the required columns, as objects keyed by lower-case header. */
+function ledgerRows(text, required) {
+  const t = parseTables(text).find(x => required.every(col => x.header.some(h => h.toLowerCase() === col)));
+  if (!t) return null;
+  const keys = t.header.map(h => h.toLowerCase());
+  return t.rows.filter(r => r.some(c => c && !/^\.+$/.test(c))).map(r => Object.fromEntries(keys.map((k, i) => [k, (r[i] || '').replace(/`/g, '').trim()])));
+}
+
+/** specs/GAPS.md → { rows, errors }; rows === null when the file does not exist. */
+function readGaps(p) {
+  const fp = path.join(p.root, GAPS_FILE);
+  if (!exists(fp)) return { rows: null, errors: [] };
+  const rows = ledgerRows(readText(fp), ['id', 'kind', 'status']);
+  if (!rows) return { rows: [], errors: [`${GAPS_FILE}: no table with columns ID | Stage | Kind | Gap | Draft assumption | Status`] };
+  const errors = [];
+  for (const r of rows) {
+    const where = `${GAPS_FILE} ${r.id || '(no id)'}`;
+    if (!/^G-\d+$/.test(r.id)) errors.push(`${where}: ID must look like G-001`);
+    r.kind = r.kind.toLowerCase();
+    r.status = r.status.toLowerCase();
+    if (!GAP_KINDS.includes(r.kind)) errors.push(`${where}: Kind "${r.kind}" is not one of ${GAP_KINDS.join('|')}`);
+    if (!GAP_STATUSES.includes(r.status)) errors.push(`${where}: Status "${r.status}" is not one of ${GAP_STATUSES.join('|')}`);
+    if (r.status === 'deferred') {
+      const dec = (Object.values(r).join(' ').match(/\bDEC\d+\b/) || [])[0];
+      if (!dec) errors.push(`${where}: deferred gaps must cite the DECnnn that moved them to a later slice`);
+      else if (!citesDecision(p, dec)) errors.push(`${where}: cites ${dec}, which is not in specs/DECISION_LOG.md`);
+    }
+  }
+  return { rows, errors };
+}
+
+/** allowOpen: Stage 03p records gaps; Stage 04 (freeze) requires every gap closed or deferred by decision. */
+function gapsGate(p, { requireFile, allowOpen }) {
+  const { rows, errors } = readGaps(p);
+  if (rows === null) return requireFile ? [false, `missing ${GAPS_FILE} (gap register: every unresolved question and every uncited prototype decision)`] : [true, `no ${GAPS_FILE} (nothing recorded as open)`];
+  if (errors.length) return [false, `${errors.length} malformed gap row(s): ${errors.slice(0, 3).join('; ')}`];
+  const open = rows.filter(r => r.status === 'open');
+  if (!allowOpen && open.length) {
+    const policy = open.filter(r => r.kind === 'policy').length;
+    return [false, `${GAPS_FILE}: ${open.length} open gap(s) (${policy} policy, need the user) — resolve, confirm, or defer to a later slice with a DECnnn before freezing`];
+  }
+  return [true, `${GAPS_FILE}: ${rows.length} row(s), ${open.length} open${allowOpen ? ' (allowed until Stage 04)' : ''}`];
+}
+
+/** Stage 02 rulings ledger: every triaged finding has a ruling; nothing is left open. */
+function rulingsGate(p, freshAfter) {
+  const fg = fileGate(p, RULINGS_FILE, 'Stage 02 rulings ledger', freshAfter);
+  if (!fg[0]) return fg;
+  const rows = ledgerRows(readText(path.join(p.root, RULINGS_FILE)), ['id', 'ruling', 'status']);
+  if (!rows) return [false, `${RULINGS_FILE}: no table with columns ID | Round | Persona | Finding | Fork | Ruling | Status`];
+  const bad = rows.filter(r => !RULING_STATUSES.includes(r.status.toLowerCase()));
+  if (bad.length) return [false, `${RULINGS_FILE}: Status must be ${RULING_STATUSES.join('|')} (found ${bad.slice(0, 3).map(r => r.status || '(empty)').join(', ')})`];
+  const open = rows.filter(r => r.status.toLowerCase() === 'open');
+  if (open.length) return [false, `${RULINGS_FILE}: ${open.length} open finding(s) — rule each one (blocking findings left after round ${SWARM_ROUND_CAP} go to the user, or to ${GAPS_FILE} as status gap)`];
+  const gaps = readGaps(p).rows || [];
+  const ids = new Set(gaps.map(g => g.id));
+  const dangling = rows.filter(r => r.status.toLowerCase() === 'gap').filter(r => !(Object.values(r).join(' ').match(/\bG-\d+\b/g) || []).some(g => ids.has(g)));
+  if (dangling.length) return [false, `${RULINGS_FILE}: ${dangling.length} finding(s) ruled "gap" without a G-nnn row in ${GAPS_FILE} (${dangling.slice(0, 3).map(r => r.id).join(', ')})`];
+  return [true, `rulings: ${rows.length} finding(s) ruled, none open`];
+}
+
+function readTransitions(p) {
+  return readText(p.transitions).split('\n').filter(Boolean).flatMap(l => { try { return [JSON.parse(l)]; } catch { return []; } });
+}
+
+/** `## 🔄 Iteration N` headings in the append-only swarm log, across every iteration so far. */
+function swarmHeadings(p) {
+  return (readText(path.join(p.root, 'specs/logs/02-swarm.md')).match(/^##\s+(?:🔄\s*)?Iteration\s+\d+/gm) || []).length;
+}
+
+/** Rounds of the current iteration: headings logged since the transition that opened it (01, 01b or 00 records the count it found). */
+function swarmRounds(p) {
+  const opened = readTransitions(p).filter(t => typeof t.swarmHeadings === 'number').pop();
+  return Math.max(0, swarmHeadings(p) - (opened ? opened.swarmHeadings : 0));
+}
+
+/** Declared outcomes as coverage keys: every non-default operation status and every CLI exit code. */
+function declaredOutcomes(ctx) {
+  return [
+    ...ctx.ops.flatMap(o => o.statuses.filter(x => x !== 'default').map(x => `op:${o.operationId}:${x}`)),
+    ...ctx.commands.flatMap(c => c.exitCodes.map(x => `cmd:${c.name}:${x.code}`)),
+  ];
+}
+
+/**
+ * The slice is what this iteration adds: declared outcomes absent from the last lock (`freeze` records them).
+ * No lock → the first slice, counted from zero. slice === null → the lock predates the record (the next freeze adds it).
+ */
+function sliceOutcomes(p, ctx) {
+  const all = declaredOutcomes(ctx);
+  if (!exists(p.lock)) return { total: all.length, slice: all.length };
+  let frozen = null;
+  try { frozen = L.readJson(p.lock).outcomes; } catch { /* unreadable lock: lockGate reports it */ }
+  if (!Array.isArray(frozen)) return { total: all.length, slice: null };
+  const prev = new Set(frozen);
+  return { total: all.length, slice: all.filter(k => !prev.has(k)).length };
+}
+
+function sliceCapGate(p, ctx) {
+  const m = ctx.manifest || {};
+  const cap = m.sliceCap || DEFAULT_SLICE_CAP;
+  const { total, slice } = sliceOutcomes(p, ctx);
+  const needsDecision = cap > DEFAULT_SLICE_CAP;
+  if (needsDecision && !citesDecision(p, m.sliceCapDecision)) return [false, `manifest.sliceCap ${cap} exceeds the default ${DEFAULT_SLICE_CAP}: manifest.sliceCapDecision must cite a DECnnn in specs/DECISION_LOG.md`];
+  if (slice === null) return [true, `slice size unknown: specs/spec.lock.json predates outcome recording (the next freeze records it); ${total} declared outcome(s) in total (cap ${cap} per slice)`];
+  if (slice > cap) return [false, `slice adds ${slice} declared outcome(s), cap ${cap} (${total} in total): split the scope into slices (each runs 02 → 07), or raise manifest.sliceCap with a recorded user decision`];
+  return [true, `slice size: ${slice} new declared outcome(s) (cap ${cap}); ${total} in total`];
+}
+
+const RUN_LINE = /^\**Run:?\**:?\s*\S+/mi;
+
+/** Stage 03p: the prototype record says how to start the prototype (Stage 04 records the oracle against it). */
+function prototypeGate(p, freshAfter) {
+  const f = 'specs/logs/03p-prototype.md';
+  const fg = fileGate(p, f, 'prototype record', freshAfter);
+  if (!fg[0]) return fg;
+  const text = readText(path.join(p.root, f));
+  if (!RUN_LINE.test(text)) return [false, `${f}: add a "**Run:** <start command>" line (Stage 04 records the oracle against the running prototype)`];
+  return [true, `${f}: run command recorded`];
+}
+
+/**
+ * Stage 03p acceptance is the user's, not the agent's: it is given on the command line and recorded in
+ * transitions.jsonl, never typed into a file the agent also writes. `report` (readiness) skips it.
+ */
+function acceptanceGate(opts) {
+  const by = typeof opts.approvedBy === 'string' ? opts.approvedBy.trim() : '';
+  if (!by) return [false, 'missing --approved-by "<user>": the prototype stage ends only on the user\'s explicit acceptance, recorded in specs/logs/transitions.jsonl'];
+  return [true, `prototype accepted by ${by} (recorded in transitions.jsonl)`];
+}
+
+/**
+ * Stage 03p on an iteration (a lock exists): the prototype is the certified build A, and the previous slice's
+ * oracle is its regression guard. Every existing case must stay green unless specs/DECISION_LOG.md names the
+ * case as a declared behavior change (Stage 04 Part C step 7 then lists it in the changed-case ledger).
+ */
+function prototypeRegressionGate(p, freshAfter) {
+  if (!exists(p.lock) || !exists(p.cases)) return null;
+  const hash = L.hashTree(p.cases);
+  const rep = latestReport(p, 'run-default', x => x.target === 'default' && x.fixturesHash === hash && !x.filtered);
+  const what = 'iteration regression (previous slice\'s oracle against the prototype)';
+  if (!rep) return [false, `${what}: no unfiltered oracle run on target "default" against the current fixtures — run node specs/.sdd/scripts/oracle.cjs run (results are a regression guard here, not evidence)`];
+  if (freshAfter && !(rep.finishedAt > freshAfter)) return [false, `${what}: latest run (${rep.finishedAt}) predates this stage; re-run`];
+  const failed = (rep.results || []).filter(x => x.status !== 'pass').map(x => x.id);
+  const log = readText(p.decisionLog);
+  const undeclared = failed.filter(id => !log.includes(id));
+  if (undeclared.length) return [false, `${what}: ${undeclared.length} existing case(s) fail without a DECISION_LOG entry naming them (${undeclared.slice(0, 4).join(', ')}) — a regression, or an undeclared behavior change`];
+  return [true, `${what}: ${rep.passed}/${rep.total} passed${failed.length ? `; ${failed.length} declared behavior change(s)` : ''}`];
+}
+
+/** Stage 04: generated profile cases had their second interpretation — an oracle run against the prototype on these exact fixtures. */
+function generatedRunGate(p, freshAfter) {
+  if (!exists(p.cases)) return null;
+  const gen = L.loadCases(p).cases.filter(L.isGeneratedProfileCase);
+  if (!gen.length) return null;
+  const hash = L.hashTree(p.cases);
+  const rep = latestReport(p, 'run-', x => x.fixturesHash === hash);
+  const what = `${gen.length} generated profile case(s)`;
+  if (!rep) return [false, `${what}: no oracle run against the prototype on the current fixtures (oracle.cjs run --target default; --suite is fine)`];
+  if (freshAfter && !(rep.finishedAt > freshAfter)) return [false, `${what}: latest matching run (${rep.finishedAt}) predates this stage; re-run`];
+  const byId = new Map((rep.results || []).map(r => [r.id, r.status]));
+  const missing = gen.filter(c => !byId.has(c.id));
+  const failed = gen.filter(c => byId.has(c.id) && byId.get(c.id) !== 'pass');
+  if (missing.length) return [false, `${what}: ${missing.length} not in the latest matching run (${missing.slice(0, 4).map(c => c.id).join(', ')}); run them`];
+  if (failed.length) return [false, `${what}: ${failed.length} fail against the prototype (${failed.slice(0, 4).map(c => c.id).join(', ')}) — triage each: generator bug, prototype bug (fix it, or drop the "generated" tag so the predictor checks the case), or spec gap`];
+  return [true, `${what}: all pass against the prototype (target "${rep.target}")`];
+}
+
 function exitGates(stage, p, state, info, opts = {}) {
   const gates = [];
   const freshAfter = state.timestamp || null;
@@ -717,9 +912,9 @@ function exitGates(stage, p, state, info, opts = {}) {
   const typeGate = () => [!!info.typeDef, info.typeDef ? `project type ${info.projectType}` : `project type unset or unknown ("${info.projectType}"); pass --project-type <${Object.keys(info.matrix.types).join('|')}>`];
   switch (stage) {
     case '00': {
-      add([!!opts.resume && opts.resume !== '00', opts.resume && opts.resume !== '00' ? `resume at ${L.STAGES[opts.resume].name}` : 'missing or invalid --resume <01|01b|02|04|05> (where the pipeline continues)']);
+      add([RESUME_TARGETS.includes(opts.resume), RESUME_TARGETS.includes(opts.resume) ? `resume at ${L.STAGES[opts.resume].name}` : `missing or invalid --resume <${RESUME_TARGETS.join('|')}> (where the pipeline continues)`]);
       add(fileGate(p, 'specs/backprop-log.md', 'append the backprop entry', freshAfter));
-      if (exists(p.lock)) add(lockGate(p)[0]);
+      add(exists(p.lock) ? lockGate(p)[0] : [false, `no specs/spec.lock.json: nothing is frozen yet, so a defect is ${PRE_FREEZE_ROUTE}`]);
       break;
     }
     case '01':
@@ -736,11 +931,16 @@ function exitGates(stage, p, state, info, opts = {}) {
     case '02': {
       const { r, ctx } = runCheck(p, { contractsOnly: true });
       add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s)` : 'sdd.cjs check --contracts passes']);
+      if (!r.errors.length) add(sliceCapGate(p, ctx));
       const lg = fileGate(p, 'specs/logs/02-swarm.md', 'persisted iteration logs + Outcome Table', freshAfter);
       add(lg);
-      if (lg[0]) add(outcomeTableGate(p, ctx));
-      const outcomes = ctx.ops.reduce((n, o) => n + o.statuses.filter(x => x !== 'default').length, 0) + ctx.commands.reduce((n, c) => n + c.exitCodes.length, 0);
-      add(expectDiffGate(p, freshAfter, false, Math.max(1, outcomes)));
+      if (lg[0]) {
+        // Stage 02 runs round 1 only (the whole slice); rounds 2–3 attack the delta in Stage 03p, with the prototype running.
+        const rounds = swarmRounds(p);
+        add([rounds >= 1, rounds ? `${rounds} Red Team round(s) logged (round 1 here; rounds 2–3 in 03p; cap ${SWARM_ROUND_CAP})` : 'no Red Team round logged (a `## 🔄 Iteration 1` heading in specs/logs/02-swarm.md)']);
+        add(outcomeTableGate(p, ctx));
+      }
+      add(rulingsGate(p, freshAfter));
       break;
     }
     case '03': {
@@ -751,12 +951,33 @@ function exitGates(stage, p, state, info, opts = {}) {
       add([/^##\s+Approved Wireframes/m.test(design) && /\]\((\.\/)?wireframes\/[^)]+\.html\)/.test(design), 'DESIGN.md §Approved Wireframes links wireframes with relative paths']);
       break;
     }
+    case '03p': {
+      const { r, ctx } = runCheck(p, { contractsOnly: true });
+      add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s) (feedback edits must keep the contracts valid)` : 'sdd.cjs check --contracts passes']);
+      if (!r.errors.length) add(sliceCapGate(p, ctx));
+      add(prototypeGate(p, freshAfter));
+      if (!opts.report) add(acceptanceGate(opts));
+      add(fileGate(p, 'specs/logs/03p-decisions.md', 'prototype Decision Inventory', freshAfter));
+      add(gapsGate(p, { requireFile: true, allowOpen: true }));
+      // Hardening rounds 2–3 run here, against the running prototype; the cap counts every round of the iteration.
+      const rounds = swarmRounds(p);
+      add([true, `${rounds} Red Team round(s) logged this iteration (cap ${SWARM_ROUND_CAP})${rounds > SWARM_ROUND_CAP ? ' — over the cap: blocking findings left after the cap go to the user, not to another round' : ''}`]);
+      add(rulingsGate(p, null));
+      // Sample: one predicted case per operation/command, by authors who never saw the prototype. The full dual check runs once, in Stage 04.
+      add(expectDiffGate(p, freshAfter, false, Math.max(1, ctx.ops.length + ctx.commands.length)));
+      const rg = prototypeRegressionGate(p, freshAfter);
+      if (rg) add(rg);
+      break;
+    }
     case '04': {
       const { r } = runCheck(p, { contractsOnly: false });
       add([!r.errors.length, r.errors.length ? `sdd.cjs check: ${r.errors.length} error(s)` : 'sdd.cjs check passes (contracts, fixtures, coverage, phases)']);
       add(fileGate(p, 'specs/IMPLEMENTATION_PHASES.md'));
       add(fileGate(p, 'specs/phase-integrity-check.md', 'Stage 04 Part C', freshAfter));
+      add(gapsGate(p, { requireFile: false, allowOpen: false }));
       add(expectDiffGate(p, freshAfter, true));
+      const gr = generatedRunGate(p, freshAfter);
+      if (gr) add(gr);
       add(lockGate(p)[0]);
       break;
     }
@@ -789,9 +1010,16 @@ function exitGates(stage, p, state, info, opts = {}) {
       if (info.ui) add([VERDICT_PASS.test(readText(path.join(p.specs, 'VAT_REPORT.md'))), 'VAT_REPORT.md verdict PASS (Stage 06)']);
       add(fileGate(p, 'specs/EQUIVALENCE_REPORT.md', 'Stage 07 report', freshAfter));
       const target = info.manifest ? info.manifest.equivalenceTarget : 2;
-      if (target === 2) {
+      const cadence = (info.manifest && info.manifest.equivalenceCadence) || 'iteration';
+      if (target === 2 && (cadence === 'iteration' || opts.release)) {
         if (nonBrowser) add(diffGate(p, v.lock, freshAfter, 'diff-', 'oracle diff'));
         if (browser) add(diffGate(p, v.lock, freshAfter, 'uidiff-', 'oracle diff-ui'));
+      } else if (target === 2) {
+        // Release cadence, intermediate slice: L1 now, L2 before the release. The report must say so.
+        const pending = /\bL2 pending\b/.test(readText(path.join(p.specs, 'EQUIVALENCE_REPORT.md')));
+        add([pending, pending ? 'equivalenceCadence "release": this slice certifies L1, report states "L2 pending" (pass --release when certifying L2)' : 'equivalenceCadence "release": EQUIVALENCE_REPORT.md must state "L2 pending" in its Certified level row (or pass --release and provide the dual-build diff)']);
+        const ls = latestReport(p, 'diff-', x => x.lockHash === v.lock.hash);
+        add([true, ls ? `lockstep diff on this lock: ${ls.a} vs ${ls.b}, ${ls.divergentCases} divergent case(s) at ${ls.finishedAt} (early warning, not evidence)` : 'no lockstep diff on this lock (Stage 05 tip: diff --phase N against an exported build B catches divergences early)']);
       } else add([true, `equivalence target L1 (${info.manifest.equivalenceTargetDecision}; dual-build diff not required)`]);
       break;
     }
@@ -801,28 +1029,63 @@ function exitGates(stage, p, state, info, opts = {}) {
   return gates;
 }
 
-/** The value of lastCompletedStep after completing `stage` (non-UI projects skip 03 and 06). */
+/** The value of lastCompletedStep after completing `stage` (non-UI projects skip 06; 03p and 03 both map to 3). */
 function completedValue(stage, ui) {
-  if (!ui && stage === '02') return 3;
   if (!ui && stage === '05') return 6;
   return L.STAGES[stage].num;
 }
 
-/** Is completing `stage` the next step of the pipeline from the current state? */
-function orderCheck(stage, state, info) {
+/** Stages completed since the transition that opened the current iteration (00, 01 or 01b), by stepName. */
+function iterationStages(p) {
+  const ts = readTransitions(p);
+  let start = 0;
+  ts.forEach((t, i) => { if ([STAGES_00, STAGES_01, STAGES_01B].includes(t.completed)) start = i + 1; });
+  return new Set(ts.slice(start).map(t => t.completed));
+}
+
+const NEEDS_03P = `${L.STAGES['03p'].name} has not been completed: the oracle is recorded against the accepted prototype. Run 03p, or pass --override DECnnn citing the user's decision to skip it (e.g. a project already in Stage 04 before the upgrade)`;
+
+/**
+ * Is completing `stage` the next step of the pipeline from the current state?
+ * Order: 01 → 02 → 03p → (03, UI only: wireframes are captured from the accepted prototype) → 04 → 05 → (06) → 07.
+ * 03p and 03 share lastCompletedStep 3 (the extension's numeric state); stepName and transitions.jsonl tell them apart.
+ */
+function orderCheck(stage, state, info, p) {
   const last = typeof state.lastCompletedStep === 'number' ? state.lastCompletedStep : 0;
   const n = L.STAGES[stage].num;
+  const name = state.stepName;
   if (stage === '00') return [true, 'Stage 00 may run at any time'];
   if ((stage === '03' || stage === '06') && !info.ui) return [false, `${L.STAGES[stage].name} applies only to UI projects`];
+  if (stage === '03p') {
+    if (last === 2) return [true, 'prototype on the reviewed spec draft'];
+    if (last === 3) return [true, name === STAGES_03P ? 're-running the prototype stage' : name === STAGES_03 ? 're-running the prototype stage (re-run 03 afterwards if any screen changed)' : 'prototype on the reviewed spec draft'];
+  } else if (stage === '03') {
+    if (last === 3 && name === STAGES_03) return [true, 're-running 03_interactive_wireframing'];
+    if (last === 3 && name === STAGES_03P) return [true, 'wireframes captured from the accepted prototype'];
+    if (last === 2 || last === 3) return [false, `${L.STAGES['03p'].name} has not been completed: wireframes are captured from the accepted prototype (UI projects run 02 → 03p → 03 → 04)`];
+  } else if (stage === '04' && last === 3) {
+    // Stage 00 leaves last = resume - 1, and RESUME_TARGETS has no 03/03p, so 3 after 00 always means --resume 04.
+    if (name === STAGES_00) return [true, 'resuming after Stage 00 (--resume 04); the accepted prototype is unchanged'];
+    if (name === STAGES_03P) return info.ui ? [false, `${L.STAGES['03'].name} has not been completed: UI projects capture the wireframes from the accepted prototype before the oracle (02 → 03p → 03 → 04)`] : [true, 'next stage after the accepted prototype'];
+    if (name === STAGES_03) return iterationStages(p).has(STAGES_03P) ? [true, 'next stage after the accepted prototype and its wireframes'] : [false, NEEDS_03P];
+    return [false, NEEDS_03P];
+  }
   if (completedValue(stage, info.ui) === last) return [true, `re-running ${L.STAGES[stage].name}`];
   if (stage === '01b' && last <= 0) return [true, 'adoption of an existing codebase'];
   if (stage === '01' && (last <= 0 || last === 7)) return [true, last === 7 ? 'new Class 1 iteration' : 'pipeline start'];
-  if (stage === '04' && last === 1 && state.stepName === STAGES_01B) return [true, 'adoption option C (freeze as-is)'];
+  if (stage === '04' && last === 1 && name === STAGES_01B) return [true, 'adoption option C (freeze as-is)'];
   if (stage === '05' && last === 7) return [true, 'Class 0 change on a certified build'];
-  if (n === last + 1 && stage !== '01b') return [true, `next stage after lastCompletedStep=${last}`];
-  return [false, `${L.STAGES[stage].name} is out of order: lastCompletedStep=${last} (${state.stepName || '—'}); run \`sdd.cjs status\` for the next stage, or pass --override DECnnn citing the user's decision to skip`];
+  if (n === last + 1 && !['01b', '03p', '03'].includes(stage)) return [true, `next stage after lastCompletedStep=${last}`];
+  return [false, `${L.STAGES[stage].name} is out of order: lastCompletedStep=${last} (${name || '—'}); run \`sdd.cjs status\` for the next stage, or pass --override DECnnn citing the user's decision to skip`];
 }
+const STAGES_00 = '00_backprop';
+const STAGES_01 = '01_brainstorming';
 const STAGES_01B = '01b_adoption';
+const STAGES_03 = '03_interactive_wireframing';
+const STAGES_03P = '03p_prototype';
+// Where the pipeline may continue after Stage 00 (00_backprop/CONTEXT.md §Handoff). The prototype and wireframes are reworked via 02.
+const RESUME_TARGETS = ['01', '01b', '02', '04', '05'];
+const PRE_FREEZE_ROUTE = `not a Class 2 change — edit the spec in the current stage and add (or close) a ${GAPS_FILE} row instead of running Stage 00`;
 
 function printGates(title, gates) {
   console.log(title);
@@ -834,8 +1097,12 @@ function nextStage(state, info) {
   if (last === -1) return '01b';
   if (last === 0) return '01';
   if (last === 1) return '02';
-  if (last === 2) return info.ui ? '03' : '04';
-  if (last === 3) return '04';
+  if (last === 2) return '03p';
+  if (last === 3) {
+    if (state.stepName === STAGES_00 || state.stepName === STAGES_03) return '04';
+    if (state.stepName === STAGES_03P) return info.ui ? '03' : '04';
+    return '03p'; // a state file from before 03p existed (non-UI projects used to reach 3 straight from 02)
+  }
   if (last === 4) return '05';
   if (last === 5) return info.ui ? '06' : '07';
   if (last === 6) return '07';
@@ -851,12 +1118,18 @@ function cmdStatus(p) {
   console.log(`  state:  lastCompletedStep=${state.lastCompletedStep} (${state.stepName || '—'}) projectType=${info.projectType || 'unset'}${info.ui ? ' [UI]' : ''}`);
   if (state.notes) console.log(`          ${state.notes}`);
   const v = exists(p.lock) ? L.verifyLock(p.root) : null;
-  if (!v) console.log('  lock:   none (frozen set is not locked yet)');
+  if (!v) console.log(`  lock:   none (frozen set is not locked yet); a defect or spec gap found now is ${PRE_FREEZE_ROUTE}`);
   else console.log(`  lock:   v${v.lock.lockVersion} ${v.lock.hash.slice(0, 12)} — ${v.valid ? 'INTACT' : `MODIFIED (${v.modified.length} changed, ${v.added.length} added, ${v.removed.length} removed)`}`);
   const run = latestReport(p, 'run-', () => true);
   if (run) console.log(`  oracle: ${run.passed}/${run.total} passed on "${run.target}" at ${run.finishedAt}${v && run.lockHash === v.lock.hash ? '' : ' (STALE: different lock)'}${run.filtered ? ' (filtered)' : ''}`);
   const diff = latestReport(p, 'diff-', () => true);
   if (diff) console.log(`  diff:   ${diff.a} vs ${diff.b}: ${diff.divergentCases} divergent case(s) at ${diff.finishedAt}`);
+  const gaps = readGaps(p).rows;
+  if (gaps) {
+    const open = gaps.filter(g => g.status === 'open');
+    const deferred = gaps.filter(g => g.status === 'deferred').length;
+    console.log(`  gaps:   ${open.length} open in ${GAPS_FILE} (${open.filter(g => g.kind === 'policy').length} policy, need the user)${deferred ? `, ${deferred} deferred (next-slice candidates)` : ''} — \`sdd.cjs readiness\` for detail`);
+  }
   const next = nextStage(state, info);
   if (!next) {
     console.log('\nPipeline complete. Next change: Class 0 (non-observable) → 05; Class 1 (observable) → 01; Class 2 (defect) → 00.');
@@ -874,11 +1147,50 @@ function cmdCheck(p, args) {
   return r.errors.length ? 1 : 0;
 }
 
+/** Report-only. Counts known gaps; it never scores, and later stages can still find more. */
+function cmdReadiness(p) {
+  const state = readState(p);
+  const info = projectInfo(p, state);
+  console.log('SDD readiness — distance from a freezable spec set (known gaps only; later stages can find more)');
+  console.log(`  stage:   lastCompletedStep=${state.lastCompletedStep} (${state.stepName || '—'})${info.ui ? ' [UI]' : ''}`);
+  const { r, ctx } = runCheck(p, { contractsOnly: false });
+  if (ctx.manifest) {
+    const cap = ctx.manifest.sliceCap || DEFAULT_SLICE_CAP;
+    const { total, slice } = sliceOutcomes(p, ctx);
+    console.log(`  slice:   ${slice === null ? 'unknown (lock predates outcome recording)' : `${slice} new declared outcome(s)`} (cap ${cap}); ${total} in total across ${ctx.ops.length + ctx.commands.length} operation(s)/command(s)`);
+  } else console.log('  slice:   no contracts yet (Stage 02 output)');
+  const { rows, errors } = readGaps(p);
+  if (rows === null) console.log(`  gaps:    no ${GAPS_FILE} yet`);
+  else {
+    const open = rows.filter(g => g.status === 'open');
+    const by = k => open.filter(g => g.kind === k).length;
+    console.log(`  gaps:    ${open.length} open — ${by('policy')} policy (need the user), ${by('technical')} technical, ${by('builder')} builder, ${by('ui')} ui, ${by('oracle')} oracle`);
+    console.log(`           closed: ${rows.filter(g => g.status === 'resolved' || g.status === 'confirmed').length} resolved/confirmed, ${rows.filter(g => g.status === 'deferred').length} deferred to a later slice`);
+    if (errors.length) console.log(`           ⚠ ${errors.length} malformed row(s): ${errors[0]}`);
+  }
+  const rounds = swarmRounds(p);
+  if (rounds) console.log(`  swarm:   ${rounds} Red Team round(s) logged (cap ${SWARM_ROUND_CAP})`);
+  const coverage = r.notes.find(n => n.startsWith('coverage:'));
+  console.log(`  oracle:  ${coverage || 'no oracle cases yet (Stage 04)'}`);
+  const ed = latestReport(p, 'expectdiff-', () => true);
+  if (ed) console.log(`           latest diff-expect "${ed.label}": ${ed.totalCases} compared, ${ed.divergentCases} with gaps${ed.skippedGenerated ? `, ${ed.skippedGenerated} generated skipped` : ''}`);
+  // Every gate of every spec stage, freshness ignored: the question is "what is still missing", not "what was done this stage".
+  const stages = ['02', '03p', ...(info.ui ? ['03'] : []), '04'];
+  console.log('  gates (all stages, freshness ignored):');
+  for (const s of stages) {
+    const gates = exitGates(s, p, { ...state, timestamp: null }, info, { report: true });
+    const failing = gates.filter(([ok]) => !ok);
+    console.log(`    ${failing.length ? '✗' : '✓'} ${s} ${gates.length - failing.length}/${gates.length}`);
+    for (const [, label] of failing) console.log(`        ✗ ${label}`);
+  }
+  return 0;
+}
+
 function cmdFreeze(p, args) {
   const reason = args.flags.reason;
   const by = args.flags['approved-by'];
   if (typeof reason !== 'string' || typeof by !== 'string') fail('freeze requires --reason "<why>" and --approved-by "<who approved>"');
-  const { r } = runCheck(p, { contractsOnly: false });
+  const { r, ctx } = runCheck(p, { contractsOnly: false });
   if (r.errors.length) { r.print('sdd check'); fail('\nfreeze refused: sdd.cjs check must pass first'); }
   const prev = exists(p.lock) ? L.verifyLock(p.root) : null;
   if (prev && prev.valid) { console.log(`Lock v${prev.lock.lockVersion} already matches the frozen set; nothing to freeze.`); return 0; }
@@ -896,6 +1208,8 @@ function cmdFreeze(p, args) {
     approvedBy: by,
     hash: cur.hash,
     files: cur.files,
+    // Baseline for the next slice's cap (sliceCapGate counts only outcomes not in this list). Not part of the hash.
+    outcomes: declaredOutcomes(ctx).sort(),
     history,
   };
   if (prev) {
@@ -934,14 +1248,19 @@ function cmdTransition(p, args) {
     state.projectType = args.flags['project-type'];
   }
   const info = projectInfo(p, state);
-  if (resume === '00') fail('--resume cannot be 00; resume at the stage where the pipeline continues');
-  let order = orderCheck(stage, state, info);
+  if (resume && !RESUME_TARGETS.includes(resume)) {
+    const hint = resume === '03' || resume === '03p' ? ' To rework the prototype or the wireframes, resume at 02 (03p and 03 follow it).' : '';
+    fail(`--resume ${args.flags.resume} is not a resume target: use one of ${RESUME_TARGETS.join('|')} (00_backprop/CONTEXT.md §Handoff).${hint}`);
+  }
+  let order = orderCheck(stage, state, info, p);
   const override = args.flags.override;
   if (!order[0] && typeof override === 'string') {
     if (!/^DEC\d+$/.test(override) || !new RegExp(`\\b${override}\\b`).test(readText(p.decisionLog))) fail(`--override ${override} must cite a DECnnn entry in specs/DECISION_LOG.md recording the user's decision`);
     order = [true, `order overridden by ${override}`];
   }
-  const gates = [order, ...exitGates(stage, p, state, info, { resume })];
+  const approvedBy = typeof args.flags['approved-by'] === 'string' ? args.flags['approved-by'].trim() : '';
+  const release = !!args.flags.release;
+  const gates = [order, ...exitGates(stage, p, state, info, { resume, approvedBy, release })];
   printGates(`Exit gates for ${L.STAGES[stage].name}:`, gates);
   if (gates.some(([ok]) => !ok)) { console.log('\n✗ transition refused: fix the failing gates first.'); return 1; }
 
@@ -951,20 +1270,24 @@ function cmdTransition(p, args) {
     // Resume means "that stage is next": 01b is reached from -1 (the extension's "Pending Adoption").
     last = resume === '01b' ? -1 : L.STAGES[resume].num - 1;
     note = `${note}; resume at ${L.STAGES[resume].name}`;
-  } else if (!info.ui && stage === '02') {
-    last = 3;
-    note = `${note}; 03 skipped (non-UI project)`;
   } else if (!info.ui && stage === '05') {
     last = 6;
     note = `${note}; 06 skipped (non-UI project)`;
   }
+  if (stage === '03p' && approvedBy) note = `${note}; prototype accepted by ${approvedBy}`;
+  if (stage === '07' && release) note = `${note}; release certification (L2)`;
   const v = exists(p.lock) ? L.verifyLock(p.root) : null;
   const now = new Date().toISOString();
   // Preserve unknown fields: other tools (e.g. the SDD VS Code extension) share this file.
   const next = { ...state, lastCompletedStep: last, stepName: L.STAGES[stage].name, projectType: info.projectType, timestamp: now, notes: note };
   L.writeJson(p.state, next);
   fs.mkdirSync(p.logs, { recursive: true });
-  fs.appendFileSync(p.transitions, JSON.stringify({ ts: now, completed: L.STAGES[stage].name, resume: resume ? L.STAGES[resume].name : null, lastCompletedStep: last, lockHash: v && v.valid ? v.lock.hash : null, note }) + '\n');
+  const record = { ts: now, completed: L.STAGES[stage].name, resume: resume ? L.STAGES[resume].name : null, lastCompletedStep: last, lockHash: v && v.valid ? v.lock.hash : null, note };
+  if (stage === '03p') record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
+  if (stage === '07') record.release = release;
+  // These open a new iteration: Stage 02's round cap counts swarm-log headings from here (swarmRounds).
+  if (['00', '01', '01b'].includes(stage)) record.swarmHeadings = swarmHeadings(p);
+  fs.appendFileSync(p.transitions, JSON.stringify(record) + '\n');
   console.log(`\n✓ ${L.STAGES[stage].name} complete → lastCompletedStep=${last}. ${note}`);
   return 0;
 }
@@ -1027,7 +1350,7 @@ function main() {
   const args = L.parseArgs(process.argv.slice(2));
   const root = typeof args.flags.root === 'string' ? path.resolve(args.flags.root) : L.defaultRoot();
   const p = L.projectPaths(root);
-  const commands = { status: cmdStatus, check: cmdCheck, freeze: cmdFreeze, verify: cmdVerify, transition: cmdTransition, export: cmdExport };
+  const commands = { status: cmdStatus, check: cmdCheck, freeze: cmdFreeze, verify: cmdVerify, transition: cmdTransition, export: cmdExport, readiness: cmdReadiness };
   const cmd = commands[args._[0]];
   if (!cmd) { console.log(USAGE); return args._[0] ? 2 : 0; }
   return cmd(p, args);

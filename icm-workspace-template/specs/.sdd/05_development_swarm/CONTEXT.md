@@ -4,7 +4,10 @@
 
 Builder vs. Critic loop during implementation. The builder's mandate is narrow: make the frozen oracle pass using only the frozen spec set. Equivalence follows from that narrowness — a second builder with the same files must be able to reach the same observations without anything this builder knew from elsewhere.
 
-**! execute the attack-and-refine loop until the Red Team finds zero findings with terminal evidence. Stopping after a single unverified pass = severe failure.**
+**The oracle is the inner loop.** Per phase: Decision Inventory → build → `oracle.cjs run --phase N` until green → one Red Team pass limited to what the oracle cannot observe. Claiming a phase done without the green run pasted in the log = severe failure.
+
+> [!NOTE]
+> **Build A continues the prototype.** The code accepted in Stage 03p is build A's starting point — it is not thrown away. From the freeze on, every change to build A ! be driven by a failing oracle case or a cited Decision Inventory entry; prototype behavior with no citation is either pinned by the frozen set (keep) or a gap (SCR). **Build B is always spec-only**: it starts from `sdd.cjs export` and never sees the prototype. That is why only L2 certifies that the spec — not the prototype — determines the observations.
 
 ## Inputs (the ONLY inputs)
 - Layer 4 (frozen): `specs/SPEC.md`, `specs/DESIGN.md` (UI), `specs/contracts/*`, `specs/fixtures/*`, `specs/wireframes/*.html` (UI)
@@ -15,7 +18,8 @@ Builder vs. Critic loop during implementation. The builder's mandate is narrow: 
 ## Process
 
 ### ⛔ GATE: Spec-Only Context
-- Run Stage 05 in a fresh session | sub-agent. ⊥ read Stage 01–04 conversation history, `specs/logs/` (swarm and gap logs), `specs/DECISION_LOG.md` rationale, or any other implementation of this spec. Those carry information outside the frozen set that a second builder would not have.
+- Run Stage 05 in a fresh session | sub-agent. ⊥ read Stage 01–04 conversation history, `specs/logs/` (swarm, gap and prototype logs), `specs/DECISION_LOG.md` rationale, or any other implementation of this spec. Those carry information outside the frozen set that a second builder would not have.
+- Build A exceptions (exactly two): build A MAY read its own codebase (the accepted 03p prototype it continues), and it MAY copy `specs/logs/03p-decisions.md` as the starting point of its Decision Inventory — that file holds only citations into frozen files, each re-verified against the frozen set before use (line numbers move at freeze). Nothing else under `specs/logs/`, and never the prototype conversation. The code is a starting point, not a source of truth — the frozen set is.
 - Need a fact the frozen set does not state (a value, an ordering, a message, an edge case) → **spec gap**. ⊥ guess, ⊥ pick "the obvious" option. Draft `specs/changes/SCR-NNN.md` (Stage 00 format, class C) and stop work on that item. Work on unaffected items may continue.
 - Believe an oracle case is wrong → same route (class B). The case stays as-is until the user approves the SCR.
 
@@ -33,8 +37,9 @@ Analyze project stack → instantiate additional specialist roles as needed.
 *∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
 
 ### Validation Swarm (Red Team)
-After Blue Team drafts code, adopt attack roles *before* saving:
+Once per phase, after the oracle is green, review what the oracle cannot observe:
 Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer, DX Auditor, Architect (Spec Enforcer), Visual QA Tester, Design Token Auditor.
+Instantiate by project type: Visual QA Tester and Design Token Auditor only when `manifest.interfaces` includes `browser`; Resource Starver and Chaos Engineer only for services and fullstack apps (`cli-tool` and `library` get the Architect, Compliance Enforcer and DX Auditor). The Red Team never re-grades what the oracle already proved: its scope is security, resource bounds, orphan code, dependency justification, token use in UI, and spec clauses no case observes.
 ∃ role standards → read `../_config/role-standards.md`.
 
 ### Pipeline Rules (∀ roles)
@@ -77,7 +82,7 @@ Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer
 </format_enforcement>
 
 #### Mandatory Empirical Evidence
-Red Team ⊥ PASS based on inspection alone. ! run code/tests/build & include terminal output ∈ Iteration Log. A Red Team PASS on a first draft is allowed only with that evidence attached.
+A phase ⊥ PASS based on inspection alone. The green `oracle.cjs run --phase N` output (and build/typecheck output) ! be pasted ∈ the Iteration Log; the Red Team table follows it. A phase whose log lacks the pasted run is not done.
 
 > [!NOTE]
 > **Iterative Execution:** Only execute the new unchecked phases (`- [ ]`) in `specs/IMPLEMENTATION_PHASES.md`. Skip phases marked completed (`- [x]`). `--phase N` is cumulative, so earlier phases keep being re-graded as regressions.
@@ -86,19 +91,17 @@ Red Team ⊥ PASS based on inspection alone. ! run code/tests/build & include te
 > [!TIP]
 > **Lockstep build B (recommended for L2):** start the independent build early instead of at Stage 07. `sdd.cjs export ../<project>-eqb` after the freeze; a fresh session builds there phase by phase. After each phase, both builds green: `node specs/.sdd/scripts/oracle.cjs diff --phase N --b-root ../<project>-eqb` — a filtered diff is an early warning, not evidence. Divergences found while little code depends on them are cheap: route them to Stage 00 here, re-freeze, then `sdd.cjs export ../<project>-eqb --update` (keeps B's code and progress, refreshes its frozen files).
 
-### Test-Driven Implementation Loop
-Execute this exact sequence ∀ file/component:
+### Oracle-Driven Implementation Loop
+Execute this exact sequence ∀ phase (one phase at a time, in `IMPLEMENTATION_PHASES.md` order):
 
-**⛔ GATE: One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
-- **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → agent ! proceed through ∀ files & phases sequentially. ⊥ pause | return to user after single file/phase written. Loop next files/phases via tool calls.
+- **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → agent ! proceed through ∀ phases sequentially. ⊥ pause | return to user after a single phase. Loop next phases via tool calls.
 
 0. **Pre-Flight:** `sdd.cjs verify` passes. ∃ Context7 MCP → invoke its resolving tools; ⊥ Context7 → web search | training knowledge. Log documentation source.
-0b. **Decision Inventory (once per phase, before any code):** list every observable decision the phase requires — each status, header, field value, ordering, message, default, limit — and cite the frozen file line that pins it, in `specs/logs/05-decisions.md`. A decision you cannot cite = spec gap → SCR draft now, not after the code exists. This is the builder-side interpretation check: it catches the gaps a second builder would fill differently.
-1. **Draft (Blue Team):** Appropriate Builder generates code fulfilling phase task.
-2. **Attack (Red Team):** Critics analyze drafted code against contracts, the profile, edge cases, security.
-3. **Refine (Blue Team):** Builder fixes based on Red Team findings.
-4. **Deploy & Verify:** repeat 1–3 until Critics → "PASS" with ZERO findings and evidence. **Hard Limit:** Max 5 iterations per component; still failing → halt & ask user. After PASS → write code.
-5. **Phase gate:** `node specs/.sdd/scripts/oracle.cjs run --phase N` → 0 failed, 0 errored (browser-only phases: the frozen UI suite, `oracle-standard.md` §UI specs); `sdd.cjs verify` passes; tick the phase's boxes.
+1. **Decision Inventory (before any code):** list every observable decision the phase requires — each status, header, field value, ordering, message, default, limit — and cite the frozen file line that pins it, in `specs/logs/05-decisions.md`. A decision you cannot cite = spec gap → SCR draft now, not after the code exists. This is the builder-side interpretation check: it catches the gaps a second builder would fill differently. Build A MAY start from `specs/logs/03p-decisions.md` (copy rows, re-verify each citation against the frozen files); build B writes its own from scratch.
+2. **Build (Blue Team):** the appropriate Builders write the phase's files against the inventory and the frozen contracts.
+3. **Oracle loop:** `node specs/.sdd/scripts/oracle.cjs run --phase N` (browser-only phases: the frozen UI suite, `oracle-standard.md` §UI specs) → fix the CODE for every failure → re-run, until 0 failed, 0 errored. A failing case you believe is wrong → SCR draft (class B); the case stays. **Hard Limit:** 5 oracle rounds per phase without reaching green → halt & ask the user.
+4. **Red Team pass (once, after green):** Critics review the phase's code for what the oracle cannot observe (§Validation Swarm). Every finding → fixed and the oracle re-run (step 3), or → SCR draft when it exposes a spec gap. Findings about behavior the oracle already grades are out of scope: the oracle decided.
+5. **Phase gate:** oracle green on the final code; `sdd.cjs verify` passes; the iteration log (format: `../_config/iteration-log-format.md` §Development Swarm) holds the pasted green run and the Red Team table; tick the phase's boxes.
 6. **Document & Run:** single-command start (`docker-compose up -d` for services; the documented command otherwise). DX Auditor verifies. Technical Writer updates `README.md`.
 
 ### Post-Implementation Reconciliation (CRITICAL)

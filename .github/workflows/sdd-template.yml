@@ -1,0 +1,38 @@
+name: SDD ICM template
+
+on:
+  push:
+    paths:
+      - 'icm-workspace-template/**'
+      - 'scripts/validate-icm-sync.sh'
+      - '.github/workflows/sdd-template.yml'
+  pull_request:
+    paths:
+      - 'icm-workspace-template/**'
+      - 'scripts/validate-icm-sync.sh'
+      - '.github/workflows/sdd-template.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Pipeline state tests (gates, order, slice cap, cadence)
+        run: node --test icm-workspace-template/tests/*.test.cjs
+      - name: Reference example still passes sdd.cjs check
+        run: node icm-workspace-template/specs/.sdd/scripts/sdd.cjs check --root icm-workspace-template/specs/.sdd/_config/examples/notes-service
+      - name: Entry files are identical copies of the entrypoint
+        working-directory: icm-workspace-template
+        run: |
+          diff specs/.sdd/_config/entrypoint.md CLAUDE.md
+          diff specs/.sdd/_config/entrypoint.md AGENTS.md
+          diff specs/.sdd/_config/entrypoint.md .cursorrules
+      - name: Skills ↔ template drift (report only until the skills are ported from the template)
+        continue-on-error: true
+        run: bash scripts/validate-icm-sync.sh

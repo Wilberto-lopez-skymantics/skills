@@ -27,7 +27,7 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 **⛔ GATE (Visual Default):** ∃ enabled visual companion → ∀ UI proposal (layout | theme | color palette | component option) ! present via browser visual companion. Proposing | discussing visual variations in text first = process violation.
 
 > [!NOTE]
-> **Iterative Cycle (Class 1 change):** If `specs/SPEC.md` & `specs/DESIGN.md` already exist, reuse them as baseline. Skip Step 2b (Theme & Vibe) & reuse existing design tokens unless redesign requested. Editing a frozen file breaks the lock — expected: Stage 04 re-freezes with the user's approval, and no build is graded until then. Every behavior that changes for existing users ! get its own DECISION_LOG entry, so Stage 04 knows which existing oracle cases may change.
+> **Iterative Cycle (Class 1 change / next slice):** If `specs/SPEC.md` & `specs/DESIGN.md` already exist, reuse them as baseline. Start from the `deferred` rows of `specs/GAPS.md` (the previous slice's next-slice candidates; `sdd.cjs status` counts them): with the user, pick which become this slice and keep the rest deferred. Skip Step 2b (Theme & Vibe) & reuse existing design tokens unless redesign requested. Editing a frozen file breaks the lock — expected: Stage 04 re-freezes with the user's approval, and no build is graded until then. Every behavior that changes for existing users ! get its own DECISION_LOG entry naming the oracle cases it changes, so Stage 03p's regression guard and Stage 04's changed-case ledger know which existing cases may fail.
 
 ### Checklist
 
@@ -35,12 +35,13 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 
 1. **Explore project context** — run `node specs/.sdd/scripts/sdd.cjs status`; check files, docs, recent commits
 1b. **Classify project type & interfaces** — pick one type from `../_config/references/completeness-checklist.md`. Unclear → ask the user. It decides which contracts, stages and oracle interfaces apply.
+1c. **Scope the slice** — agree with the user on the smallest slice that is worth seeing working (the 03p prototype builds exactly this). Estimate its observable outcomes (operations/commands × their success, error and transition outcomes); a first slice of 30–80 outcomes reaches a running prototype fastest, and the cap (default 150, `manifest.json#sliceCap`; raising it needs `sliceCapDecision` DECnnn — Stages 02 and 03p enforce) is a ceiling, not a target. ∀ feature outside the slice → `specs/GAPS.md` row (kind `policy`, status `deferred`, cite the DECnnn that defers it; format in `../_config/gaps-template.md`). Steps 3–9 cover the slice only; deferred items get one line each, not an interview.
 2. **Offer visual companion** (if visual questions ahead) — own message, not combined with clarifying question. See Visual Companion section.
 2b. **Theme & Vibe Brainstorming** (UI only) — ask user for theme/aesthetic/vibe → propose 2-3 matching designs → iterate until approved. Read `../_config/references/theme-brainstorming.md`.
 3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time. Shadow Critic concurrently probes domain gaps, negative space, and edge cases.
-3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`. The Fork Test is answered by the latest Dual Interpretation round: it passes only when every scenario of every topic has matching, cited predictions.
+3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`. The Fork Test is answered by the end-of-slice Dual Interpretation run: it passes only when every scenario of every topic has matching, cited predictions.
 
-**⛔ GATE:** ⊥ propose approaches (Step 4) until Extraction Closure Report passes with ZERO open domain gaps. Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
+**⛔ GATE:** ⊥ propose approaches (Step 4) until Extraction Closure Report passes with ZERO open domain gaps inside the slice. Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
 4. **Propose 2-3 approaches** — with trade-offs & recommendation
 5. **Present design** — sections scaled to complexity, get approval after each
 6. **Write decision log** — consolidate decisions → `specs/DECISION_LOG.md` (append new entries; ⊥ overwrite existing). See `../_config/decision-log-template.md`.
@@ -62,7 +63,8 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
   1. **Lead Architect (Interviewer):** Interfaces directly with user. Maintains conversation flow. Asks exactly ONE question per turn.
   2. **Shadow Critic (Domain Gap Hunter):** Background auditor. Evaluates evolving domain model after each user answer against the 4 Extraction Closure dimensions. Identifies unstated business assumptions, dangling states, and unhandled failure paths. Feeds the next edge-case question to the Lead Architect.
 
-**Dual Interpretation (after each topic closes):** the Shadow Critic writes 3–5 concrete scenarios for the topic just discussed ("customer cancels an order that already shipped", "two admins edit the same record"). Two fresh sub-agents (or sessions) — given ONLY the policy notes so far, never this conversation — each predict the observable outcome of every scenario, citing the note line it follows from, or answering `UNSPECIFIED` with what is missing. Every scenario where the predictions differ, or either says `UNSPECIFIED`, or a prediction cites nothing, is a domain gap: rank them and turn the most important into the next single question. Agreement without citations is not closure — two guesses can coincide. This is the cheapest point to find the divergences that would otherwise surface only when two builds disagree. Log scenarios and predictions in `specs/logs/01-interpretations.md`.
+**Dual Interpretation (once per slice, plus high-risk topics):** the Shadow Critic writes 3–5 concrete scenarios per topic ("customer cancels an order that already shipped", "two admins edit the same record"). Two fresh sub-agents (or sessions) — given ONLY the policy notes so far, never this conversation — each predict the observable outcome of every scenario, citing the note line it follows from, or answering `UNSPECIFIED` with what is missing. Every scenario where the predictions differ, or either says `UNSPECIFIED`, or a prediction cites nothing, is a domain gap: rank them and turn the most important into the next single question. Agreement without citations is not closure — two guesses can coincide.
+Run it **once, when the interview for the slice is otherwise complete** (all topics, before the Extraction Closure Gate), and additionally **right after a topic closes when that topic sets lifecycle, permission or money rules** — the places where a wrong guess is most expensive to unwind. Other topics wait for the end-of-slice run: the Stage 03p Decision Inventory and hardening rounds catch the remaining gaps against a running prototype, at lower cost than two sub-agents per topic. Log scenarios and predictions in `specs/logs/01-interpretations.md`.
 
 **Policy vs Mechanics Protocol:**
 - **Business & Domain Policy (Escalate to Human):** Pricing, access permissions, workflow rules, entity lifecycles, regulatory/compliance constraints. ⊥ guess | assume. ! ask user directly.
@@ -100,6 +102,7 @@ After user approves design, merge decisions into spec:
 - `specs/SPEC.md`
 - `specs/DESIGN.md` (if UI project)
 - `specs/DECISION_LOG.md`
+- `specs/GAPS.md` (deferred out-of-slice items)
 - `specs/.sdd/_config/sdd-state.json`
 
 ### Handoff / Transitions

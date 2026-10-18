@@ -407,6 +407,8 @@ async function cmdRun(p, args) {
     target: target.name,
     baseUrl: target.baseUrl,
     ...lock,
+    // Binds the run to the exact oracle it graded (the only binding available before the first freeze).
+    fixturesHash: fs.existsSync(p.cases) ? L.hashTree(p.cases) : null,
     filtered: filtered || !!args.flags.bail,
     filters: { phase: args.flags.phase, case: args.flags.case, suite: args.flags.suite },
     startedAt,
@@ -822,11 +824,14 @@ function cmdDiffExpect(p, args) {
   const gaps = [];
   const ids = [...new Set([...byA.keys(), ...byB.keys()])].sort();
   let compared = 0;
+  let skippedGenerated = 0;
   for (const id of ids) {
     const a = byA.get(id);
     const b = byB.get(id);
     if (!a || !b) {
       if ((a || b).probe && !(a || b).steps.some(s => s.expect)) continue; // probe without expectations on one side only
+      // Generated profile cases get their second interpretation from `oracle run` against the prototype, not from B.
+      if (a && L.isGeneratedProfileCase(a)) { skippedGenerated++; continue; }
       gaps.push({ case: id, path: '', reason: `case only in ${a ? 'A' : 'B'}` });
       continue;
     }
@@ -834,6 +839,7 @@ function cmdDiffExpect(p, args) {
     compared++;
     for (const [side, c] of [['A', a], ['B', b]]) {
       if (!(c.derivedFrom || []).length) gaps.push({ case: id, path: '', reason: `${side} cites no source (derivedFrom): an uncited prediction is a guess even if both agree` });
+      else if (!L.specCitations(c).length) gaps.push({ case: id, path: '', reason: `${side} cites only recorded observations: a recorded value says what a build did, not why the spec requires it — cite SPEC, contracts or the profile` });
     }
     if (a.steps.length !== b.steps.length) { gaps.push({ case: id, path: 'steps', reason: `different step counts (${a.steps.length} vs ${b.steps.length})` }); continue; }
     a.steps.forEach((sa, i) => {
@@ -874,12 +880,13 @@ function cmdDiffExpect(p, args) {
     aIsFixtures: A.hash === fixturesHash,
     finishedAt: new Date().toISOString(),
     totalCases: compared,
+    skippedGenerated,
     divergentCases: divergent.size,
     gaps,
   };
   const out = path.join(p.oracleLogs, `expectdiff-${label}.json`);
   L.writeJson(out, report);
-  console.log(`\n${compared} case(s) compared: ${divergent.size} with gaps, ${gaps.length} gap(s) → ${L.rel(p.root, out)}`);
+  console.log(`\n${compared} case(s) compared: ${divergent.size} with gaps, ${gaps.length} gap(s)${skippedGenerated ? `; ${skippedGenerated} generated profile case(s) skipped (graded against the prototype by oracle run)` : ''} → ${L.rel(p.root, out)}`);
   if (gaps.length) console.log('Resolve every gap in the SPEC (Stage 02 before freeze, Stage 00 after) — never by picking one author\'s answer.');
   if (A.hash === B.hash) console.log('⚠ A and B are byte-identical: this is not an independent prediction and will not satisfy the stage gates.');
   return gaps.length ? 1 : 0;
@@ -895,7 +902,8 @@ function cmdStripExpect(p, args) {
   let n = 0;
   for (const f of files) {
     const data = L.readJson(f);
-    const cases = (data.cases || []).filter(c => !c.probe).map(c => {
+    // Probes have no expectations; generated profile cases are not predicted by B (see diff-expect).
+    const cases = (data.cases || []).filter(c => !c.probe && !L.isGeneratedProfileCase(c)).map(c => {
       const steps = c.steps.map(({ expect, note, ...rest }) => rest);
       const reqs = steps.map(st => (st.http ? `${st.http.method} ${st.http.path}` : st.parallel ? `${st.parallel.length} concurrent requests` : st.query ? 'query' : 'run'));
       n++;

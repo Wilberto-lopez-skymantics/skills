@@ -665,6 +665,32 @@ function statusCovers(declared, status) {
   return Number(declared) === status;
 }
 
+// ========== Citations & generated cases ==========
+
+/** `recorded:<target>@<time>` marks an observation of a running build. It shows where a value came from, never why it is right. */
+function isRecordedCitation(d) {
+  return /^recorded:/.test(String(d));
+}
+
+/** Citations that derive a value from the spec set (SPEC, contracts, profile); recorded observations excluded. */
+function specCitations(c) {
+  return (c.derivedFrom || []).filter(d => !isRecordedCitation(d));
+}
+
+const CONTRACT_CITATION = /^(openapi|errors|statecharts|schema|cli|storage|levels|api)\b/;
+const PROFILE_CITATION = /^profile [A-Z]+-[0-9]+\b/;
+
+/**
+ * A profile-family case written by a generator script (Stage 04): tagged "generated", cites at least one
+ * profile rule, and cites nothing but profile rules and contracts. A SPEC.md citation means domain behavior,
+ * which always needs an independent prediction, so such a case never qualifies.
+ */
+function isGeneratedProfileCase(c) {
+  if (!c || c.probe || !(c.tags || []).includes('generated')) return false;
+  const cites = c.derivedFrom || [];
+  return cites.some(d => PROFILE_CITATION.test(d)) && cites.every(d => PROFILE_CITATION.test(d) || CONTRACT_CITATION.test(d));
+}
+
 // ========== Spec text parsing ==========
 
 function parseInvariants(text) {
@@ -685,6 +711,8 @@ const STAGES = {
   '01b': { num: 1, name: '01b_adoption' },
   '02': { num: 2, name: '02_adversarial_swarm_analysis' },
   '03': { num: 3, name: '03_interactive_wireframing' },
+  // Shares 3 with 03 (as 01b shares 1 with 01): the extension's numeric state is unchanged; stepName tells them apart.
+  '03p': { num: 3, name: '03p_prototype' },
   '04': { num: 4, name: '04_writing_implementation_phases' },
   '05': { num: 5, name: '05_development_swarm' },
   '06': { num: 6, name: '06_visual_acceptance_testing' },
@@ -694,7 +722,7 @@ const STAGES = {
 function normalizeStage(input) {
   if (input === undefined || input === true) return null;
   const s = String(input).toLowerCase().trim();
-  const m = s.match(/^0?([0-7])(b)?(?:_[a-z_]+)?$/);
+  const m = s.match(/^0?([0-7])(b|p)?(?:_[a-z_]+)?$/);
   if (!m) return null;
   const key = `0${m[1]}${m[2] || ''}`;
   return STAGES[key] ? key : null;
@@ -741,6 +769,9 @@ module.exports = {
   HTTP_METHODS,
   matchOperation,
   statusCovers,
+  isRecordedCitation,
+  specCitations,
+  isGeneratedProfileCase,
   parseInvariants,
   parsePhases,
   STAGES,

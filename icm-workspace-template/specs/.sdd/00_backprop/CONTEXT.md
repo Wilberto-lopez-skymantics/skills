@@ -13,6 +13,8 @@ The only door into the frozen set. A defect means either the code broke the spec
 - Stage 07 verification fails, or a defect escapes to production.
 - The user asks to trace a bug back to its source.
 
+**Not before the first freeze.** ∄ `specs/spec.lock.json` → not Class 2: ⊥ write an SCR. Edit the spec in the current stage and add (or close) a `specs/GAPS.md` row; `transition --completed 00` refuses without a lock.
+
 ## Inputs
 - Layer 4 (working): Failing oracle output (`specs/logs/oracle/*.json`), diff report, bug report, or post-mortem
 - Layer 4 (working): The frozen set (`specs/SPEC.md`, `specs/contracts/*`, `specs/fixtures/*`) and `specs/spec.lock.json`
@@ -94,4 +96,5 @@ Append to `specs/backprop-log.md` (create if ∄):
    - `--resume 04` — new behavior needs new implementation phases.
    - `--resume 02` — the spec change touched contracts enough to need re-hardening.
    - `--resume 01` — class D: the user must make a policy decision first (`--resume 01b` for adopted projects whose characterization must be re-recorded).
+   - No other target: 03 / 03p are refused. Prototype or wireframe rework → `--resume 02` (03p, then 03 for UI projects, follow it).
 2. **Handoff:** Tell the user where the pipeline resumes and why.

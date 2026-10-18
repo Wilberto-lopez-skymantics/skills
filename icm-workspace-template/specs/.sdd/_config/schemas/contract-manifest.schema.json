@@ -43,6 +43,20 @@
       "type": "string",
       "pattern": "^DEC[0-9]+$"
     },
+    "equivalenceCadence": {
+      "description": "When L2 (dual build + zero-divergence diff) is required for an equivalenceTarget of 2. \"iteration\" (default): every slice. \"release\": intermediate slices certify L1 with an explicit \"L2 pending\" row in EQUIVALENCE_REPORT.md; L2 is certified with `transition --completed 07 --release` before a release. Never claim L2 for a pending slice.",
+      "enum": ["iteration", "release"]
+    },
+    "sliceCap": {
+      "description": "Maximum declared outcomes (operation statuses + CLI exit codes) this slice adds — those not recorded in the last spec.lock.json; default 150. Larger scope is split into slices, each running 02 → 07. Raising it requires sliceCapDecision.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "sliceCapDecision": {
+      "description": "DECISION_LOG id recording the user's decision to exceed the default slice cap (required when sliceCap > 150).",
+      "type": "string",
+      "pattern": "^DEC[0-9]+$"
+    },
     "profileOverrides": {
       "description": "Every deviation from systems-standards.md (Equivalence Profile).",
       "type": "array",
