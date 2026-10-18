@@ -838,6 +838,9 @@ function reconGate(p, freshAfter) {
 const GAPS_FILE = 'specs/GAPS.md';
 const GAP_KINDS = ['policy', 'technical', 'builder', 'ui', 'oracle'];
 const GAP_STATUSES = ['open', 'resolved', 'confirmed', 'deferred'];
+// G-001 by default; projects that already number gaps keep their scheme (G04-01, G-S2, G-UI1).
+const GAP_ID = /^G[0-9A-Za-z]*-[0-9A-Za-z]+$/;
+const GAP_REF = /\bG[0-9A-Za-z]*-[0-9A-Za-z]+\b/g;
 const RULINGS_FILE = 'specs/logs/02-rulings.md';
 const RULING_STATUSES = ['fixed', 'rejected', 'advisory', 'gap', 'open'];
 const DEFAULT_SLICE_CAP = 150;
@@ -864,7 +867,7 @@ function readGaps(p) {
   const errors = [];
   for (const r of rows) {
     const where = `${GAPS_FILE} ${r.id || '(no id)'}`;
-    if (!/^G-\d+$/.test(r.id)) errors.push(`${where}: ID must look like G-001`);
+    if (!GAP_ID.test(r.id)) errors.push(`${where}: ID must look like G-001 (a project prefix is fine: G04-01, G-S2)`);
     r.kind = r.kind.toLowerCase();
     r.status = r.status.toLowerCase();
     if (!GAP_KINDS.includes(r.kind)) errors.push(`${where}: Kind "${r.kind}" is not one of ${GAP_KINDS.join('|')}`);
@@ -903,7 +906,7 @@ function rulingsGate(p, freshAfter) {
   if (open.length) return [false, `${RULINGS_FILE}: ${open.length} open finding(s) — rule each one (blocking findings left after round ${SWARM_ROUND_CAP} go to the user, or to ${GAPS_FILE} as status gap)`];
   const gaps = readGaps(p).rows || [];
   const ids = new Set(gaps.map(g => g.id));
-  const dangling = rows.filter(r => r.status.toLowerCase() === 'gap').filter(r => !(Object.values(r).join(' ').match(/\bG-\d+\b/g) || []).some(g => ids.has(g)));
+  const dangling = rows.filter(r => r.status.toLowerCase() === 'gap').filter(r => !(Object.values(r).join(' ').match(GAP_REF) || []).some(g => ids.has(g)));
   if (dangling.length) return [false, `${RULINGS_FILE}: ${dangling.length} finding(s) ruled "gap" without a G-nnn row in ${GAPS_FILE} (${dangling.slice(0, 3).map(r => r.id).join(', ')})`];
   return [true, `rulings: ${rows.length} finding(s) ruled, none open`];
 }
