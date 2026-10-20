@@ -22,7 +22,7 @@ SDD project = ∃ `specs/` directory with `SPEC.md` | `DESIGN.md` | `IMPLEMENTAT
 1. **Spec = Law:** Dev swarm rejects code ∉ spec. Code for feature not ∈ spec → Architect flags violation.
 2. **Spec Before Code:** ⊥ implementation code until spec updated & approved. Spec created via `brainstorming`, hardened by `adversarial-swarm-analysis`, ⊥ drafted by this orchestrator.
 3. **Data-Flow Traceability:** ∀ config file | DB column | API endpoint | state transition ! have explicit trace through spec showing data flow between components.
-4. **Phase-Driven Execution:** Code written only after `IMPLEMENTATION_PHASES.md` regenerated from approved spec. Dev swarm follows checklist strictly in order.
+4. **Phase-Driven Execution:** Code written only after `IMPLEMENTATION_PHASES.md` regenerated from approved spec. Dev swarm follows checklist strictly in order: one green, committed phase at a time; an open Spec Change Request stops the next phase (`sdd.cjs phase --completed N` in ICM workspaces).
 5. **Wireframes as Visual Source of Truth (UI):** `DESIGN.md` dictates initial tokens → `interactive-wireframing` generates wireframes. **Once wireframes approved, wireframes = absolute visual source of truth for implementation.** Dev swarm ! extract colors/spacing/typography/layout from approved wireframes ∈ `specs/wireframes/`. Wireframe hex code | inline style → generated code must match exactly. **Wireframe Completeness:** Wireframes ! be self-contained. ⊥ reference external local assets. ∀ visual values fully baked in.
 
 ## Interactive Execution Gates
@@ -84,8 +84,8 @@ User says "I want to add X" | "Change how Y works":
 9. **Execute:** Invoke `development-swarm` → implement per `IMPLEMENTATION_PHASES.md`. Pass approved wireframes (if any) as absolute visual spec.
    - **9a. VAT (UI only):** After code compiles, invoke `visual-acceptance-testing` → verify rendered output in real browser. Catches invisible elements, empty screens, layout breakage.
 10. **Close Loop:** Dev swarm's Post-Implementation Reconciliation re-reads spec vs code. Drift detected:
-    - **Minor:** Spec auto-corrected to match implementation.
-    - **Major:** Re-invoke `adversarial-swarm-analysis` → feedback cycle to Step 4.
+    - **Code differs from spec:** fix the code. ⊥ edit the spec so it agrees with the code — that is the builder grading itself.
+    - **Spec wrong | incomplete:** Spec Change Request → user approval → (ICM: Stage 00, re-freeze); policy change → re-invoke `brainstorming` / `adversarial-swarm-analysis` → feedback cycle to Step 4.
     
     *(UI: swarm cross-refs frontend/UI code vs **approved HTML wireframes** ∈ `specs/wireframes/` for zero visual drift).*
     
@@ -98,7 +98,8 @@ Defect | edge case | structural flaw discovered *after* SDD lifecycle completed:
 
 1. **Root Cause Analysis:** Before fixing → analyze *why* it slipped. Which persona failed? Missing from spec? VAT didn't cover that state?
 2. **Process Hardening:** Before implementing fix → ! write | update skill to prevent this bug category from escaping again. Visual bug → update VAT. Architectural → update adversarial. New gate needed → write new skill.
-3. **Execute Fix:** Enter standard SDD loop (update Spec → regenerate Phases → Swarm).
+3. **Execute Fix:** Enter standard SDD loop (update Spec → regenerate Phases → Swarm). ∃ ICM workspace → Stage 00: Spec Change Request (`| Status | Draft |`) → user approval → re-freeze → Stage 05.
+4. **Hotfix lane** (user approves shipping before the loop finishes): no frozen-set edits in the code change; full oracle + full UI suite gate the merge; before/after repro attached; SCR committed with `| Status | Proposed |` naming the merge commit; the next freeze re-grades it (`sdd.cjs freeze` refuses while it is Proposed).
 
 ## Workflow: Adopt Existing Project
 User has existing codebase → wants SDD management. Code exists, spec does not.

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Stop the brainstorm server and clean up
+# Stop the SDD Visual Companion server and clean up
 # Usage: stop-server.sh <session_dir>
 #
 # Kills the server process. Only deletes session directory if it's
-# under /tmp (ephemeral). Persistent directories (.superpowers/) are
+# under /tmp (ephemeral). Persistent directories (specs/brainstorming/) are
 # kept so mockups can be reviewed later.
 
 SESSION_DIR="$1"

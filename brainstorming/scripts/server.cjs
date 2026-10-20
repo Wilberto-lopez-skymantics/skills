@@ -1,3 +1,5 @@
+// SDD Visual Companion server. Derived from the brainstorming companion in
+// obra/superpowers (https://github.com/obra/superpowers, MIT License).
 const crypto = require('crypto');
 const http = require('http');
 const fs = require('fs');
@@ -79,6 +81,10 @@ const URL_HOST = process.env.BRAINSTORM_URL_HOST || (HOST === '127.0.0.1' ? 'loc
 const SESSION_DIR = process.env.BRAINSTORM_DIR || '/tmp/brainstorm';
 const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
+const PROJECT_DIR = process.env.BRAINSTORM_PROJECT_DIR || '';
+const SPECS_DIR = PROJECT_DIR ? path.join(PROJECT_DIR, 'specs') : '';
+// Stage 03 wireframes live in the frozen spec set and are served at /wireframes/<screen>.html.
+const WIREFRAMES_DIR = SPECS_DIR ? path.join(SPECS_DIR, 'wireframes') : '';
 let ownerPid = process.env.BRAINSTORM_OWNER_PID ? Number(process.env.BRAINSTORM_OWNER_PID) : null;
 
 const MIME_TYPES = {
@@ -111,6 +117,38 @@ function isFullDocument(html) {
 
 function wrapInFrame(content) {
   return frameTemplate.replace('<!-- CONTENT -->', content);
+}
+
+/** Resolve a request path inside baseDir, or null if it would escape it (path traversal). */
+function safeJoin(baseDir, requestPath) {
+  let decoded;
+  try { decoded = decodeURIComponent(requestPath); } catch { return null; }
+  if (decoded.includes('\0')) return null;
+  const base = path.resolve(baseDir);
+  const resolved = path.resolve(base, '.' + path.posix.normalize('/' + decoded.replace(/\\/g, '/')));
+  return resolved === base || resolved.startsWith(base + path.sep) ? resolved : null;
+}
+
+function serveHtml(res, filePath) {
+  let html = (raw => isFullDocument(raw) ? raw : wrapInFrame(raw))(fs.readFileSync(filePath, 'utf-8'));
+  if (html.includes('</body>')) {
+    html = html.replace('</body>', helperInjection + '\n</body>');
+  } else {
+    html += helperInjection;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
+}
+
+function serveFile(res, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+  res.writeHead(200, { 'Content-Type': contentType });
+  res.end(fs.readFileSync(filePath));
+}
+
+function isFile(filePath) {
+  return !!filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 }
 
 function getNewestScreen() {
@@ -156,42 +194,24 @@ function handleRequest(req, res) {
     res.end(fs.readFileSync(filePath));
   } else if (req.method === 'GET' && req.url.split('?')[0].endsWith('.html')) {
     const pathname = req.url.split('?')[0];
-    const fileName = path.basename(pathname);
-    const filePath = path.join(CONTENT_DIR, fileName);
-    if (fs.existsSync(filePath)) {
-      let html = (raw => isFullDocument(raw) ? raw : wrapInFrame(raw))(fs.readFileSync(filePath, 'utf-8'));
-      if (html.includes('</body>')) {
-        html = html.replace('</body>', helperInjection + '\n</body>');
-      } else {
-        html += helperInjection;
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(html);
-      return;
+    // Stage 03 wireframes: /wireframes/<screen>.html → specs/wireframes/<screen>.html
+    if (WIREFRAMES_DIR && pathname.startsWith('/wireframes/')) {
+      const wf = safeJoin(WIREFRAMES_DIR, pathname.slice('/wireframes/'.length));
+      if (isFile(wf)) { serveHtml(res, wf); return; }
     }
+    const filePath = path.join(CONTENT_DIR, path.basename(pathname));
+    if (isFile(filePath)) { serveHtml(res, filePath); return; }
     res.writeHead(404);
     res.end('Not found');
   } else if (req.method === 'GET') {
     const pathname = req.url.split('?')[0];
     // Attempt 1: Serve from CONTENT_DIR
-    const filePath = path.join(CONTENT_DIR, pathname);
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      const ext = path.extname(filePath).toLowerCase();
-      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(fs.readFileSync(filePath));
-      return;
-    }
-    // Attempt 2: Serve relative to PROJECT_DIR/specs/
-    if (process.env.BRAINSTORM_PROJECT_DIR) {
-      const projectFilePath = path.join(process.env.BRAINSTORM_PROJECT_DIR, 'specs', pathname);
-      if (fs.existsSync(projectFilePath) && fs.statSync(projectFilePath).isFile()) {
-        const ext = path.extname(projectFilePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(fs.readFileSync(projectFilePath));
-        return;
-      }
+    const filePath = safeJoin(CONTENT_DIR, pathname);
+    if (isFile(filePath)) { serveFile(res, filePath); return; }
+    // Attempt 2: Serve relative to PROJECT_DIR/specs/ (assets referenced by wireframes)
+    if (SPECS_DIR) {
+      const projectFilePath = safeJoin(SPECS_DIR, pathname);
+      if (isFile(projectFilePath)) { serveFile(res, projectFilePath); return; }
     }
     res.writeHead(404);
     res.end('Not found');
@@ -205,9 +225,16 @@ function handleRequest(req, res) {
 
 const clients = new Set();
 
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true; // non-browser clients send no Origin
+  try { return new URL(origin).host === req.headers.host; } catch { return false; }
+}
+
 function handleUpgrade(req, socket) {
   const key = req.headers['sec-websocket-key'];
-  if (!key) { socket.destroy(); return; }
+  // Only pages served by this server may report selections; other sites must not inject fake user events.
+  if (!key || !sameOrigin(req)) { socket.destroy(); return; }
 
   const accept = computeAcceptKey(key);
   socket.write(
@@ -339,6 +366,24 @@ function startServer() {
   });
   watcher.on('error', (err) => console.error('fs.watch error:', err.message));
 
+  // Live-reload Stage 03 wireframes edited in place under specs/wireframes/.
+  let wireframeWatcher = null;
+  if (WIREFRAMES_DIR) {
+    fs.mkdirSync(WIREFRAMES_DIR, { recursive: true });
+    wireframeWatcher = fs.watch(WIREFRAMES_DIR, (eventType, filename) => {
+      if (!filename || !filename.endsWith('.html')) return;
+      const k = 'wireframes/' + filename;
+      if (debounceTimers.has(k)) clearTimeout(debounceTimers.get(k));
+      debounceTimers.set(k, setTimeout(() => {
+        debounceTimers.delete(k);
+        touchActivity();
+        console.log(JSON.stringify({ type: 'wireframe-updated', file: path.join(WIREFRAMES_DIR, filename) }));
+        broadcast({ type: 'reload' });
+      }, 100));
+    });
+    wireframeWatcher.on('error', (err) => console.error('fs.watch error:', err.message));
+  }
+
   function shutdown(reason) {
     console.log(JSON.stringify({ type: 'server-stopped', reason }));
     const infoFile = path.join(STATE_DIR, 'server-info');
@@ -348,6 +393,7 @@ function startServer() {
       JSON.stringify({ reason, timestamp: Date.now() }) + '\n'
     );
     watcher.close();
+    if (wireframeWatcher) wireframeWatcher.close();
     clearInterval(lifecycleCheck);
     server.close(() => process.exit(0));
   }
@@ -377,6 +423,11 @@ function startServer() {
     }
   }
 
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') console.log(JSON.stringify({ type: 'port-in-use', port: Number(PORT) }));
+    else console.error(err.message);
+    process.exit(1);
+  });
   server.listen(PORT, HOST, () => {
     const info = JSON.stringify({
       type: 'server-started', port: Number(PORT), host: HOST,
@@ -385,6 +436,13 @@ function startServer() {
     });
     console.log(info);
     fs.writeFileSync(path.join(STATE_DIR, 'server-info'), info + '\n');
+    // One URL per project: start-server.sh hands this back instead of starting a second server.
+    if (PROJECT_DIR) {
+      try {
+        fs.mkdirSync(path.join(PROJECT_DIR, 'specs', 'brainstorming'), { recursive: true });
+        fs.writeFileSync(path.join(PROJECT_DIR, 'specs', 'brainstorming', 'current-server.json'), JSON.stringify({ ...JSON.parse(info), pid: process.pid }) + '\n');
+      } catch (e) { console.error('current-server.json:', e.message); }
+    }
   });
 }
 

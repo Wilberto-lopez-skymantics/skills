@@ -88,7 +88,7 @@ scripts/start-server.sh \
 ## The Loop
 
 1. **Check server alive → write HTML** to new file ∈ `screen_dir`:
-   - Before each write, check `$STATE_DIR/server-info` ∃. ∄ (or `server-stopped` ∃) → restart via `start-server.sh`. Server auto-exits after 30min inactivity.
+   - Before each write, check `$STATE_DIR/server-info` ∃. ∄ (or `server-stopped` ∃) → restart via `start-server.sh`. Server auto-exits after 30min inactivity. Restart with the same `--project-dir`: it returns the live server (`"reused": true`) or comes back on the recorded port (`specs/brainstorming/current-server.json`); `"port_changed": true` → give the new URL to the user and every author. Server started by a subagent → use `--detach`, or it stops when that subagent exits.
    - Semantic filenames: `platform.html`, `visual-style.html`, `layout.html`
    - ⊥ reuse filenames — each screen = fresh file
    - Use Write tool — ⊥ cat/heredoc (dumps noise into terminal)
