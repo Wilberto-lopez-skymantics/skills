@@ -112,6 +112,8 @@ ICM moves the orchestration logic **into the project's filesystem**. The agent d
 | **Layer 3: Reference Material** | Profile, schemas, templates, checklists — loaded on demand | `_config/` |
 | **Layer 4: Working Artifacts** | Spec, contracts, oracle, logs | `specs/` root |
 
+**Why `CONTEXT.md`, not `AGENTS.md`.** The two names do different jobs. `AGENTS.md` / `CLAUDE.md` / `.cursorrules` are entry files that agents load automatically, and some tools also load them from any subdirectory they work in. A stage contract must load only when routing selects that stage, so it uses the ICM name `CONTEXT.md`, which no tool auto-loads. Hosts depend on that name: the Grok CLI's template manifest and its roster drift check read `NN_stage/CONTEXT.md`.
+
 **Token efficiency.** The agent reads `WORKSPACE_ROUTING.md` (~80 lines) to route, then only the relevant stage's `CONTEXT.md`; heavy references load only when a stage asks for them. Stage contracts use a compressed notation (`!` = must, `⊥` = forbidden, `∀` = for all, …) with a decoder line in each file.
 
 ## The Pipeline
