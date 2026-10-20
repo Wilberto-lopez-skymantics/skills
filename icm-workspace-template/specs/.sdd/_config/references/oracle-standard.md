@@ -116,7 +116,8 @@ Variable matchers are the declared degrees of freedom of the case. Use them only
 ### Templates
 
 - `{{name}}` — a value captured by an earlier step of the same case (a whole-string template keeps the value's JSON type).
-- `{{$uuid:name}}` — a UUID generated once per case and reused (idempotency keys). In `diff`, both builds receive the same value.
+- `{{$uuid:name}}` — a UUID generated once per case and reused (idempotency keys). In `diff`, both builds receive the same value. As an `Idempotency-Key`, one name belongs to one operation: the same key on a different method or path is a fingerprint mismatch (IDEM-3/IDEM-4 → 422), which dual authoring cannot catch because both authors share the request. `sdd.cjs check` rejects it unless the case carries `"tags": ["idempotency-key-reuse"]` because that mismatch is what it tests.
+- A step ⊥ reads `{{name}}` that the same step captures: captures exist only after the step's response (`check` rejects it).
 - `{{$uuid}}` — a fresh UUID per occurrence (replayed identically to build B in `diff`).
 - `{{$env:NAME}}` — environment variable.
 
@@ -181,6 +182,8 @@ Every non-probe case has `phase: N` from `IMPLEMENTATION_PHASES.md`. `oracle.cjs
 - Each case is independent: `defaultSetup` resets state before every case.
 - ⊥ wall-clock expectations. Time-based rules are exercised through their ENV-3 configuration variables.
 - Ordering assertions create items in a known sequence and assert the full order, including the tie-breaker.
+- Scoped rules ("this module | project | tenant | owner") are exercised with a sibling container that holds colliding data; a single-container case cannot tell a scoped rule from a global one.
+- Test data uses reserved names: `@example.com`, `@example.org`, `*.test`, `*.invalid` (RFC 2606/6761). Fixtures travel with every export and every build, so a real person's address in them is a data leak. `check` rejects other addresses unless SPEC pins that exact value.
 
 ## UI specs (interface `browser`)
 
@@ -188,6 +191,8 @@ Black-box `@playwright/test` specs in `specs/fixtures/ui/`, written in Stage 04 
 - **Frozen config** `specs/fixtures/ui/playwright.config.ts` (required by `sdd.cjs check`): `testDir: '.'`, `baseURL: process.env.ORACLE_UI_URL`, a single pinned browser project (e.g. chromium), fixed `viewport`, `locale: 'en-US'`, `timezoneId: 'UTC'`, `retries: 0`, `workers: 1`. Everything that changes rendering is pinned here, not by the builder.
 - Select only by `data-testid`, ARIA role + accessible name, or copy-table text (UI-3).
 - ∀ UI State Matrix state ≥ 1 test (UI-4); ∀ interaction in SPEC §Input & Interaction Contract ≥ 1 test. Declare coverage with `// covers: …` comments.
+- **Phase binding:** each UI spec file declares the phase it grades with a `// phase: N` comment (like `// covers:`). The Stage 05 phase gate for a phase without oracle cases requires every UI spec file with phase ≤ N in the report; without these comments it cannot tell which specs grade the phase (`sdd.cjs check` warns).
+- **Timing-sensitive specs:** a test that depends on keyboard navigation or focus has `@keyboard` or `@focus` in its title. Stage 05 and 06 gates then also require `specs/logs/ui-repeat.json` from `--grep "@keyboard|@focus" --repeat-each=20` (0 failed, 0 flaky): deferred refocus and similar races pass one run and fail one in five.
 - **Observations for `diff-ui`:** at every meaningful screen or state, call `observe(page, '<unique-name>')` from `require('../../.sdd/scripts/ui-observe.cjs')`. It records the ARIA snapshot (roles, accessible names, text) and the `data-testid` sequence — the user-observable structure, independent of CSS and DOM details.
 - Evidence: `ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-e2e.json npx playwright test --config specs/fixtures/ui/playwright.config.ts --reporter=json`. The Stage 05/06/07 gates require every frozen spec file in the report, ≥ 1 passing test, 0 failed, 0 flaky, and a report newer than the lock.
 - L2 (Stage 07): run the suite once per build with `SDD_UI_OBS_FILE=specs/logs/ui-obs-a.jsonl` / `ui-obs-b.jsonl`, then `node specs/.sdd/scripts/oracle.cjs diff-ui --a specs/logs/ui-obs-a.jsonl --b specs/logs/ui-obs-b.jsonl --b-root <build B workspace>`. Ids and timestamps inside snapshots are normalized; everything else must match.

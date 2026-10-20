@@ -35,9 +35,11 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 
 1. **Explore project context** — run `node specs/.sdd/scripts/sdd.cjs status`; check files, docs, recent commits
 1b. **Classify project type & interfaces** — pick one type from `../_config/references/completeness-checklist.md`. Unclear → ask the user. It decides which contracts, stages and oracle interfaces apply.
+1c. **Calendar check** — the user names a date (demo, release, milestone) → in the first gate, state both options and let the user pick: (a) a throwaway prototype outside this repo for the date, SDD continues at its own pace; (b) in-repo SDD with no code until the Stage 04 freeze, sized to the date (Stage 02 round cap, Stage 03 waves). Record the choice and the date as a DECISION_LOG entry. No date named → skip.
 2. **Offer visual companion** (if visual questions ahead) — own message, not combined with clarifying question. See Visual Companion section.
 2b. **Theme & Vibe Brainstorming** (UI only) — ask user for theme/aesthetic/vibe → propose 2-3 matching designs → iterate until approved. Read `../_config/references/theme-brainstorming.md`.
-3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time. Shadow Critic concurrently probes domain gaps, negative space, and edge cases.
+3. **Ask clarifying questions (Socratic Shadow-Critic Loop)** — Lead Architect asks one question at a time. Shadow Critic concurrently probes domain gaps, negative space, and edge cases. ∀ entity, the lifecycle questions in `extraction-closure.md` §1 include **how the user identifies it** (handle, email, number, other pattern) and **how it ends** (delete, archive, or neither — and what happens to its children). Each answer → a DECISION_LOG entry. A first-iteration default is not an answer.
+3a. **Domain-expert block** (before the first Dual Interpretation round) — ask the user who knows the entity lifecycle best (hierarchy, numbering, retirement). Hold one focused session (30–60 min) with that named person, or record a DECISION_LOG entry that skips it and why.
 3b. **Extraction Closure Gate** — Audit domain model against 4 empirical dimensions (Entity Lifecycle, Negative Space & Invariants, Fork Test, Policy vs Mechanics). Read `../_config/references/extraction-closure.md`. The Fork Test is answered by the latest Dual Interpretation round: it passes only when every scenario of every topic has matching, cited predictions.
 
 **⛔ GATE:** ⊥ propose approaches (Step 4) until Extraction Closure Report passes with ZERO open domain gaps. Subjective confidence scoring (e.g. "85/100") = FORBIDDEN.
@@ -48,9 +50,10 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
 
 **⛔ GATE:** DESIGN.md ⊥ be written until ∀ mandatory category ∈ Design Token Completeness Checklist has defined tokens. Agent ! generate best-practice defaults matching approved theme ∀ categories.
 8. **UI State Matrix** (UI only) — walk ∀ interactive component through 5 states (Empty, Loading, Success, Error, Edge Case). NOT optional. Read `../_config/references/ui-state-matrix.md`.
-9. **Spec Merge** — update `specs/SPEC.md` using the section structure of `../_config/spec-template.md`. Business invariants go in §8 as `- **Vn:**` bullets (fixtures cite them). §9 Equivalence Boundary records what the user accepts as free to vary.
+9. **Spec Merge** — update `specs/SPEC.md` using the section structure of `../_config/spec-template.md`. Business invariants go in §8 as `- **Vn:**` bullets (fixtures cite them). §9 Equivalence Boundary records what the user accepts as free to vary. Examples use reserved test data only (`@example.com`, `*.test`; no real names, addresses or work emails): they become fixtures, and fixtures travel with every export.
+9b. **Docs match SPEC** — `README.md` and any generated architecture docs (`docs/*architecture*`) describe the same stack, components and scope as SPEC: nothing SPEC dropped, nothing it does not name, no "TBD" or "open in Stage 01" language. Fix them here; ⊥ leave them for Stage 02, whose critics attack contracts, not READMEs.
 10. **User reviews spec** — ask user to review before proceeding
-11. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 01 --project-type <type>` (refuses while SPEC.md, DECISION_LOG.md, DESIGN.md (UI) are missing or SPEC.md has TBD/TODO placeholders).
+11. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 01 --project-type <type>` (refuses while SPEC.md, DECISION_LOG.md, DESIGN.md (UI) are missing, SPEC.md has TBD/TODO placeholders, `specs/logs/01-interpretations.md` is missing or still has an UNSPECIFIED scenario, or README/architecture docs carry TBD / open-Stage-01 language).
 12. **Transition** — Prompt the user to proceed to `02_adversarial_swarm_analysis`.
 
 ### The Socratic Shadow-Critic Interview Process
@@ -62,7 +65,15 @@ Start: understand project context → interview via Socratic Shadow-Critic loop 
   1. **Lead Architect (Interviewer):** Interfaces directly with user. Maintains conversation flow. Asks exactly ONE question per turn.
   2. **Shadow Critic (Domain Gap Hunter):** Background auditor. Evaluates evolving domain model after each user answer against the 4 Extraction Closure dimensions. Identifies unstated business assumptions, dangling states, and unhandled failure paths. Feeds the next edge-case question to the Lead Architect.
 
-**Dual Interpretation (after each topic closes):** the Shadow Critic writes 3–5 concrete scenarios for the topic just discussed ("customer cancels an order that already shipped", "two admins edit the same record"). Two fresh sub-agents (or sessions) — given ONLY the policy notes so far, never this conversation — each predict the observable outcome of every scenario, citing the note line it follows from, or answering `UNSPECIFIED` with what is missing. Every scenario where the predictions differ, or either says `UNSPECIFIED`, or a prediction cites nothing, is a domain gap: rank them and turn the most important into the next single question. Agreement without citations is not closure — two guesses can coincide. This is the cheapest point to find the divergences that would otherwise surface only when two builds disagree. Log scenarios and predictions in `specs/logs/01-interpretations.md`.
+**Dual Interpretation (after each topic closes):** the Shadow Critic writes 3–5 concrete scenarios for the topic just discussed ("customer cancels an order that already shipped", "two admins edit the same record"). Two fresh sub-agents (or sessions) — given ONLY the policy notes so far, never this conversation — each predict the observable outcome of every scenario, citing the note line it follows from, or answering `UNSPECIFIED` with what is missing. Every scenario where the predictions differ, or either says `UNSPECIFIED`, or a prediction cites nothing, is a domain gap: rank them and turn the most important into the next single question. Agreement without citations is not closure — two guesses can coincide. This is the cheapest point to find the divergences that would otherwise surface only when two builds disagree. Log scenarios and predictions in `specs/logs/01-interpretations.md`, one `## <topic> — round N` heading per round and one table row per scenario:
+
+```markdown
+| Scenario | Predictor A | Predictor B | Unspecified | Verdict |
+|---|---|---|---|---|
+| S1.1 create places the new item | last in parent (§4.2) | last in parent (§4.2) | — | agree |
+```
+
+Scenario ids are stable (`S1.1`); a re-prediction after the user answers is a new row with the same id in a later round. `sdd.cjs transition --completed 01` reads the latest row per scenario and refuses while any still says `UNSPECIFIED` or `disagree` — a gap left open here is paid for in every later stage that grades the behavior. The only exception is a row that cites the DECnnn putting that behavior out of scope.
 
 **Policy vs Mechanics Protocol:**
 - **Business & Domain Policy (Escalate to Human):** Pricing, access permissions, workflow rules, entity lifecycles, regulatory/compliance constraints. ⊥ guess | assume. ! ask user directly.
