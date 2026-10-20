@@ -677,6 +677,124 @@ function parsePhases(text) {
   return [...new Set([...text.matchAll(/^##\s+Phase\s+(\d+)\b/gm)].map(m => Number(m[1])))].sort((a, b) => a - b);
 }
 
+// ========== Spec Change Requests ==========
+
+// Draft → Approved → Applied (re-frozen) is the normal life of an SCR. Proposed is a hotfix that shipped
+// ahead of the pipeline: it does not stop the build (the code is merged and graded), it stops the next
+// freeze until that freeze re-grades it. Draft, Approved and a missing Status are open.
+const SCR_STATUSES = ['draft', 'approved', 'applied', 'rejected', 'withdrawn', 'proposed'];
+const SCR_OPEN = new Set(['draft', 'approved']);
+
+/** Every specs/changes/SCR-NNN*.md with its Status row (`| Status | Draft |` or `Status: Draft`). */
+function loadScrs(paths) {
+  const dir = path.join(paths.specs, 'changes');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter(f => /^SCR-\d+.*\.md$/.test(f))
+    .sort()
+    .map(f => {
+      const text = fs.readFileSync(path.join(dir, f), 'utf8');
+      const m = text.match(/^\|\s*\**Status\**\s*\|\s*([^|\n]+?)\s*\|/mi) || text.match(/^\s*(?:[-*]\s+)?\**Status\**:?\**\s*:?\s*(.+)$/mi);
+      const raw = m ? m[1].trim() : '';
+      const word = (raw.match(/[A-Za-z]+/) || [''])[0].toLowerCase();
+      const status = SCR_STATUSES.includes(word) ? word : null;
+      return { id: f.match(/^(SCR-\d+)/)[1], file: `specs/changes/${f}`, status, raw, open: !status || SCR_OPEN.has(status) };
+    });
+}
+
+// ========== Git (optional: every check degrades to a note outside a repository) ==========
+
+// Working files Stage 05 may change after a graded run without changing what was graded.
+const WORKING_PATHS = ['specs/logs/', 'specs/changes/', 'specs/IMPLEMENTATION_PHASES.md', 'specs/dev-swarm-reconciliation.md', 'specs/.sdd/_config/sdd-state.json'];
+
+function git(root, args) {
+  try {
+    return require('child_process').execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch { return null; }
+}
+
+/** HEAD (null before the first commit) and the uncommitted files under the project root, or null outside git. */
+function gitState(root) {
+  if (git(root, ['rev-parse', '--is-inside-work-tree']) !== 'true') return null;
+  const head = git(root, ['rev-parse', '--verify', '-q', 'HEAD']);
+  const prefix = git(root, ['rev-parse', '--show-prefix']) || '';
+  const out = git(root, ['status', '--porcelain=v1', '-uall', '--', '.']) || '';
+  const changed = out.split('\n').filter(Boolean)
+    .map(l => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, ''))
+    .map(f => (prefix && f.startsWith(prefix) ? f.slice(prefix.length) : f));
+  const dirty = changed.filter(f => !WORKING_PATHS.some(w => (w.endsWith('/') ? f.startsWith(w) : f === w)));
+  const time = head ? git(root, ['log', '-1', '--format=%cI', head]) : null;
+  return { head, time: time ? new Date(time).toISOString() : null, dirty };
+}
+
+// ========== DESIGN.md tokens ==========
+
+/** The YAML front matter of DESIGN.md (only at the very start of the file), or null. */
+function parseDesign(text) {
+  const m = text.replace(/^\uFEFF/, '').match(/^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
+  if (!m) return null;
+  return parseYaml(m[1]);
+}
+
+function resolveDesignToken(design, value) {
+  const m = typeof value === 'string' && value.match(/^\{([A-Za-z0-9_-]+)\.([A-Za-z0-9_.-]+)\}$/);
+  if (!m) return value;
+  const group = design[m[1]];
+  return group && Object.prototype.hasOwnProperty.call(group, m[2]) ? group[m[2]] : value;
+}
+
+/** One row per component × state × property in DESIGN.md `components:` (state "base" for top-level properties).
+ *  A reference to a composite token (e.g. `typography: "{typography.body}"`) expands to one row per member. */
+function designTokenRows(design) {
+  const rows = [];
+  const push = (component, state, property, raw) => {
+    const value = resolveDesignToken(design, raw);
+    if (isPlainObject(value)) {
+      for (const [k, v] of Object.entries(value)) if (!isPlainObject(v)) rows.push({ component, state, property: `${property}.${k}`, token: `${raw}.${k}`, expected: String(v) });
+    } else rows.push({ component, state, property, token: String(raw), expected: String(value) });
+  };
+  for (const [component, def] of Object.entries((design && design.components) || {})) {
+    if (!isPlainObject(def)) continue;
+    for (const [k, v] of Object.entries(def)) {
+      if (isPlainObject(v)) {
+        for (const [prop, pv] of Object.entries(v)) if (!isPlainObject(pv)) push(component, k, prop, pv);
+      } else push(component, 'base', k, v);
+    }
+  }
+  return rows;
+}
+
+/** Canonical form of a measured CSS value, so "rgb(255, 255, 255)" equals "#FFFFFF" and "2.0px" equals "2px". */
+function normalizeCssValue(v) {
+  let s = String(v).trim().toLowerCase().replace(/["']/g, '').replace(/\s+/g, ' ');
+  const hex = s.match(/^#([0-9a-f]{3,8})$/);
+  if (hex) {
+    let h = hex[1];
+    if (h.length === 3 || h.length === 4) h = h.split('').map(c => c + c).join('');
+    if (h.length === 6) h += 'ff';
+    if (h.length === 8) return { kind: 'color', v: h };
+  }
+  const rgb = s.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+%?))?\s*\)$/);
+  if (rgb) {
+    let a = rgb[4] === undefined ? 1 : rgb[4].endsWith('%') ? Number(rgb[4].slice(0, -1)) / 100 : Number(rgb[4]);
+    a = Math.round(a * 255);
+    return { kind: 'color', v: [rgb[1], rgb[2], rgb[3]].map(x => Number(x).toString(16).padStart(2, '0')).join('') + a.toString(16).padStart(2, '0') };
+  }
+  if (s === 'transparent') return { kind: 'color', v: '00000000' };
+  const px = s.match(/^(-?\d*\.?\d+)px$/);
+  if (px) return { kind: 'px', v: String(Number(px[1])) };
+  if (/^-?\d*\.?\d+$/.test(s)) return { kind: 'number', v: String(Number(s)) };
+  return { kind: 'text', v: s.replace(/\s*,\s*/g, ',') };
+}
+
+/** false when both values are comparable and differ; null when they cannot be compared (units differ). */
+function cssValuesMatch(expected, measured) {
+  const a = normalizeCssValue(expected);
+  const b = normalizeCssValue(measured);
+  if (a.kind !== b.kind) return null;
+  return a.v === b.v;
+}
+
 // ========== Stages (compatible with the SDD VS Code extension's numeric state) ==========
 
 const STAGES = {
@@ -743,6 +861,12 @@ module.exports = {
   statusCovers,
   parseInvariants,
   parsePhases,
+  loadScrs,
+  gitState,
+  WORKING_PATHS,
+  parseDesign,
+  designTokenRows,
+  cssValuesMatch,
   STAGES,
   normalizeStage,
 };
