@@ -89,13 +89,10 @@ Not changed: the Equivalence Profile, the lock, the single grader, `recorded:` �
 | Cadence before contracts | After an accepted prototype with no manifest yet, the next slice's brief is in order (the user chooses at acceptance; Stage 03 writes the choice into `manifest.prototypeCadence`); the brief states the defaults it runs under instead of asking per setting | `order: next slice before contracts …` |
 | Per-slice cap under rolling cadence | `transition --completed 02` records the slice's declared outcomes in its `transitions.jsonl` row (contract keys, else `spec:<id>` from SPEC §5); under `prototypeCadence: "rolling"` the Stage 03 gate, `readiness` and the dashboard size each accepted slice since the last lock on its own (`#1 9, #2 21`) and enforce the cap per slice; Stage 03 hardens in slice-sized passes | `rolling cap: …` |
 | Legacy state mapping | `upgrade` maps older stage names in the state file (`03p_prototype` → Stage 02 complete; v2 `02_adversarial_swarm_analysis` / `03_interactive_wireframing` → Stage 01 complete) and never overwrites an earlier upgrade log | `upgrade: legacy state …` |
+| Derived deliverables | `spec-deliverables` skill (skills repo): API reference from `openapi.yaml` + `errors.json` + SPEC §5 + oracle examples; user manual from SPEC §14, DESIGN.md and the wireframes (embedded in the HTML); test plan from the cases, UI specs, phases and run reports; `deliver.cjs build | compile | check` | run on Zenith and the notes-service example |
 | Pipeline pinned as one lock entry | `spec.lock.json` keeps per-file hashes for the spec content only; `specs/.sdd/**` is one `pipeline: { version, hash }` entry, so `upgrade` leaves a one-line diff (`pipeline 2026.10.20-v3.4 → 2026.10.21-v3.5`) in `status`, `verify`, the lock gate and the dashboard, and the re-freeze is `freeze --reason "upgrade: <version>"`; an old-format lock reads as "pipeline unpinned"; `export` still copies the whole frozen set | `lock: pipeline pin …`, `lock: an old-format lock …`, `upgrade: on a locked project …`, `export: the build-B workspace …` |
 
 ## Open
-
-### Derived deliverables beyond the design package
-- An API reference from `openapi.yaml` + `errors.json`; a user manual from SPEC §14 (copy table, screen flow) and the wireframes; a test plan from `specs/fixtures/cases` and `IMPLEMENTATION_PHASES.md`. Each with the `design-package` skill's machinery: a fingerprint of its sources, permanent ids, numbered revisions, `impact` before every update.
-- **Effort:** M each · **Guarantee impact:** none
 
 ### Pilot run v3.4 (measure before trusting)
 - Run one notes-service-sized slice end to end and read `metrics` in `transitions.jsonl` per stage: questions to the brief, versions to acceptance, prototype rework in Stage 03 (the cost of compiling contracts after the code), rounds. The interview budget (12) and the prototype checklist's length are the two numbers most likely to move.

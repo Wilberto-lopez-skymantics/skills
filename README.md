@@ -10,6 +10,7 @@ This repository holds the **Spec-Driven Development (SDD)** pipeline for AI codi
 |---|---|---|
 | [`icm-workspace-template/`](./icm-workspace-template/) | The pipeline itself: stage contracts, zero-dependency tools (`sdd.cjs`, `oracle.cjs`, `ui-capture.cjs`, `ui-specgen.cjs`), the Equivalence Profile, schemas, templates and a validated reference example. Copied into each project; the project records and locks the exact version it was built with. | **Maintained — the single source of the pipeline** |
 | [`design-package/`](./design-package/) | Skill that derives a systems-engineering design package from a template-built spec set, with a review loop back into the spec. | Maintained |
+| [`spec-deliverables/`](./spec-deliverables/) | Skill that derives the API reference, the user manual and the test plan from a template-built spec set, as markdown plus one self-contained HTML page each, stamped with the lock. | Maintained |
 | `brainstorming/`, `sdd-adoption/`, `adversarial-swarm-analysis/`, `interactive-wireframing/`, `writing-implementation-phases/`, `development-swarm/`, `spec-driven-development/`, `shared/` | The v2 pipeline as global agent skills (release `2026.09.28-v2`). | **Legacy** — kept for projects that still use them; not maintained against v3 (no oracle, lock, prototype stage or gated transitions there) |
 | `verification-before-completion/`, `visual-acceptance-testing/`, `ubiquitous-language/`, `frontend-ui-design/`, `test-driven-development/`, `kubernetes-deployment/`, `interpretable-context-methodology/` | General-purpose skills that do not depend on the pipeline version. | Usable with either |
 
@@ -72,7 +73,7 @@ Everything lives in the project's `specs/` directory. The **frozen set** is hash
 
 ## Derived artifacts
 
-A spec set this complete can generate the deliverables of a traditional process mechanically. The [`design-package`](./design-package/) skill is the first: a systems-engineering package ("shall" requirements traced to decisions and invariants, design decision records, architecture and behavior views, an interface control table, change control from the lock and change requests, verification status from the oracle runs, the UI baseline from the wireframes) with permanent ids, numbered revisions, impact analysis, and a review loop that turns a reviewer's comments into change requests to the spec — never into package edits. An API reference, a user manual and a test plan follow the same pattern and are listed as open work.
+A spec set this complete can generate the deliverables of a traditional process mechanically. The [`design-package`](./design-package/) skill is the first: a systems-engineering package ("shall" requirements traced to decisions and invariants, design decision records, architecture and behavior views, an interface control table, change control from the lock and change requests, verification status from the oracle runs, the UI baseline from the wireframes) with permanent ids, numbered revisions, impact analysis, and a review loop that turns a reviewer's comments into change requests to the spec — never into package edits. The [`spec-deliverables`](./spec-deliverables/) skill adds the three reader-facing documents, fully mechanical: the **API reference** (every operation with its rules, parameters, every declared outcome and a recorded request/response pair from the oracle), the **user manual** (every approved screen with its embedded wireframe, states and strings; roles, concepts, messages, errors, configuration) and the **test plan** (traceability from invariants and operations to cases, every procedure, the schedule by phase, the latest results bound to the lock). `deliver.cjs check` says when any of them is older than the spec set.
 
 ## Repository layout
 
@@ -83,6 +84,7 @@ skills/
 │   ├── tests/                     #   state-machine tests (node --test tests/*.test.cjs)
 │   └── Future_work.md             #   release history and open items
 ├── design-package/                # Companion skill: SE design package derived from a spec set
+├── spec-deliverables/             # Companion skill: API reference, user manual, test plan derived from a spec set
 ├── scripts/validate-icm-sync.sh   # Compares the legacy v2 skills with the template stages (historical)
 ├── shared/                        # Legacy v2 shared templates (the template carries its own under _config/)
 ├── brainstorming/ sdd-adoption/ adversarial-swarm-analysis/ interactive-wireframing/
@@ -104,6 +106,7 @@ Stage contracts use a compact notation (`!` = must, `⊥` = never, `∀` = for a
 | Skill | Purpose |
 |---|---|
 | [`design-package`](./design-package/) | Systems-engineering design package derived from a spec set; impact analysis per revision; review comments become change requests (see above) |
+| [`spec-deliverables`](./spec-deliverables/) | API reference, user manual and test plan derived from a spec set; `build`, `compile` to HTML, `check` for staleness against the lock (see above) |
 | [`verification-before-completion`](./verification-before-completion/) | Evidence before claims: run the command, read the output, then say it passes |
 | [`visual-acceptance-testing`](./visual-acceptance-testing/) | Browser-based visual QA: screen walk, interaction audit, token verification, debug-artifact scan (the template's Stage 06 is its pipeline form) |
 | [`ubiquitous-language`](./ubiquitous-language/) | Domain glossary: canonical terms, flagged ambiguities, consistent naming across specs |
