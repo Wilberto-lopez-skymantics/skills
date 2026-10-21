@@ -1,8 +1,8 @@
 <!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | ∄ = does not exist | ∈ = in | § = section ref | & = and | | = or -->
 
-# Red Team Reference (hardening rounds, Stage 03p)
+# Red Team Reference (hardening rounds, Stage 03)
 
-Every adversarial round of the pipeline runs against a **running prototype** (Stage 03p). Round 1 attacks the whole slice; rounds 2–3 attack the delta. Hard cap 3 rounds per iteration. This file holds the personas and rules; the stage contract holds the sequence.
+Every adversarial round of the pipeline runs against a **running prototype** (Stage 03, after the user accepted it in Stage 02). Round 1 attacks the whole slice; rounds 2–3 attack the delta. Hard cap 3 rounds per iteration. This file holds the personas and rules; the stage contract holds the sequence.
 
 ## Personas (each attacks prose **and** contracts, and can execute requests)
 1. **Contract & Schema Auditor** — name/type mismatches between contracts and SPEC; unpinned types (`string` where UUIDv7/regex/enum is meant).
@@ -15,14 +15,14 @@ Every adversarial round of the pipeline runs against a **running prototype** (St
 8. **Reconciler** — the prototype's code (and any existing system) vs SPEC and contracts. <anti_hallucination>⊥ assume the spec is right; read the files, flag every discrepancy.</anti_hallucination>
 
 ## Round 1 judgment checklist (what `check` cannot see; each item answered in the log, not rubber-stamped)
-internal consistency (sections and contracts agree) · scope fits one implementation plan · every requirement has one reading · DECISION_LOG ↔ SPEC, nothing from the interview missing · config files/env vars have exact shapes (SPEC §12; ENV-3: every TTL, limit, window, batch size is a variable with a default) · §9 lists every degree of freedom and nothing else (= the future `variablePaths`) · concurrency and transactions (races, isolation, rollback, file↔db atomicity) · exact resource limits and backoff curves · determinism (total ordering, seeds/PRNG, numeric representation, string normalization) · hardware/policy blocks have fallbacks (audio, WebGL, permissions) · UI: WCAG AA contrast for every DESIGN.md text/background pair, component tokens complete (`backgroundColor`, `textColor`, `rounded`, interactive states), copy table character-exact (UI-2), test ids for every component and state (UI-1, UI-4), auxiliary screens present (splash, loading, settings, auth, error boundary, confirmations, empty states), fast inputs throttled.
+the four Extraction Closure dimensions (`extraction-closure.md`: lifecycle closure, negative space & invariants, fork test, policy vs mechanics — the interview answered only the core flow; the rest is judged here, against the running product) · internal consistency (sections and contracts agree) · scope fits one implementation plan · every requirement has one reading · DECISION_LOG ↔ SPEC, nothing from the interview missing · config files/env vars have exact shapes (SPEC §12; ENV-3: every TTL, limit, window, batch size is a variable with a default) · §9 lists every degree of freedom and nothing else (= the future `variablePaths`) · concurrency and transactions (races, isolation, rollback, file↔db atomicity) · exact resource limits and backoff curves · determinism (total ordering, seeds/PRNG, numeric representation, string normalization) · hardware/policy blocks have fallbacks (audio, WebGL, permissions) · UI: WCAG AA contrast for every DESIGN.md text/background pair, component tokens complete (`backgroundColor`, `textColor`, `rounded`, interactive states), copy table character-exact (UI-2), test ids for every component and state (UI-1, UI-4), auxiliary screens present (splash, loading, settings, auth, error boundary, confirmations, empty states), fast inputs throttled.
 
 ## Findings are falsifiable
 - **Blocking** = a concrete request (or UI interaction) + two observations two spec-faithful builders could each produce + the missing/contradicting citation. Example: `DELETE /notes/{id}` by a non-owner → `403` vs `404`; SPEC §5.3 names neither. Two contract files disagreeing counts as a fork.
 - **Advisory** = no fork (wording, style, hypothetical scale). Logged `advisory`; never blocks, never triggers a round.
 - Severity is this classification, never the critic's ranking. "Zero findings of any severity" is not a goal; a manufactured finding hides real ones.
 
-## Rulings ledger (`specs/logs/02-rulings.md`)
+## Rulings ledger (`specs/logs/03-rulings.md`)
 Every triaged finding → one row (`../rulings-template.md`): `fixed` | `rejected` (cite where it is already pinned) | `advisory` | `gap` (→ `GAPS.md` G-nnn) | `open`. Later rounds receive the ledger; a finding that restates a ruled row without a new fork is dropped, not re-triaged.
 
 ## Technical vs policy
@@ -32,8 +32,8 @@ Every triaged finding → one row (`../rulings-template.md`): `fixed` | `rejecte
 ## Rounds
 - **Round 1 (full):** all personas, whole slice, prototype running. Blue Team fixes technical findings (spec + contracts + prototype in the same step), `sdd.cjs check --contracts` after every fix.
 - **Rounds 2–3 (delta):** only sections and contracts changed since the previous round (by resolution or by user feedback) + whatever references them + every `GAPS.md` row of kind `builder`. The attack surface shrinks every round; that is what converges.
-- **Cap: 3 per iteration** (`## 🔄 Iteration N` headings in `specs/logs/02-swarm.md` since the transition that opened the iteration). A round with zero blocking findings ends the loop. Leftover blocking findings after round 3 → the user, one per message with a recommendation; ⊥ a round 4.
+- **Cap: 3 per iteration** (`## 🔄 Iteration N` headings in `specs/logs/03-swarm.md` since the transition that opened the iteration). A round with zero blocking findings ends the loop. Leftover blocking findings after round 3 → the user, one per message with a recommendation; ⊥ a round 4.
 - An operation or lifecycle added by user feedback gets a full (not delta) attack in the next round, and the Outcome Table is extended.
 
 ## Visible logs
-Every round written in full (format: `../iteration-log-format.md` §Adversarial Swarm) to `specs/logs/02-swarm.md`, with `sdd.cjs check --contracts` output pasted before the attack. ⊥ "internally looped"; a summarized log invalidates the run.
+Every round written in full (format: `../iteration-log-format.md` §Adversarial Swarm) to `specs/logs/03-swarm.md`, with `sdd.cjs check --contracts` output pasted before the attack. ⊥ "internally looped"; a summarized log invalidates the run.

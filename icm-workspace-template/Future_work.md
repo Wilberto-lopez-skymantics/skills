@@ -1,6 +1,6 @@
 # Future Work — SDD v3 ICM Workspace Template
 
-Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.18-v3.3-prototype-first`).
+Backlog after the prototype-first change (branch `feat/prototype-first`, version `2026.10.20-v3.4-prototype-first`).
 Every item must preserve the core goal: two builders given only the frozen set produce systems the oracle cannot tell apart (L2).
 
 Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first: bounded adversarial pass before building).
@@ -53,20 +53,34 @@ Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first:
 | `readiness` as the user's map | Budgets vs actuals, open policy questions verbatim with provisional answers, path to a frozen spec in plain words, the user's next action; 01 gates included | `readiness: budgets…` |
 | Budgets | `manifest.budgets` (interviewQuestions 20, prototypeVersions 3, swarmRounds 3); shown, never blocking; metrics record interview questions and prototype versions | metrics test |
 
+## Done in v3.4 (2026-10-20, same branch) — see it, then harden it
+
+Why: v3.3 moved the Red Team and the oracle after the prototype but kept the whole v3 definition load *before* it — a 14-section placeholder-free SPEC, the four-dimension closure gate, two dual-interpretation sub-agents, 2–3 approaches and per-section design approvals, then an agent-only contract compilation with every status enumerated. The user still waited through v3's Stage 01 before seeing anything. v3.4 makes the running prototype the boundary: v2's experience up to it, v3's completeness after it.
+
+| Item | What changed | Tests |
+|---|---|---|
+| Linear stages | `01 → 02_prototype → 03_hardening → 04 → 05 → (06) → 07` for every project type; `03p_prototype`, `02_adversarial_swarm_analysis` and `03_interactive_wireframing` folded into 02 and 03. No shared integers in `sdd-state.json` (C6 resolved as a side effect); `--resume 02` reworks the prototype, `--resume 03` re-hardens | `A1: every project type goes 01 → 02 → 03 → 04`, `order: …`, `A1: --resume …` |
+| Stage 01 = brief, not spec | Interview budget 12; a core-flow closure (actor, entity + lifecycle, core flow, forbidden, out of slice) replaces the four-dimension gate; one slice brief the user OKs replaces approaches + section approvals; Dual Interpretation sub-agents removed from 01; SPEC is a **draft** (§0, §1, §3, §4, §5, UI §14 filled; the rest `TBD — Stage 03`) | `check --spec: …`, `01: open policy gaps …` |
+| `check --spec` | Draft mode: placeholders and missing sections reported, never errors; lists the draft sections still to fill. `check`/`check --contracts` still error on placeholders (Stage 03 on, freeze) | `check --spec: …`, `03: hardening needs …` |
+| Stage 02 = prototype only | Built from the brief against `_config/references/prototype-checklist.md` (the profile rules that are expensive to retrofit); versions, demo answers, `--approved-by`; no contracts, rounds or oracle required | `02: acceptance …`, `01 → 02 without any contract …` |
+| Stage 03 = hardening with the prototype running | Contracts compiled *against* the prototype (Reconciler first), spec completed, Outcome Table, Decision Inventory, Red Team rounds 1–3 (round 1 carries the four closure dimensions), sampled `diff-expect`, wireframes captured + user review (UI). Logs: `03-swarm.md`, `03-rulings.md`, `03-decisions.md`; prototype record `02-prototype.md` | `03: hardening needs …`, `A3`, `02 on an iteration …` |
+| Readiness | Path 01 → 02 → 03 → 04 with the user's next action per stage; gates for 01/02/03/04 | `readiness: …` |
+| Reference material | `extraction-closure.md` split into the Stage 01 core-flow gate and the Stage 03 Round 1 checklist; `red-team.md`, templates, example logs renamed; `ui-state-matrix.md` cells may be gaps the prototype renders | example `check` passes |
+| Existing spec documents as input | Stage 01: a spec in any format with no code behind it is the brief (decisions carried over, hardening redone against the prototype). Stage 01b: with code, the document is evidence of intent, the code describes today, disagreements become gap rows | — (prose) |
+| Stage 01b adoption in the same shape | 01b = inventory + draft spec of today's behavior + slicing plan, within the interview budget; 02 = walkthrough of the existing system (intended / bug / later slice); 03 = contracts and inventory per hardened surface; 04 = the characterization oracle recorded from the running system (`tech-debt` tag for confirmed debt). Nothing is recorded in 01b; the freeze-as-is shortcut is gone (it skipped the walkthrough and could not pass `check` without contracts) | `01b: inventory + draft …` |
+
+Not changed: the Equivalence Profile, the lock, the single grader, `recorded:` ≠ citation, spec-only predictor B (03 sample, 04 full), L2 by clean-room build B. The prototype anchors nothing the spec does not cite.
+
 ## Open
 
-### Pilot run (measure before trusting)
-- Run one notes-service-sized slice end to end and read `metrics` in `transitions.jsonl` per stage. Every v3.1–v3.3 change is reasoned from the documents; the pilot gives the first wall-clock and token numbers. Adjust the default budgets from it.
+### Pilot run v3.4 (measure before trusting)
+- Run one notes-service-sized slice end to end and read `metrics` in `transitions.jsonl` per stage: questions to the brief, versions to acceptance, prototype rework in Stage 03 (the cost of compiling contracts after the code), rounds. The interview budget (12) and the prototype checklist's length are the two numbers most likely to move.
 - **Effort:** one session · **Guarantee impact:** none
 
 
 ### `oracle.cjs gen-profile-cases` built in
 - Projects write a local `specs/changes/oracle/tools/gen-profile.cjs`; Zenith hand-authored ~676 profile-generic rows. A built-in generator derives the mandatory profile families (IDEM, OCC, PAGE, validation order, precedence, round-trips) from `openapi.yaml` + the profile rules. Needs a bounded design pass: which families generalize across contracts, how a project excludes one.
 - **Effort:** M · **Guarantee impact:** strengthens (fewer hand-written generic cases)
-
-### C6. State model: stop overloading `lastCompletedStep`
-- v3.1 reads `transitions.jsonl` (`iterationStages`) where `stepName` is not enough. A string `stage` field as the source of truth would remove the remaining heuristics. Low value now that nothing external reads the integer.
-- **Effort:** M · **Guarantee impact:** none
 
 ### Promote Zenith's author-harness tools
 - Reuse the request-skeleton and recording helpers instead of per-project reinvention.
@@ -86,4 +100,4 @@ Legend — **Effort:** S (< ½ day) · M (1–2 days) · L (design needed first:
 
 1. `gen-profile-cases` after a bounded design pass (largest remaining token saving in Stage 04).
 2. Remaining hedge heuristics and the Zenith harness tools.
-3. C6 only if the stepName heuristics cause a defect.
+3. Lower the interview budget or shorten the prototype checklist only with pilot numbers.

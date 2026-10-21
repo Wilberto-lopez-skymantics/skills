@@ -1,6 +1,6 @@
 # SDD ICM Workspace Template
 
-> **Release Version:** `2026.10.18-v3.3-prototype-first` (Updated October 18, 2026)
+> **Release Version:** `2026.10.20-v3.4-prototype-first` (Updated October 20, 2026)
 
 A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure and a small set of zero-dependency tools, so that independent coding agents built from the same spec produce **observationally equivalent** systems — and so that claim can be checked.
 
@@ -16,7 +16,7 @@ Based on the [Interpretable Context Methodology (ICM)](https://arxiv.org/html/26
 
 2. **Requirements:** Node.js ≥ 18 for the tools (`specs/.sdd/scripts/*.cjs`, no `npm install`). Playwright only for UI projects.
 
-3. **Open** the project in your AI-assisted editor (Claude Code, Codex, Cursor, Gemini, …) and ask your agent to start. It reads its entry file, runs `node specs/.sdd/scripts/sdd.cjs status`, and begins at Stage 01 (or 01b for an existing codebase).
+3. **Open** the project in your AI-assisted editor (Claude Code, Codex, Cursor, Gemini, …) and ask your agent to start. It reads its entry file, runs `node specs/.sdd/scripts/sdd.cjs status`, and begins at Stage 01 (or 01b for an existing codebase). Expect a short interview, one slice brief to OK, and a running prototype before any contract or test is written.
 
 No global rules. No plugin install.
 
@@ -43,29 +43,28 @@ Most divergences start as ambiguous spec text, so v3 measures them at every stag
 
 | Stage | Diff | Catches |
 |---|---|---|
-| 01 | Two fresh agents predict outcomes of 3–5 scenarios per topic, with citations — once per slice, plus right after lifecycle, permission and money topics | Business-policy gaps → next interview question |
-| 02 | `check --contracts`: schemas, cross-references, spec structure, §11 ↔ manifest, operations named (agent-only, mechanical) | Contract and plumbing errors, before any code |
-| 03p | Prototype Decision Inventory (every observable choice cites the spec or becomes a `GAPS.md` row); Red Team rounds 1–3 with an **executed** Fork Test against the running prototype; sampled `diff-expect` by two spec-only authors (≥ one case per operation/command, gated) | Gaps a real builder hits, while the user watches the product |
+| 02 | Every demo answer and feedback change edits the spec in the same step as the code; `check --spec` keeps the draft well-formed | Drift between what the user saw and what the spec says, while it is one line |
+| 03 | `check --contracts` (schemas, cross-references, spec structure, §11 ↔ manifest, operations named); prototype Decision Inventory (every observable choice cites the spec or becomes a `GAPS.md` row); Red Team rounds 1–3 with an **executed** Fork Test against the running prototype; sampled `diff-expect` by two spec-only authors (≥ one case per operation/command, gated) | Gaps a real builder hits, found against a product the user already accepted |
 | 04 | Two interpretations: A recorded from the accepted prototype, B predicted from the spec alone, `diff-expect` (gated); profile-generic cases generated, not hand-written; `gen-probes` widens the measured surface | Remaining ambiguity; places where the prototype decided what the spec did not |
 | 05 | Builder's decision inventory per phase; optional lockstep build B with `diff --phase N` | Gaps while little code depends on them |
 | 07 | Full dual-build `diff` / `diff-ui` (gated for L2; per slice, or per release with `equivalenceCadence: "release"`) | The evidence |
 
 A predicting author writes `{"$unspecified": "…"}` where the spec does not decide a value; agreement without citations counts as a gap, because two identical guesses are still guesses. A value backed only by a `recorded:` citation ("the prototype did it") is also a gap.
 
-### See it first, then harden it
+### See it, then harden it
 
-The pipeline used to make the user wait for a frozen oracle before seeing anything run. Now:
+v2 felt right to use: a short conversation, a theme chosen in the browser, one design OK, then something to look at. v3 produced specs complete enough to measure equivalence, but demanded all of that completeness before anything ran. v3.4 keeps both by splitting the pipeline at the running prototype:
 
-- **Stage 01 scopes a slice** — a bounded first increment (30–80 observable outcomes is a good first slice; the cap is 150, `manifest.json#sliceCap`). Everything else is a `deferred` row in `specs/GAPS.md`, and the next slice starts from those rows.
-- **Stage 01 ends on zero *unrecorded* gaps, not zero gaps** — the slice's core flow must be answered; every other open question is a `GAPS.md` row with a provisional assumption the prototype will build. The interview has a budget (20 questions, `manifest.budgets`) and an audit log (`specs/logs/01-interview.md`); what does not fit is asked at a demo, where the question is concrete.
-- **Stage 02 is contract compilation only** — agent-only and mechanical, judged by `check --contracts`. No adversarial review stands between the interview and the first demo.
-- **Stage 03p builds a working prototype** of the slice for the user — every project type. Every demo is a numbered **version** (v0, v1, …; budget 3) in which the user sees the product and answers the open policy questions one at a time. Feedback edits the spec in the same step; uncited prototype decisions become `GAPS.md` rows. All Red Team rounds run here **with the prototype running**: round 1 full, rounds 2–3 delta, the Fork Tester sends the request instead of imagining the answer, the Reconciler reads real code. Hard cap 3 rounds per slice; leftovers go to the user as questions, not to a round 4. The stage ends when the user accepts on the command line (`transition --completed 03p --approved-by "<user>"`, recorded in `transitions.jsonl`, never typed into a file by the agent), and the prototype becomes build A.
-- **`sdd.cjs readiness` is the user's map** — budgets against actuals, their open policy questions verbatim with the provisional answers, the stages left before a frozen spec in plain words, and the single next action that is theirs.
-- **UI projects capture their wireframes from the prototype** (Stage 03, after 03p): each screen state is saved as static HTML with its test ids, copy and tokens verified. Build B never sees the prototype, so every layout decision it made is either frozen in a wireframe or caught as a gap.
-- **`sdd.cjs readiness`** reports — in counts, never a score — how far the slice is from a freezable spec: open gaps by kind, coverage, latest `diff-expect`, failing gates.
+**See it (Stages 01–02, the v2 experience):**
+- **Stage 01 asks only what the prototype cannot be built without** — actor, primary entity and lifecycle, the core flow, what is forbidden — within a budget (12 questions, `manifest.budgets`) and an audit log (`specs/logs/01-interview.md`). Every other question is a `specs/GAPS.md` row with a provisional assumption. It scopes a bounded slice (30–80 observable outcomes; cap 150), picks the theme (UI), and ends on **one slice brief** the user OKs. The spec it writes is a **draft**: §0, §1, §3, §4, §5 (and §14 for UI) filled, the rest `TBD — Stage 03` (`sdd.cjs check --spec` reports the draft; placeholders are not errors yet). No dual-interpretation sub-agents, no four-dimension closure gate, no section-by-section design approvals before the user has seen anything.
+- **Stage 02 builds the prototype from the brief** — every project type, against a one-page [prototype checklist](specs/.sdd/_config/references/prototype-checklist.md) (the dozen profile rules that are expensive to retrofit). Every demo is a numbered **version** (budget 3) where the user answers the open policy questions with the product on screen; feedback edits the spec in the same step as the code. The stage ends when the user accepts on the command line (`transition --completed 02 --approved-by "<user>"`, recorded in `transitions.jsonl`, never typed into a file by the agent). No contracts, Red Team or oracle exist yet.
+
+**Harden it (Stages 03–04, the v3 completeness, with the prototype running):**
+- **Stage 03 compiles the contracts against the prototype** (the Reconciler reads the code; spec pins X and the code does Y → fix the code; spec silent → gap, never "the prototype already does it"), completes every spec section (`check` errors on placeholders from here on), inventories the prototype's decisions, runs **all Red Team rounds with the prototype running** (round 1 full with the four Extraction Closure dimensions, rounds 2–3 delta, cap 3, the Fork Tester executes the request instead of imagining the answer), proves the spec readable with a sampled `diff-expect` by two spec-only authors, and — for UI projects — captures the frozen wireframes from the prototype's screens (`ui-capture.cjs`) and has the user review them. The user is asked only the policy questions a round raises, batched, at a demo.
 - **Stage 04 records instead of re-deriving** — build A's observations are recorded, an independent spec-only author predicts them, and `diff-expect` turns every disagreement into a spec fix. Stage 04 refuses to finish while any gap is `open`.
-- **Stage 05 loops on the oracle, per phase** — Decision Inventory, build, `oracle.cjs run --phase N` until green, then one Red Team pass for what the oracle cannot see. No per-file attack loop before the oracle has spoken.
-- **Iterations keep the old oracle as a guard** — on the next slice, Stage 03p prototypes on the certified build A, and every existing case must stay green unless a decision-log entry names it as a declared behavior change.
+- **Stage 05 loops on the oracle, per phase** — Decision Inventory, build, `oracle.cjs run --phase N` until green, then one Red Team pass for what the oracle cannot see.
+- **`sdd.cjs readiness` is the user's map** at every point — budgets against actuals, their open policy questions verbatim with the provisional answers, the stages left before a frozen spec in plain words, and the single next action that is theirs; counts, never a score.
+- **Iterations keep the old oracle as a guard** — on the next slice, Stage 02 prototypes on the certified build A, and every existing case must stay green through Stages 02 and 03 unless a decision-log entry names it as a declared behavior change.
 - **L2 cadence is a choice** — `manifest.json#equivalenceCadence: "release"` lets intermediate slices certify L1 with an explicit `L2 pending` row and a lockstep diff as early warning; L2 is certified with `transition --completed 07 --release` before a release. The default stays L2 on every slice.
 
 The guarantee is unchanged: L2 still requires a build B made from the frozen set alone, an L1 certificate on a prototype-derived build says so, and a pending slice is never called L2.
@@ -82,7 +81,7 @@ The guarantee is unchanged: L2 still requires a build B made from the frozen set
 2. **Pinned defaults for plumbing.** The [Equivalence Profile](specs/.sdd/_config/references/systems-standards.md) fixes the choices where builders typically diverge — error envelope (RFC 9457), status codes and error precedence, timestamps, ids, null handling, pagination, idempotency, concurrency, string normalization. Deviations are explicit overrides tied to a decision-log entry.
 3. **Machine contracts over prose — and machine-checked.** Operations, storage, lifecycles and errors live in `specs/contracts/`; `sdd.cjs check` validates them against [JSON Schemas](specs/.sdd/_config/schemas/) and each other.
 4. **One grader, never the builder.** The oracle is data (`specs/fixtures/`), written in Stage 04 before the graded build, and executed by the shipped, implementation-agnostic `oracle.cjs`. No stage writes its own grader. Expected values must be *derivable* from the spec (`derivedFrom`); a value the oracle author had to invent — or could only copy from the prototype — is a spec gap.
-5. **The spec is the only channel.** The Stage 03p prototype is the only pre-freeze code and is never evidence. Stage 05 builders use only the frozen set — no conversation history, no swarm logs, no other implementation (build A may read its own prototype code; build B never sees it). Whatever they would have to guess is raised as a spec gap instead.
+5. **The spec is the only channel.** The Stage 02 prototype (and its Stage 03 hardening fixes) is the only pre-freeze code and is never evidence. Stage 05 builders use only the frozen set — no conversation history, no swarm logs, no other implementation (build A may read its own prototype code; build B never sees it). Whatever they would have to guess is raised as a spec gap instead.
 6. **Change control with a lock.** `sdd.cjs freeze` hashes the frozen set into `specs/spec.lock.json` after user approval. After that, frozen files change only through a Class 1 iteration or a Stage 00 Spec Change Request, each ending in a user-approved re-freeze. `sdd.cjs verify` detects anything else, and gates refuse to advance on a broken lock.
 
 ## Tooling
@@ -92,11 +91,11 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 | Command | Purpose |
 |---|---|
 | `sdd.cjs status` | Current stage, lock state, latest evidence, and the next stage's exit gates |
-| `sdd.cjs check [--contracts]` | Validate manifest, contracts, the spec's structure (required sections, placeholders, hedged numbers, §11 ↔ manifest overrides, every operation named, UI components ↔ DESIGN.md, module links, size), oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code; exemptions by class) and phase binding |
-| `sdd.cjs readiness` | Report only (exit 0): slice size vs cap, gaps by kind, budgets vs actuals (interview questions, prototype versions, Red Team rounds), the user's open policy questions verbatim, coverage, latest diff-expect, the path to a frozen spec with the user's next action, failing gates for 01/02/03p/03/04 |
+| `sdd.cjs check [--contracts \| --spec]` | Validate manifest, contracts, the spec's structure (required sections, placeholders, hedged numbers, §11 ↔ manifest overrides, every operation named, UI components ↔ DESIGN.md, module links, size), oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code; exemptions by class) and phase binding. `--spec` checks the Stage 01–02 draft alone: placeholders and unfilled sections are reported, not errors, and the sections a prototype needs are listed |
+| `sdd.cjs readiness` | Report only (exit 0): slice size vs cap, gaps by kind, budgets vs actuals (interview questions, prototype versions, Red Team rounds), the user's open policy questions verbatim, coverage, latest diff-expect, the path to a frozen spec with the user's next action, failing gates for 01/02/03/04 |
 | `sdd.cjs freeze --reason R --approved-by U` | Lock the frozen set (refused unless `check` passes) |
 | `sdd.cjs verify` | Exit 1 if any frozen file changed since the last freeze |
-| `sdd.cjs transition --completed <stage> [--approved-by U] [--release]` | Record a completed stage — refused if out of order (unless `--override DECnnn`) or until that stage's exit gates pass. 03p requires `--approved-by` (the user's acceptance); 07 with cadence `release` requires `--release` to certify L2 |
+| `sdd.cjs transition --completed <stage> [--approved-by U] [--release]` | Record a completed stage — refused if out of order (unless `--override DECnnn`) or until that stage's exit gates pass. 02 requires `--approved-by` (the user's acceptance of the prototype); 07 with cadence `release` requires `--release` to certify L2 |
 | `sdd.cjs export <dir> [--update]` | Copy only the frozen set into `<dir>` for an independent (L2) build; `--update` resyncs it after a re-freeze, keeping B's code and progress |
 | `oracle.cjs run [--phase N]` | Grade a build: HTTP, SQL and CLI steps with matchers, captures and templates |
 | `oracle.cjs diff --a a --b b` | Run the same cases and probes against two builds; report every undeclared difference |
@@ -105,7 +104,7 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 | `oracle.cjs diff-expect --a A --b B` | Interpretation diff: compare two independently written expectation sets; every disagreement, `$unspecified` or uncited case is a spec gap |
 | `oracle.cjs strip-expect --from A --out DIR` | Request-only skeletons with neutral titles for an independent second author |
 | `oracle.cjs env` | Print the frozen build environment every graded build is started with |
-| `oracle.cjs record --target T --out F` | Fill expectations from observed behavior: characterize an existing system (Stage 01b) or record interpretation A from the accepted prototype (Stage 04) |
+| `oracle.cjs record --target T --out F` | Fill expectations from observed behavior: record interpretation A from the accepted, hardened prototype (Stage 04; for an adopted codebase this is its characterization oracle) |
 | `ui-capture.cjs --url U --name N [--aria]` | Capture one rendered screen state of the prototype as a static wireframe (styles inlined, scripts stripped, test ids kept; Stage 03, needs Playwright) |
 | `start-server.sh` / `stop-server.sh` | Visual Companion for brainstorming and live wireframes |
 
@@ -138,15 +137,13 @@ ICM moves the orchestration logic **into the project's filesystem**. The agent d
 ```mermaid
 flowchart TD
     Start(["Feature request / brief"]) --> S01["<b>01 Brainstorming</b><br/>Lead Architect + Shadow Critic"]
-    Adopt["Existing codebase"] --> S01b["<b>01b Adoption</b><br/>spec + contracts + recorded oracle"]
+    Adopt["Existing codebase"] --> S01b["<b>01b Adoption</b><br/>inventory · draft spec · slicing plan"]
     S01b --> S02
-    S01 --> G01{"<b>Extraction Closure</b><br/>0 unrecorded gaps · interview budget"}
-    G01 --> S02["<b>02 Contract Compilation</b><br/>contracts + Outcome Table (agent only)"]
-    S02 --> C{"sdd.cjs check --contracts"}
-    C --> S03p["<b>03p Prototype & Hardening</b><br/>versions v0…vn · your answers · rounds 1–3 live · --approved-by"]
-    S03p -- "UI" --> S03["<b>03 Wireframes</b><br/>captured from the prototype"]
-    S03p -- "non-UI" --> S04
-    S03 --> S04["<b>04 Oracle + Phases</b><br/>recorded A vs predicted B, coverage, 0 open gaps"]
+    S01 --> G01{"<b>Core-flow closure</b><br/>slice brief OK'd · draft spec · gaps recorded"}
+    G01 --> S02["<b>02 Prototype — see it</b><br/>v0…vn from the brief · your answers on screen · --approved-by"]
+    S02 --> S03["<b>03 Hardening — prototype running</b><br/>contracts · spec completed · inventory · rounds 1–3 · diff-expect · wireframes (UI)"]
+    S03 --> C{"sdd.cjs check --contracts · 0 open rulings"}
+    C --> S04["<b>04 Oracle + Phases</b><br/>recorded A vs predicted B, coverage, 0 open gaps"]
     S04 --> F{"<b>User-approved freeze</b><br/>spec.lock.json"}
     F --> S05["<b>05 Spec-only build</b><br/>oracle.cjs run per phase"]
     S05 -- "UI" --> S06["<b>06 VAT</b><br/>UI specs + visual walk"]
@@ -161,11 +158,10 @@ flowchart TD
 | Stage | Purpose | Exit gate (`sdd.cjs transition`) |
 |-------|---------|------|
 | `00_backprop` | Classify defect → Spec Change Request → approval → patch spec/contracts/oracle → re-freeze | Lock intact, backprop log, `--resume` target |
-| `01_brainstorming` | Socratic interview within a budget; slice scoped; core-flow policy answered, the rest recorded as gaps with provisional assumptions | SPEC, DECISION_LOG, (DESIGN), interview log, no placeholders, GAPS.md well-formed (open rows allowed) |
-| `01b_adoption` | Reverse-engineer an existing codebase; record a characterization oracle | Same as 01 |
-| `02_adversarial_swarm_analysis` | Contract compilation + Outcome Table (agent only, no Red Team) | `check --contracts`, slice ≤ cap, Outcome Table matching the contracts |
-| `03p_prototype` | Working prototype of the slice (every project type) shown as numbered versions; the user answers open policy gaps at the demos; Red Team rounds 1–3 against the running prototype; sampled diff-expect | `check --contracts`, run line + ≥ 1 version row, `--approved-by`, fresh decision inventory, valid GAPS.md, ≥ 1 round and no open ruling, sampled diff-expect, (iterations) old oracle green or declared |
-| `03_interactive_wireframing` | Wireframes captured from the accepted prototype: test ids, copy, tokens, states verified (UI only) | Wireframes + relative-linked DESIGN.md section |
+| `01_brainstorming` | Short interview within a budget; slice scoped; one slice brief OK'd; draft spec with the core sections filled, the rest recorded as gaps with provisional assumptions | Draft sections (§0, §1, §3, §4, §5, UI §14) filled, DECISION_LOG, (DESIGN), interview log, GAPS.md well-formed (open rows and placeholders allowed) |
+| `01b_adoption` | Inventory an existing codebase, draft the spec of what it does today, plan the slices to harden; the existing system is the Stage 02 prototype and Stage 04 records its characterization oracle | Same draft gate as 01, incl. the interview log |
+| `02_prototype` | Working prototype of the slice built from the brief (every project type), shown as numbered versions; the user answers the open policy gaps on screen and accepts | Run line + ≥ 1 version row, `--approved-by`, valid GAPS.md, (iterations) old oracle green or declared |
+| `03_hardening` | Contracts compiled against the prototype; spec completed; Decision Inventory; Red Team rounds 1–3 with the prototype running; sampled diff-expect; wireframes captured from the prototype (UI) | `check --contracts` with a complete spec, slice ≤ cap, Outcome Table matching the contracts, fresh inventory, ≥ 1 round and no open ruling, sampled diff-expect, (UI) wireframes + relative-linked DESIGN.md section |
 | `04_writing_implementation_phases` | Oracle synthesis (recorded A vs predicted B), phases, user-approved freeze | Full `check`, zero open gaps, generated cases green on the prototype, lock intact |
 | `05_development_swarm` | Spec-only build, per phase: inventory → build → oracle until green → one Red Team pass (A continues the prototype) | Lock intact, current unfiltered oracle run green, zero drift |
 | `06_visual_acceptance_testing` | Frozen UI specs + visual walk (UI only) | VAT verdict PASS |
@@ -176,10 +172,11 @@ flowchart TD
 | Class | Definition | Route |
 |---|---|---|
 | **0 Non-observable** | Refactor, dependency bump, performance, internal logging | 05 → 07; oracle must stay 100% green, lock unchanged |
-| **1 Observable** | Feature, behavior change, new error, UI change, the next slice | 01 → 02 → 03p → (03) → 04 (re-freeze) → 05 → (06) → 07 |
+| **1 Observable** | Feature, behavior change, new error, UI change, the next slice | 01 → 02 → 03 → 04 (re-freeze) → 05 → (06) → 07 |
 | **2 Defect** | Disputed case, `diff` divergence, escaped bug | 00 → re-freeze → resume |
 
-- **Adding a feature / next slice (Class 1):** Stage 01 starts from the `deferred` rows of `GAPS.md`; extend SPEC and contracts through Stages 01–02, prototype the change on build A in Stage 03p (the old oracle must stay green except for declared behavior changes), add cases and a new phase in Stage 04 (existing cases may only change where a decision-log entry declares the behavior change), re-freeze with approval, build the new phase. `--phase N` runs are cumulative, so old behavior keeps being re-graded.
+- **Starting from an existing spec document (PRD, design doc, an earlier pipeline's `SPEC.md`):** with no code behind it, Stage 01 treats it as the brief: decisions carried into the log, draft written from it, only the open core-flow questions asked, hardening redone in Stage 03 against the prototype. With working code behind it, Stage 01b: the code describes today, the document is evidence of intent, and every disagreement between them is a gap row for the walkthrough. A project already on this pipeline with a lock is upgraded in place.
+- **Adding a feature / next slice (Class 1):** Stage 01 starts from the `deferred` rows of `GAPS.md`; prototype the change on build A in Stage 02 (the old oracle must stay green except for declared behavior changes), extend the contracts and harden in Stage 03, add cases and a new phase in Stage 04 (existing cases may only change where a decision-log entry declares the behavior change), re-freeze with approval, build the new phase. `--phase N` runs are cumulative, so old behavior keeps being re-graded.
 - **Fixing a bug (Class 2):** Stage 00 decides whether the code broke the spec (→ Stage 05) or the spec allowed the bug (→ pin it, add a case that fails on the buggy build, re-freeze, → Stage 05).
 - **Refactoring (Class 0):** no spec work at all — the frozen oracle proves the refactor changed nothing observable.
 
@@ -193,10 +190,12 @@ icm-workspace-template/
     ├── .gitignore                          ← ignores Visual Companion sessions
     └── .sdd/                               ← pipeline machinery (frozen with the spec)
         ├── WORKSPACE_ROUTING.md
-        ├── 00_backprop/ … 07_verification_before_completion/CONTEXT.md
-        ├── scripts/                        ← sdd.cjs, oracle.cjs, sdd-lib.cjs, Visual Companion
+        ├── 00_backprop/ 01_brainstorming/ 01b_adoption/ 02_prototype/ 03_hardening/
+        │   04_writing_implementation_phases/ 05_development_swarm/
+        │   06_visual_acceptance_testing/ 07_verification_before_completion/   ← one CONTEXT.md each
+        ├── scripts/                        ← sdd.cjs, oracle.cjs, sdd-lib.cjs, ui-capture.cjs, Visual Companion
         └── _config/
-            ├── references/                 ← Equivalence Profile, oracle standard, checklists
+            ├── references/                 ← Equivalence Profile, prototype checklist, oracle standard, Red Team, closure
             ├── schemas/                    ← JSON Schemas for manifest, errors, statecharts, oracle
             ├── contract-matrix.json        ← required contracts per project type
             ├── canonical-errors.json       ← profile error codes (machine-checked)
@@ -217,16 +216,16 @@ specs/
 ├── spec.lock.json             ← lock manifest (hashes, approvals, history)
 ├── DECISION_LOG.md · IMPLEMENTATION_PHASES.md · GAPS.md · backprop-log.md
 ├── changes/SCR-*.md           ← Spec Change Requests
-├── logs/                      ← swarm logs, oracle/diff reports, transitions.jsonl, VAT screenshots
+├── logs/                      ← 01-interview, 02-prototype, 03-swarm/-rulings/-decisions, oracle/diff reports, transitions.jsonl, VAT screenshots
 ├── dev-swarm-reconciliation.md · VAT_REPORT.md · EQUIVALENCE_REPORT.md
 └── .sdd/_config/sdd-state.json ← pipeline pointer (written by `sdd.cjs transition`)
 ```
 
-`sdd-state.json` is a small pointer (`lastCompletedStep`, `stepName`, `projectType`, `timestamp`, `notes`); everything else lives in the lock and logs. 03p and 03 share step 3 (`stepName` and `specs/logs/transitions.jsonl` tell them apart; the user's prototype acceptance and per-stage metrics are recorded there too). Only `sdd.cjs transition` writes the state, so the exit gates are never bypassed.
+`sdd-state.json` is a small pointer (`lastCompletedStep`, `stepName`, `projectType`, `timestamp`, `notes`); everything else lives in the lock and logs (the user's prototype acceptance and per-stage metrics are recorded in `specs/logs/transitions.jsonl`). The stages are linear, so the pointer is unambiguous. Only `sdd.cjs transition` writes the state, so the exit gates are never bypassed.
 
 ### Tests
 
-`node --test tests/*.test.cjs` exercises the pipeline state machine black-box (stage order, Stage 00 resume, slice cap, swarm rounds, prototype acceptance, iteration regression guard, equivalence cadence, SPEC size warning). The `tests/` directory lives outside `specs/` so projects created from the template do not copy it; CI runs it together with `sdd.cjs check` on the reference example and the entry-file parity check.
+`node --test tests/*.test.cjs` exercises the pipeline state machine black-box (stage order, Stage 00 resume, slice cap, swarm rounds, draft spec checks, prototype acceptance, hardening gates, iteration regression guard, equivalence cadence, SPEC size warning). The `tests/` directory lives outside `specs/` so projects created from the template do not copy it; CI runs it together with `sdd.cjs check` on the reference example and the entry-file parity check.
 
 ## What Changed in v3
 
@@ -248,9 +247,9 @@ v3 challenges several v2 decisions that worked against the equivalence goal:
 
 What experience with real projects says about running the pipeline well:
 
-- **Slice small.** A first slice of 30–80 declared outcomes reaches a running prototype in one Stage 02 round. The cap of 150 is a ceiling, not a target; `sdd.cjs readiness` shows the count.
-- **Four user touchpoints per slice**, and only those: the Stage 01 interview (one question per message, within the budget), the Stage 03p demos (each a version; the open policy questions are answered there, one per message) ending in `--approved-by`, the Stage 04 freeze approval, and the Stage 07 report. Stage 02 and Stage 05 run without the user. `sdd.cjs readiness` names the next action that is the user's at every point.
-- **Spend model strength where judgment is needed**: the Red Team critics, the spec-only predictor B (Stages 03p and 04) and the Stage 05 Decision Inventory. Generation (contract drafts, prototype code, build A phases) tolerates cheaper models. Build B should use a different model family than build A when available: two readings of the spec from the same model share its biases.
+- **Slice small.** A first slice of 30–80 declared outcomes reaches a running prototype after a 6–10 question interview. The cap of 150 is a ceiling, not a target; `sdd.cjs readiness` shows the count.
+- **Five user touchpoints per slice**, and only those: the Stage 01 interview (one question per message, within the budget) and its one-message slice brief, the Stage 02 demos (each a version; the open policy questions are answered there, one per message) ending in `--approved-by`, the policy questions Stage 03's rounds raise (batched; UI projects also review the captured screens), the Stage 04 freeze approval, and the Stage 07 report. Stage 03 and Stage 05 otherwise run without the user. `sdd.cjs readiness` names the next action that is the user's at every point.
+- **Spend model strength where judgment is needed**: the Red Team critics, the spec-only predictor B (Stages 03 and 04) and the Stage 05 Decision Inventory. Generation (prototype code, contract drafts, build A phases) tolerates cheaper models. Build B should use a different model family than build A when available: two readings of the spec from the same model share its biases.
 - **Budget by stage, in counts.** Every transition records `metrics` in `specs/logs/transitions.jsonl` (rounds, gaps, rulings, outcomes, cases); compare them across projects to see where time goes before changing the pipeline.
 - **Keep the spec readable in one pass.** `check` warns above 120 KB per file; split into `specs/spec/<module>.md` with `SPEC.md` as the index (every module linked) before that, and keep tables in the contracts.
 - **Cadence is a decision.** Default is L2 on every slice. Teams shipping several slices before a release set `equivalenceCadence: "release"`, keep the lockstep build B green, and certify L2 once with `--release`. A pending slice is never called L2.
@@ -264,7 +263,7 @@ The template is the single source of the pipeline. The earlier global skills (`.
 Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 ```html
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.17-v3-prototype-first -->
+<!-- version: 2026.10.20-v3.4-prototype-first -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 ```
 

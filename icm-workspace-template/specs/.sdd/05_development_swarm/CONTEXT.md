@@ -6,7 +6,7 @@ Make the frozen oracle pass using only the frozen spec set. Equivalence follows 
 
 **The oracle is the inner loop.** Per phase: Decision Inventory → build → `oracle.cjs run --phase N` until green → one Red Team pass for what the oracle cannot observe. A phase without the green run pasted in its log is not done.
 
-> **Build A continues the prototype** accepted in Stage 03p. From the freeze on, every change to it is driven by a failing oracle case or a cited inventory entry; prototype behavior with no citation is either pinned by the frozen set (keep) or a gap (SCR). **Build B is always spec-only**: it starts from `sdd.cjs export` and never sees the prototype. Only L2 certifies that the spec, not the prototype, determines the observations.
+> **Build A continues the prototype** accepted in Stage 02 and hardened in Stage 03. From the freeze on, every change to it is driven by a failing oracle case or a cited inventory entry; prototype behavior with no citation is either pinned by the frozen set (keep) or a gap (SCR). **Build B is always spec-only**: it starts from `sdd.cjs export` and never sees the prototype. Only L2 certifies that the spec, not the prototype, determines the observations.
 
 ## Inputs (the ONLY inputs)
 - Layer 4 (frozen): `specs/SPEC.md` (+ `specs/spec/*.md`), `specs/DESIGN.md` (UI), `specs/contracts/*`, `specs/fixtures/*`, `specs/wireframes/*.html` (UI), `specs/CODING_STANDARDS.md` (if exists: internal conventions only)
@@ -17,7 +17,7 @@ Make the frozen oracle pass using only the frozen spec set. Equivalence follows 
 
 ### ⛔ Spec-only context
 - Run in a fresh session | sub-agent. ⊥ read Stage 01–04 conversation history, `specs/logs/`, `specs/DECISION_LOG.md` rationale, or any other implementation of this spec.
-- Build A exceptions (exactly two): its own codebase (the accepted prototype), and `specs/logs/03p-decisions.md` as the seed of its Decision Inventory — citations only, each re-verified against the frozen files. Nothing else under `specs/logs/`; never the prototype conversation. The code is a starting point, the frozen set is the truth.
+- Build A exceptions (exactly two): its own codebase (the accepted prototype), and `specs/logs/03-decisions.md` as the seed of its Decision Inventory — citations only, each re-verified against the frozen files. Nothing else under `specs/logs/`; never the prototype conversation. The code is a starting point, the frozen set is the truth.
 - A fact the frozen set does not state (value, ordering, message, edge case) = **spec gap**: draft `specs/changes/SCR-NNN.md` (Stage 00 format, class C) and stop work on that item; unaffected items continue. A case you believe wrong → same route (class B); the case stays until the user approves the SCR.
 
 ### ⛔ Immutable (anti-tampering)

@@ -5,7 +5,7 @@
 Pinned defaults that apply automatically ∀ project with the matching interface. They remove the plumbing choices where independent builders diverge, so Stage 01 never interviews the user about them and Stage 05 never guesses.
 
 - **Defaults, not suggestions.** ⊥ deviate silently. A deviation ! appear in `specs/contracts/manifest.json#profileOverrides` (`{ "rule", "override", "decision" }`) with a matching `DECnnn` entry in `specs/DECISION_LOG.md`. `sdd.cjs check` enforces the cross-reference.
-- **Unlisted ≠ free.** Observable behavior pinned neither here nor in SPEC = spec gap → Stage 02 (before freeze) | Stage 00 (after freeze).
+- **Unlisted ≠ free.** Observable behavior pinned neither here nor in SPEC = spec gap → Stage 03 (before freeze) | Stage 00 (after freeze).
 - **Machine-checked where possible.** Canonical error codes, statuses and `retryable`: `../canonical-errors.json`. Timestamp format: oracle matcher `{"$type": "datetime"}`.
 
 ---

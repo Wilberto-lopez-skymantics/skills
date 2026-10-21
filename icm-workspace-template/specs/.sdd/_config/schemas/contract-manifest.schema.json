@@ -175,7 +175,7 @@
       }
     },
     "budgets": {
-      "description": "Per-stage budgets shown by `sdd.cjs readiness` against actuals (counts, never a block). Defaults: interviewQuestions 20, prototypeVersions 3, swarmRounds 3.",
+      "description": "Per-stage budgets shown by `sdd.cjs readiness` against actuals (counts, never a block). Defaults: interviewQuestions 12, prototypeVersions 3, swarmRounds 3.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

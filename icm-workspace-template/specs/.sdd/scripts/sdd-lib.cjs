@@ -8,7 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { parseYaml } = require('./yaml-lite.cjs');
 
-const TOOL_VERSION = '2026.10.01-v3';
+const TOOL_VERSION = '2026.10.20-v3.4';
 
 // ========== Paths ==========
 
@@ -721,16 +721,14 @@ function parsePhases(text) {
   return [...new Set([...text.matchAll(/^##\s+Phase\s+(\d+)\b/gm)].map(m => Number(m[1])))].sort((a, b) => a - b);
 }
 
-// ========== Stages (compatible with the SDD VS Code extension's numeric state) ==========
+// ========== Stages (compatible with the SDD VS Code extension's numeric state: active stage = lastCompletedStep + 1) ==========
 
 const STAGES = {
   '00': { num: 0, name: '00_backprop' },
   '01': { num: 1, name: '01_brainstorming' },
-  '01b': { num: 1, name: '01b_adoption' },
-  '02': { num: 2, name: '02_adversarial_swarm_analysis' },
-  '03': { num: 3, name: '03_interactive_wireframing' },
-  // Shares 3 with 03 (as 01b shares 1 with 01): the extension's numeric state is unchanged; stepName tells them apart.
-  '03p': { num: 3, name: '03p_prototype' },
+  '01b': { num: 1, name: '01b_adoption' }, // shares 1 with 01: an alternative entry, stepName tells them apart
+  '02': { num: 2, name: '02_prototype' },
+  '03': { num: 3, name: '03_hardening' },
   '04': { num: 4, name: '04_writing_implementation_phases' },
   '05': { num: 5, name: '05_development_swarm' },
   '06': { num: 6, name: '06_visual_acceptance_testing' },
@@ -740,7 +738,7 @@ const STAGES = {
 function normalizeStage(input) {
   if (input === undefined || input === true) return null;
   const s = String(input).toLowerCase().trim();
-  const m = s.match(/^0?([0-7])(b|p)?(?:_[a-z_]+)?$/);
+  const m = s.match(/^0?([0-7])(b)?(?:_[a-z_]+)?$/);
   if (!m) return null;
   const key = `0${m[1]}${m[2] || ''}`;
   return STAGES[key] ? key : null;

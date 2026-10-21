@@ -19,20 +19,22 @@ const L = require('./sdd-lib.cjs');
 
 const USAGE = `Usage:
   sdd.cjs status                         Current stage, lock, evidence, and the next stage's exit gates
-  sdd.cjs check [--contracts]            Validate contracts (+ fixtures, coverage, phases unless --contracts)
+  sdd.cjs check [--contracts | --spec]   Validate contracts (+ fixtures, coverage, phases unless --contracts);
+                                         --spec: the SPEC.md draft only, before contracts exist (Stages 01–02:
+                                         placeholders and unfilled sections are reported, never errors)
   sdd.cjs freeze --reason R --approved-by U   Lock the frozen set (refused unless check passes)
   sdd.cjs verify                         Exit 1 if any frozen file changed since the last freeze
   sdd.cjs transition --completed S [--resume S] [--project-type T] [--note N] [--override DECnnn]
                      [--approved-by U] [--release]
                                          Record a completed stage; refused unless it is the next stage
                                          (or --override cites a DECISION_LOG entry) and its exit gates pass.
-                                         03p needs --approved-by (the user who accepted the prototype);
+                                         02 needs --approved-by (the user who accepted the prototype);
                                          07 with manifest.equivalenceCadence "release" needs --release to certify L2
   sdd.cjs export <dir> [--update]        Copy only the frozen set into <dir> for an independent build
                                          (--update resyncs an existing build-B workspace after a re-freeze)
   sdd.cjs readiness                      Report-only: how far the spec set is from freezable (open gaps,
                                          policy questions for the user, coverage, failing gates per stage)
-Stages: 00 01 01b 02 03 03p 04 05 06 07`;
+Stages: 00 01 01b 02 03 04 05 06 07`;
 
 // ========== Reporting ==========
 
@@ -71,7 +73,7 @@ function checkContracts(p, r) {
   ctx.matrix = matrix;
 
   if (!exists(p.spec)) r.error('missing specs/SPEC.md');
-  if (!exists(p.manifest)) { r.error('missing specs/contracts/manifest.json (Stage 02 output)'); checkSpecText(p, ctx, r); return ctx; }
+  if (!exists(p.manifest)) { r.error('missing specs/contracts/manifest.json (Stage 03 output; before that, `sdd.cjs check --spec` checks the draft)'); checkSpecText(p, ctx, r); return ctx; }
   let manifest;
   try { manifest = L.readJson(p.manifest); } catch (e) { r.error(e.message); return ctx; }
   const merrs = L.validateSchema(L.loadSchema(p, 'contract-manifest.schema.json'), manifest);
@@ -132,6 +134,8 @@ function checkContracts(p, r) {
 // ========== Spec text (the mechanical half of the former spec self-review) ==========
 
 const SPEC_SECTIONS = ['0. Meta', '1. Scope', '2. Glossary', '3. Actors', '4. Domain Model', '5. Operations', '6. Data', '7. Errors', '8. Invariants', '9. Equivalence Boundary', '10. Observable Environment', '11. Equivalence Profile Overrides', '12. Configuration', '13. Limits'];
+// The sections a prototype cannot be built without (Stage 01 writes them; the rest may stay "TBD — Stage 03" until hardening). §14 is added for UI projects.
+const DRAFT_SECTIONS = ['0', '1', '3', '4', '5'];
 const HEDGES = [
   [/\b(approximately|around|about|roughly|circa)\s+\d/i, 'approximate number'],
   [/\b(e\.g\.|for example|such as)\b[^\n.]{0,40}\b\d+\s*(ms|s|sec|seconds?|min|minutes?|hours?|days?|KB|MB|GB|items?|rows?|requests?|%)\b/i, 'example standing in for a parameter value'],
@@ -159,6 +163,26 @@ function specSection(text, n) {
 
 const kebab = s => s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
+function draftSections(ui) { return ui ? [...DRAFT_SECTIONS, '14'] : DRAFT_SECTIONS; }
+
+/** A section counts as filled when its body says something beyond a placeholder (TBD/TODO/FIXME lines and blanks). */
+function sectionFilled(text, n) {
+  const body = specSection(text, n);
+  if (body === null) return false;
+  const lines = body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  return lines.some(l => !/\b(TBD|TODO|FIXME)\b/.test(l));
+}
+
+/** Stage 01/02 gate: the SPEC.md draft has the sections a prototype is built from; everything else may still be a placeholder. */
+function draftGate(p, info) {
+  if (!exists(p.spec)) return [false, 'missing specs/SPEC.md'];
+  const all = L.specText(p.root);
+  const need = draftSections(info.ui);
+  const unfilled = need.filter(n => !sectionFilled(all, n));
+  if (unfilled.length) return [false, `SPEC.md draft: section(s) ${unfilled.map(n => `§${n}`).join(', ')} missing or still a placeholder (the prototype needs §0 Meta, §1 Scope, §3 Actors, §4 Domain, §5 Operations${info.ui ? ', §14 UI' : ''}; the rest may stay "TBD — Stage 03")`];
+  return [true, `SPEC.md draft: ${need.map(n => `§${n}`).join(', ')} filled (placeholders elsewhere are allowed until Stage 03)`];
+}
+
 function checkSpecText(p, ctx, r) {
   const files = L.specFiles(p.root);
   if (!files.length) return;
@@ -182,24 +206,38 @@ function checkSpecText(p, ctx, r) {
   }
   r.note(`spec: ${files.length} file(s), ${totalKb} KB${modules.length ? ` (${modules.length} module(s) under specs/spec/)` : ''}`);
 
-  // Placeholders and hedges, with file:line. Placeholders are errors; hedges are warnings (heuristic).
+  // Placeholders and hedges, with file:line. Placeholders are errors once the spec must be complete (Stage 03 on);
+  // in draft mode (Stages 01–02, `check --spec`) they are the normal state of the sections hardening fills later.
   const hedgeHits = [];
+  const placeholders = [];
   for (const [f, t] of texts) {
     for (const [n, line] of specLines(t)) {
       for (const [re, why] of HEDGES) {
         const m = line.match(re);
         if (!m) continue;
-        if (why === 'placeholder') r.error(`${f}:${n}: placeholder "${m[0]}" — the spec is not finished`);
+        if (why === 'placeholder') placeholders.push(`${f}:${n}: placeholder "${m[0]}"`);
         else hedgeHits.push(`${f}:${n} (${why}: "${m[0]}")`);
       }
     }
+  }
+  if (placeholders.length) {
+    if (ctx.draft) r.note(`draft: ${placeholders.length} placeholder(s) left for Stage 03 (${placeholders.slice(0, 4).join('; ')}${placeholders.length > 4 ? '; …' : ''})`);
+    else for (const ph of placeholders) r.error(`${ph} — the spec is not finished`);
   }
   if (hedgeHits.length) r.warn(`${hedgeHits.length} unquantified parameter(s) — every number must be an exact value, bounded range or formula: ${hedgeHits.slice(0, 8).join('; ')}${hedgeHits.length > 8 ? '; …' : ''}`);
 
   // Required sections (spec-template.md), anywhere in SPEC.md or a module; §14 for UI projects.
   const missing = SPEC_SECTIONS.map(s => s.split('.')[0]).filter(n => !new RegExp(`^##\\s+${n}\\.`, 'm').test(all));
   if (ctx.typeDef && ctx.typeDef.ui && !/^##\s+14\./m.test(all)) missing.push('14');
-  if (missing.length) r.error(`spec is missing section(s) ${missing.map(n => `§${n}`).join(', ')} (structure: specs/.sdd/_config/spec-template.md; "N/A — <why>" is an acceptable body, a missing heading is not)`);
+  if (missing.length) {
+    const msg = `spec is missing section(s) ${missing.map(n => `§${n}`).join(', ')} (structure: specs/.sdd/_config/spec-template.md; "N/A — <why>" is an acceptable body, a missing heading is not)`;
+    if (ctx.draft) r.warn(msg); else r.error(msg);
+  }
+  if (ctx.draft) {
+    const need = draftSections(ctx.typeDef && ctx.typeDef.ui);
+    const unfilled = need.filter(n => !sectionFilled(all, n));
+    r.note(unfilled.length ? `draft sections still to fill before the prototype: ${unfilled.map(n => `§${n}`).join(', ')}` : `draft sections filled: ${need.map(n => `§${n}`).join(', ')} (the prototype can be built)`);
+  }
   const boundary = specSection(all, 9);
   if (boundary !== null && !boundary.trim()) r.warn('§9 Equivalence Boundary is empty: list every declared degree of freedom (ids, timestamps, cursors, free text) or state "none"');
 
@@ -663,9 +701,9 @@ function parseTables(text) {
   return tables;
 }
 
-/** Stage 02 Outcome Table ↔ contracts: every declared operation status / command exit code is listed, nothing extra. */
+/** Stage 03 Outcome Table ↔ contracts: every declared operation status / command exit code is listed, nothing extra. */
 function outcomeTableGate(p, ctx) {
-  const f = 'specs/logs/02-swarm.md';
+  const f = SWARM_FILE;
   const tables = parseTables(readText(path.join(p.root, f)));
   const t = [...tables].reverse().find(x => x.header.some(h => /operation|command/i.test(h)) && x.header.some(h => /status|exit/i.test(h)));
   if (!t) return [false, `${f}: no Outcome Table (columns "Operation / command" and "Status / exit")`];
@@ -694,8 +732,15 @@ function outcomeTableGate(p, ctx) {
   return [true, `Outcome Table lists all ${expected.size} declared outcome(s)`];
 }
 
-function runCheck(p, { contractsOnly }) {
+function runCheck(p, { contractsOnly, specOnly, info }) {
   const r = new Report();
+  if (specOnly) {
+    // Draft mode: no contracts yet (Stages 01–02). The project type comes from the state file, not a manifest.
+    const ctx = { ops: [], errorCodes: new Map(), machines: [], transitions: new Map(), commands: [], manifest: null, typeDef: (info && info.typeDef) || null, matrix: null, draft: true };
+    if (!exists(p.spec)) r.error('missing specs/SPEC.md');
+    else checkSpecText(p, ctx, r);
+    return { r, ctx };
+  }
   const ctx = checkContracts(p, r);
   if (!contractsOnly) checkFixtures(p, ctx, r);
   return { r, ctx };
@@ -841,7 +886,10 @@ const GAP_STATUSES = ['open', 'resolved', 'confirmed', 'deferred'];
 // G-001 by default; projects that already number gaps keep their scheme (G04-01, G-S2, G-UI1).
 const GAP_ID = /^G[0-9A-Za-z]*-[0-9A-Za-z]+$/;
 const GAP_REF = /\bG[0-9A-Za-z]*-[0-9A-Za-z]+\b/g;
-const RULINGS_FILE = 'specs/logs/02-rulings.md';
+// Stage 03 (hardening) working files: Outcome Table + Red Team rounds, rulings ledger, prototype Decision Inventory.
+const SWARM_FILE = 'specs/logs/03-swarm.md';
+const RULINGS_FILE = 'specs/logs/03-rulings.md';
+const DECISIONS_FILE = 'specs/logs/03-decisions.md';
 const RULING_STATUSES = ['fixed', 'rejected', 'advisory', 'gap', 'open'];
 const DEFAULT_SLICE_CAP = 150;
 const SWARM_ROUND_CAP = 3;
@@ -881,7 +929,7 @@ function readGaps(p) {
   return { rows, errors };
 }
 
-/** allowOpen: Stage 03p records gaps; Stage 04 (freeze) requires every gap closed or deferred by decision. */
+/** allowOpen: Stages 01–03 record gaps; Stage 04 (freeze) requires every gap closed or deferred by decision. */
 function gapsGate(p, { requireFile, allowOpen }) {
   const { rows, errors } = readGaps(p);
   if (rows === null) return requireFile ? [false, `missing ${GAPS_FILE} (gap register: every unresolved question and every uncited prototype decision)`] : [true, `no ${GAPS_FILE} (nothing recorded as open)`];
@@ -894,9 +942,9 @@ function gapsGate(p, { requireFile, allowOpen }) {
   return [true, `${GAPS_FILE}: ${rows.length} row(s), ${open.length} open${allowOpen ? ' (allowed until Stage 04)' : ''}`];
 }
 
-/** Stage 02 rulings ledger: every triaged finding has a ruling; nothing is left open. */
+/** Stage 03 rulings ledger: every triaged finding has a ruling; nothing is left open. */
 function rulingsGate(p, freshAfter) {
-  const fg = fileGate(p, RULINGS_FILE, 'Stage 02 rulings ledger', freshAfter);
+  const fg = fileGate(p, RULINGS_FILE, 'Stage 03 rulings ledger', freshAfter);
   if (!fg[0]) return fg;
   const rows = ledgerRows(readText(path.join(p.root, RULINGS_FILE)), ['id', 'ruling', 'status']);
   if (!rows) return [false, `${RULINGS_FILE}: no table with columns ID | Round | Persona | Finding | Fork | Ruling | Status`];
@@ -917,7 +965,7 @@ function readTransitions(p) {
 
 /** `## 🔄 Iteration N` headings in the append-only swarm log, across every iteration so far. */
 function swarmHeadings(p) {
-  return (readText(path.join(p.root, 'specs/logs/02-swarm.md')).match(/^##\s+(?:🔄\s*)?Iteration\s+\d+/gm) || []).length;
+  return (readText(path.join(p.root, SWARM_FILE)).match(/^##\s+(?:🔄\s*)?Iteration\s+\d+/gm) || []).length;
 }
 
 /** Rounds of the current iteration: headings logged since the transition that opened it (01, 01b or 00 records the count it found). */
@@ -955,16 +1003,17 @@ function sliceCapGate(p, ctx) {
   const needsDecision = cap > DEFAULT_SLICE_CAP;
   if (needsDecision && !citesDecision(p, m.sliceCapDecision)) return [false, `manifest.sliceCap ${cap} exceeds the default ${DEFAULT_SLICE_CAP}: manifest.sliceCapDecision must cite a DECnnn in specs/DECISION_LOG.md`];
   if (slice === null) return [true, `slice size unknown: specs/spec.lock.json predates outcome recording (the next freeze records it); ${total} declared outcome(s) in total (cap ${cap} per slice)`];
-  if (slice > cap) return [false, `slice adds ${slice} declared outcome(s), cap ${cap} (${total} in total): split the scope into slices (each runs 02 → 07), or raise manifest.sliceCap with a recorded user decision`];
+  if (slice > cap) return [false, `slice adds ${slice} declared outcome(s), cap ${cap} (${total} in total): split the scope into slices (each runs 01 → 07), or raise manifest.sliceCap with a recorded user decision`];
   return [true, `slice size: ${slice} new declared outcome(s) (cap ${cap}); ${total} in total`];
 }
 
 const RUN_LINE = /^\**Run:?\**:?\s*\S+/mi;
-const PROTOTYPE_FILE = 'specs/logs/03p-prototype.md';
+const PROTOTYPE_FILE = 'specs/logs/02-prototype.md';
 const INTERVIEW_FILE = 'specs/logs/01-interview.md';
 
 // Budgets are counts shown against actuals (never a block); manifest.budgets overrides them per project.
-const DEFAULT_BUDGETS = { interviewQuestions: 20, prototypeVersions: 3, swarmRounds: SWARM_ROUND_CAP };
+// 12 interview questions: the interview stops at the slice's core flow; the rest is asked at a demo, with the product on screen.
+const DEFAULT_BUDGETS = { interviewQuestions: 12, prototypeVersions: 3, swarmRounds: SWARM_ROUND_CAP };
 function budgets(info) { return { ...DEFAULT_BUDGETS, ...((info && info.manifest && info.manifest.budgets) || {}) }; }
 
 /** Rows of the Stage 01 interview log: one question per row, with its answer and where it was recorded. */
@@ -979,7 +1028,7 @@ function prototypeVersions(p) {
   return exists(fp) ? ledgerRows(readText(fp), ['version']) : null;
 }
 
-/** Stage 03p: the prototype record says how to start the prototype (Stage 04 records the oracle against it) and lists every demo. */
+/** Stage 02: the prototype record says how to start the prototype (Stage 04 records the oracle against it) and lists every demo. */
 function prototypeGate(p, freshAfter) {
   const fg = fileGate(p, PROTOTYPE_FILE, 'prototype record', freshAfter);
   if (!fg[0]) return fg;
@@ -991,7 +1040,7 @@ function prototypeGate(p, freshAfter) {
 }
 
 /**
- * Stage 03p acceptance is the user's, not the agent's: it is given on the command line and recorded in
+ * Stage 02 acceptance is the user's, not the agent's: it is given on the command line and recorded in
  * transitions.jsonl, never typed into a file the agent also writes. `report` (readiness) skips it.
  */
 function acceptanceGate(opts) {
@@ -1001,7 +1050,7 @@ function acceptanceGate(opts) {
 }
 
 /**
- * Stage 03p on an iteration (a lock exists): the prototype is the certified build A, and the previous slice's
+ * Stages 02 and 03 on an iteration (a lock exists): the prototype is the certified build A, and the previous slice's
  * oracle is its regression guard. Every existing case must stay green unless specs/DECISION_LOG.md names the
  * case as a declared behavior change (Stage 04 Part C step 7 then lists it in the changed-case ledger).
  */
@@ -1054,14 +1103,13 @@ function exitGates(stage, p, state, info, opts = {}) {
     case '01':
     case '01b': {
       add(typeGate());
-      add(fileGate(p, 'specs/SPEC.md'));
+      // The draft: the sections a prototype is built from. Placeholders elsewhere are the normal state until Stage 03.
+      add(draftGate(p, info));
       add(fileGate(p, 'specs/DECISION_LOG.md'));
       if (info.ui) add(fileGate(p, 'specs/DESIGN.md', 'UI project'));
-      const spec = L.specText(p.root);
-      const placeholders = (spec.match(/\b(TBD|TODO|FIXME)\b/g) || []).length;
-      add([!placeholders, placeholders ? `SPEC.md contains ${placeholders} TBD/TODO/FIXME placeholder(s)` : 'SPEC.md has no placeholders']);
-      if (stage === '01') {
+      {
         // The interview is the audit trail of "every business decision is made with the user"; its length is a budget, not a gate.
+        // Adoption (01b) asks the same way: only what the code cannot answer, within the same budget.
         const ig = fileGate(p, INTERVIEW_FILE, 'one row per question asked', freshAfter);
         if (!ig[0]) add(ig);
         else {
@@ -1075,37 +1123,38 @@ function exitGates(stage, p, state, info, opts = {}) {
       break;
     }
     case '02': {
-      const { r, ctx } = runCheck(p, { contractsOnly: true });
-      add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s)` : 'sdd.cjs check --contracts passes']);
-      if (!r.errors.length) add(sliceCapGate(p, ctx));
-      // Stage 02 compiles contracts and the Outcome Table only; every Red Team round runs in Stage 03p against the prototype.
-      const lg = fileGate(p, 'specs/logs/02-swarm.md', 'Outcome Table (rounds are appended here in 03p)', freshAfter);
-      add(lg);
-      if (lg[0]) add(outcomeTableGate(p, ctx));
+      // The prototype stage ends on the user's acceptance of a running product. No contracts, rounds or oracle yet: Stage 03.
+      add(draftGate(p, info));
+      if (info.ui) add(fileGate(p, 'specs/DESIGN.md', 'UI project'));
+      add(prototypeGate(p, freshAfter));
+      if (!opts.report) add(acceptanceGate(opts));
+      add(gapsGate(p, { requireFile: false, allowOpen: true }));
+      const rg = prototypeRegressionGate(p, freshAfter);
+      if (rg) add(rg);
       break;
     }
     case '03': {
-      add([info.ui, info.ui ? 'UI project' : 'Stage 03 applies only to UI projects']);
-      const html = exists(p.wireframes) ? fs.readdirSync(p.wireframes).filter(f => f.endsWith('.html')) : [];
-      add([html.length > 0, `${html.length} wireframe(s) in specs/wireframes/`]);
-      const design = readText(p.design);
-      add([/^##\s+Approved Wireframes/m.test(design) && /\]\((\.\/)?wireframes\/[^)]+\.html\)/.test(design), 'DESIGN.md §Approved Wireframes links wireframes with relative paths']);
-      break;
-    }
-    case '03p': {
+      // Hardening: contracts + a complete spec (check errors on placeholders from here on), Outcome Table, Decision Inventory,
+      // Red Team rounds against the running prototype, a sampled interpretation diff, and (UI) the captured wireframes.
       const { r, ctx } = runCheck(p, { contractsOnly: true });
-      add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s) (feedback edits must keep the contracts valid)` : 'sdd.cjs check --contracts passes']);
+      add([!r.errors.length, r.errors.length ? `sdd.cjs check --contracts: ${r.errors.length} error(s) (contracts valid, spec complete: no placeholders, every section)` : 'sdd.cjs check --contracts passes (contracts valid, spec complete)']);
       if (!r.errors.length) add(sliceCapGate(p, ctx));
-      add(prototypeGate(p, freshAfter));
-      if (!opts.report) add(acceptanceGate(opts));
-      add(fileGate(p, 'specs/logs/03p-decisions.md', 'prototype Decision Inventory', freshAfter));
-      add(gapsGate(p, { requireFile: true, allowOpen: true }));
-      // Every hardening round runs here, against the running prototype: round 1 full, rounds 2–3 delta, cap 3 per iteration.
+      const lg = fileGate(p, SWARM_FILE, 'Outcome Table + Red Team rounds', freshAfter);
+      add(lg);
+      if (lg[0] && !r.errors.length) add(outcomeTableGate(p, ctx));
+      add(fileGate(p, DECISIONS_FILE, 'prototype Decision Inventory', freshAfter));
+      add(gapsGate(p, { requireFile: false, allowOpen: true }));
       const rounds = swarmRounds(p);
-      add([rounds >= 1, rounds ? `${rounds} Red Team round(s) logged this iteration (cap ${SWARM_ROUND_CAP})${rounds > SWARM_ROUND_CAP ? ' — over the cap: blocking findings left after the cap go to the user, not to another round' : ''}` : 'no Red Team round logged (round 1 attacks the whole slice with the prototype running; `## 🔄 Iteration 1` heading in specs/logs/02-swarm.md)']);
+      add([rounds >= 1, rounds ? `${rounds} Red Team round(s) logged this iteration (cap ${SWARM_ROUND_CAP})${rounds > SWARM_ROUND_CAP ? ' — over the cap: blocking findings left after the cap go to the user, not to another round' : ''}` : `no Red Team round logged (round 1 attacks the whole slice with the prototype running; \`## 🔄 Iteration 1\` heading in ${SWARM_FILE})`]);
       add(rulingsGate(p, freshAfter));
       // Sample: one predicted case per operation/command, by authors who never saw the prototype. The full dual check runs once, in Stage 04.
       add(expectDiffGate(p, freshAfter, false, Math.max(1, ctx.ops.length + ctx.commands.length)));
+      if (info.ui) {
+        const html = exists(p.wireframes) ? fs.readdirSync(p.wireframes).filter(f => f.endsWith('.html')) : [];
+        add([html.length > 0, html.length ? `${html.length} wireframe(s) captured in specs/wireframes/` : 'no wireframes in specs/wireframes/ (UI project: capture every screen state from the prototype with ui-capture.cjs)']);
+        const design = readText(p.design);
+        add([/^##\s+Approved Wireframes/m.test(design) && /\]\((\.\/)?wireframes\/[^)]+\.html\)/.test(design), 'DESIGN.md §Approved Wireframes links wireframes with relative paths']);
+      }
       const rg = prototypeRegressionGate(p, freshAfter);
       if (rg) add(rg);
       break;
@@ -1170,62 +1219,35 @@ function exitGates(stage, p, state, info, opts = {}) {
   return gates;
 }
 
-/** The value of lastCompletedStep after completing `stage` (non-UI projects skip 06; 03p and 03 both map to 3). */
+/** The value of lastCompletedStep after completing `stage` (non-UI projects skip 06). */
 function completedValue(stage, ui) {
   if (!ui && stage === '05') return 6;
   return L.STAGES[stage].num;
 }
 
-/** Stages completed since the transition that opened the current iteration (00, 01 or 01b), by stepName. */
-function iterationStages(p) {
-  const ts = readTransitions(p);
-  let start = 0;
-  ts.forEach((t, i) => { if ([STAGES_00, STAGES_01, STAGES_01B].includes(t.completed)) start = i + 1; });
-  return new Set(ts.slice(start).map(t => t.completed));
-}
-
-const NEEDS_03P = `${L.STAGES['03p'].name} has not been completed: the oracle is recorded against the accepted prototype. Run 03p, or pass --override DECnnn citing the user's decision to skip it (e.g. a project already in Stage 04 before the upgrade)`;
-
 /**
  * Is completing `stage` the next step of the pipeline from the current state?
- * Order: 01 → 02 → 03p → (03, UI only: wireframes are captured from the accepted prototype) → 04 → 05 → (06) → 07.
- * 03p and 03 share lastCompletedStep 3 (the extension's numeric state); stepName and transitions.jsonl tell them apart.
+ * Order: 01 (or 01b) → 02 prototype → 03 hardening → 04 oracle + freeze → 05 build → (06, UI) → 07. Linear for every project type.
  */
-function orderCheck(stage, state, info, p) {
+function orderCheck(stage, state, info) {
   const last = typeof state.lastCompletedStep === 'number' ? state.lastCompletedStep : 0;
   const n = L.STAGES[stage].num;
   const name = state.stepName;
   if (stage === '00') return [true, 'Stage 00 may run at any time'];
-  if ((stage === '03' || stage === '06') && !info.ui) return [false, `${L.STAGES[stage].name} applies only to UI projects`];
-  if (stage === '03p') {
-    if (last === 2) return [true, 'prototype on the reviewed spec draft'];
-    if (last === 3) return [true, name === STAGES_03P ? 're-running the prototype stage' : name === STAGES_03 ? 're-running the prototype stage (re-run 03 afterwards if any screen changed)' : 'prototype on the reviewed spec draft'];
-  } else if (stage === '03') {
-    if (last === 3 && name === STAGES_03) return [true, 're-running 03_interactive_wireframing'];
-    if (last === 3 && name === STAGES_03P) return [true, 'wireframes captured from the accepted prototype'];
-    if (last === 2 || last === 3) return [false, `${L.STAGES['03p'].name} has not been completed: wireframes are captured from the accepted prototype (UI projects run 02 → 03p → 03 → 04)`];
-  } else if (stage === '04' && last === 3) {
-    // Stage 00 leaves last = resume - 1, and RESUME_TARGETS has no 03/03p, so 3 after 00 always means --resume 04.
-    if (name === STAGES_00) return [true, 'resuming after Stage 00 (--resume 04); the accepted prototype is unchanged'];
-    if (name === STAGES_03P) return info.ui ? [false, `${L.STAGES['03'].name} has not been completed: UI projects capture the wireframes from the accepted prototype before the oracle (02 → 03p → 03 → 04)`] : [true, 'next stage after the accepted prototype'];
-    if (name === STAGES_03) return iterationStages(p).has(STAGES_03P) ? [true, 'next stage after the accepted prototype and its wireframes'] : [false, NEEDS_03P];
-    return [false, NEEDS_03P];
-  }
+  if (stage === '06' && !info.ui) return [false, `${L.STAGES[stage].name} applies only to UI projects`];
   if (completedValue(stage, info.ui) === last) return [true, `re-running ${L.STAGES[stage].name}`];
   if (stage === '01b' && last <= 0) return [true, 'adoption of an existing codebase'];
   if (stage === '01' && (last <= 0 || last === 7)) return [true, last === 7 ? 'new Class 1 iteration' : 'pipeline start'];
-  if (stage === '04' && last === 1 && name === STAGES_01B) return [true, 'adoption option C (freeze as-is)'];
+  if (stage === '02' && last === 1) return [true, name === STAGES_01B ? 'walkthrough of the adopted system as the prototype' : 'prototype of the slice brief'];
+  if (stage === '04' && last === 3 && name === STAGES_00) return [true, 'resuming after Stage 00 (--resume 04); the accepted prototype is unchanged'];
   if (stage === '05' && last === 7) return [true, 'Class 0 change on a certified build'];
-  if (n === last + 1 && !['01b', '03p', '03'].includes(stage)) return [true, `next stage after lastCompletedStep=${last}`];
+  if (n === last + 1 && stage !== '01b') return [true, `next stage after lastCompletedStep=${last}`];
   return [false, `${L.STAGES[stage].name} is out of order: lastCompletedStep=${last} (${name || '—'}); run \`sdd.cjs status\` for the next stage, or pass --override DECnnn citing the user's decision to skip`];
 }
 const STAGES_00 = '00_backprop';
-const STAGES_01 = '01_brainstorming';
 const STAGES_01B = '01b_adoption';
-const STAGES_03 = '03_interactive_wireframing';
-const STAGES_03P = '03p_prototype';
-// Where the pipeline may continue after Stage 00 (00_backprop/CONTEXT.md §Handoff). The prototype and wireframes are reworked via 02.
-const RESUME_TARGETS = ['01', '01b', '02', '04', '05'];
+// Where the pipeline may continue after Stage 00 (00_backprop/CONTEXT.md §Handoff): 02 reworks the prototype, 03 re-hardens.
+const RESUME_TARGETS = ['01', '01b', '02', '03', '04', '05'];
 const PRE_FREEZE_ROUTE = `not a Class 2 change — edit the spec in the current stage and add (or close) a ${GAPS_FILE} row instead of running Stage 00`;
 
 /** Counts recorded with every transition (never a score): swarm rounds, gap register, rulings, declared outcomes, oracle cases. */
@@ -1259,12 +1281,8 @@ function nextStage(state, info) {
   if (last === -1) return '01b';
   if (last === 0) return '01';
   if (last === 1) return '02';
-  if (last === 2) return '03p';
-  if (last === 3) {
-    if (state.stepName === STAGES_00 || state.stepName === STAGES_03) return '04';
-    if (state.stepName === STAGES_03P) return info.ui ? '03' : '04';
-    return '03p'; // a state file from before 03p existed (non-UI projects used to reach 3 straight from 02)
-  }
+  if (last === 2) return '03';
+  if (last === 3) return '04';
   if (last === 4) return '05';
   if (last === 5) return info.ui ? '06' : '07';
   if (last === 6) return '07';
@@ -1304,8 +1322,9 @@ function cmdStatus(p) {
 
 function cmdCheck(p, args) {
   const contractsOnly = !!args.flags.contracts;
-  const { r } = runCheck(p, { contractsOnly });
-  r.print(contractsOnly ? 'sdd check --contracts' : 'sdd check');
+  const specOnly = !!args.flags.spec;
+  const { r } = runCheck(p, { contractsOnly, specOnly, info: specOnly ? projectInfo(p, readState(p)) : null });
+  r.print(specOnly ? 'sdd check --spec (draft)' : contractsOnly ? 'sdd check --contracts' : 'sdd check');
   return r.errors.length ? 1 : 0;
 }
 
@@ -1320,7 +1339,7 @@ function cmdReadiness(p) {
     const cap = ctx.manifest.sliceCap || DEFAULT_SLICE_CAP;
     const { total, slice } = sliceOutcomes(p, ctx);
     console.log(`  slice:   ${slice === null ? 'unknown (lock predates outcome recording)' : `${slice} new declared outcome(s)`} (cap ${cap}); ${total} in total across ${ctx.ops.length + ctx.commands.length} operation(s)/command(s)`);
-  } else console.log('  slice:   no contracts yet (Stage 02 output)');
+  } else console.log('  slice:   no contracts yet (Stage 03 compiles them against the accepted prototype)');
   const { rows, errors } = readGaps(p);
   if (rows === null) console.log(`  gaps:    no ${GAPS_FILE} yet`);
   else {
@@ -1354,12 +1373,11 @@ function cmdReadiness(p) {
   // Path to a full spec: the stages left before the freeze, in plain words, with the next action that is the user's.
   const next = nextStage(state, info);
   const SPEC_PATH = [
-    ['01', 'interview → spec draft, decisions, gap register', 'answer the interview, one question per message'],
-    ['02', 'contracts compiled from the spec + Outcome Table (agent only)', 'none'],
-    ['03p', 'prototype demos, your policy answers, Red Team rounds against the running prototype, your acceptance', 'try the prototype, answer the open policy questions, accept with `sdd.cjs transition --completed 03p --approved-by "<you>"`'],
-    ['03', 'wireframes captured from the accepted prototype', 'review each captured screen'],
+    ['01', 'interview → slice brief: spec draft, decisions, gap register', 'answer the interview, one question per message, then OK the slice brief'],
+    ['02', 'prototype demos (numbered versions), your policy answers with the product on screen, your acceptance', 'try the prototype, answer the open policy questions, accept with `sdd.cjs transition --completed 02 --approved-by "<you>"`'],
+    ['03', `contracts compiled against the prototype, spec completed, Red Team rounds, sampled interpretation diff${info.ui ? ', wireframes captured from the prototype' : ''} (agent, prototype running)`, `answer the batched policy questions a round raises${info.ui ? '; review each captured screen' : ''}`],
     ['04', 'oracle recorded from the prototype and predicted from the spec, phases, freeze', 'approve the freeze'],
-  ].filter(([s]) => info.ui || s !== '03');
+  ];
   const idx = next ? SPEC_PATH.findIndex(([s]) => s === next) : -1;
   if (idx >= 0) {
     console.log('  path to a full (frozen) spec:');
@@ -1369,7 +1387,7 @@ function cmdReadiness(p) {
   } else if (next) console.log(`  spec frozen; next stage ${next} (${next === '05' ? 'build, agent only' : next === '06' ? 'visual acceptance' : 'certification'})`);
 
   // Every gate of every spec stage, freshness ignored: the question is "what is still missing", not "what was done this stage".
-  const stages = ['01', '02', '03p', ...(info.ui ? ['03'] : []), '04'];
+  const stages = ['01', '02', '03', '04'];
   console.log('  gates (all spec stages, freshness ignored):');
   for (const s of stages) {
     const gates = exitGates(s, p, { ...state, timestamp: null }, info, { report: true });
@@ -1443,10 +1461,9 @@ function cmdTransition(p, args) {
   }
   const info = projectInfo(p, state);
   if (resume && !RESUME_TARGETS.includes(resume)) {
-    const hint = resume === '03' || resume === '03p' ? ' To rework the prototype or the wireframes, resume at 02 (03p and 03 follow it).' : '';
-    fail(`--resume ${args.flags.resume} is not a resume target: use one of ${RESUME_TARGETS.join('|')} (00_backprop/CONTEXT.md §Handoff).${hint}`);
+    fail(`--resume ${args.flags.resume} is not a resume target: use one of ${RESUME_TARGETS.join('|')} (00_backprop/CONTEXT.md §Handoff).`);
   }
-  let order = orderCheck(stage, state, info, p);
+  let order = orderCheck(stage, state, info);
   const override = args.flags.override;
   if (!order[0] && typeof override === 'string') {
     if (!/^DEC\d+$/.test(override) || !new RegExp(`\\b${override}\\b`).test(readText(p.decisionLog))) fail(`--override ${override} must cite a DECnnn entry in specs/DECISION_LOG.md recording the user's decision`);
@@ -1468,7 +1485,7 @@ function cmdTransition(p, args) {
     last = 6;
     note = `${note}; 06 skipped (non-UI project)`;
   }
-  if (stage === '03p' && approvedBy) note = `${note}; prototype accepted by ${approvedBy}`;
+  if (stage === '02' && approvedBy) note = `${note}; prototype accepted by ${approvedBy}`;
   if (stage === '07' && release) note = `${note}; release certification (L2)`;
   const v = exists(p.lock) ? L.verifyLock(p.root) : null;
   const now = new Date().toISOString();
@@ -1477,10 +1494,10 @@ function cmdTransition(p, args) {
   L.writeJson(p.state, next);
   fs.mkdirSync(p.logs, { recursive: true });
   const record = { ts: now, completed: L.STAGES[stage].name, resume: resume ? L.STAGES[resume].name : null, lastCompletedStep: last, lockHash: v && v.valid ? v.lock.hash : null, note };
-  if (stage === '03p') record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
+  if (stage === '02') record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
   if (stage === '07') record.release = release;
   record.metrics = stageMetrics(p); // where the time went: rounds, gaps, outcomes, cases per stage, comparable across projects
-  // These open a new iteration: Stage 02's round cap counts swarm-log headings from here (swarmRounds).
+  // These open a new iteration: Stage 03's round cap counts swarm-log headings from here (swarmRounds).
   if (['00', '01', '01b'].includes(stage)) record.swarmHeadings = swarmHeadings(p);
   fs.appendFileSync(p.transitions, JSON.stringify(record) + '\n');
   console.log(`\n✓ ${L.STAGES[stage].name} complete → lastCompletedStep=${last}. ${note}`);

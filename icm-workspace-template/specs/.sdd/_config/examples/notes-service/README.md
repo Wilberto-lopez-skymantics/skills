@@ -16,10 +16,10 @@
 | `specs/fixtures/cases/generated-probes.json` | 100 probes produced by `oracle.cjs gen-probes` (item probes create a real note first) |
 | `specs/IMPLEMENTATION_PHASES.md` | Phases bound to cumulative `oracle.cjs run --phase N` |
 | `specs/GAPS.md` | Gap register: a deferred feature citing its DECnnn, a technical gap resolved via the profile, two prototype decisions confirmed into the contracts |
-| `specs/logs/02-rulings.md` | Rulings ledger across rounds 1 and 2 (Stage 03p, prototype running): fixed, rejected, advisory and gap rows with their forks |
-| `specs/logs/03p-prototype.md` | Prototype record: the `Run:` line Stage 04 starts the prototype with, and the Versions table (one row per demo); acceptance lives in `transitions.jsonl`, not here |
+| `specs/logs/03-rulings.md` | Rulings ledger across rounds 1 and 2 (Stage 03, prototype running): fixed, rejected, advisory and gap rows with their forks |
+| `specs/logs/02-prototype.md` | Prototype record (Stage 02): the `Run:` line Stages 03 and 04 start the prototype with, and the Versions table (one row per demo); acceptance lives in `transitions.jsonl`, not here |
 | `specs/logs/01-interview.md` | Interview log: one row per question asked, with its answer and the decision or gap it became |
-| `specs/logs/03p-decisions.md` | Prototype Decision Inventory: every observable decision with its SPEC / contract / profile citation or the gap it opened |
+| `specs/logs/03-decisions.md` | Prototype Decision Inventory (Stage 03): every observable decision with its SPEC / contract / profile citation or the gap it opened |
 
 Validated: `node specs/.sdd/scripts/sdd.cjs check --root specs/.sdd/_config/examples/notes-service` passes with full coverage (30/30 operation outcomes, every transition, invariant and error code, 254/254 response fields pinned). The cases were run against an independent reference implementation (55/55 green, stable across repeated runs including the concurrent cases); `oracle diff` between two instances of it reported zero divergences over all 155 cases and probes — also when one instance emits JSON keys in a different order — while variants that drop the id tie-breaker, the `has_more` look-ahead or NFC normalization were each caught.
 

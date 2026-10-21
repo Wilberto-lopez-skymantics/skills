@@ -9,7 +9,7 @@ Formats are machine-checked: `../schemas/oracle-cases.schema.json`, `../schemas/
 
 ∀ expected value ! be derivable from the frozen SPEC, contracts or Equivalence Profile. `derivedFrom` cites the source: `"SPEC.md §5.2"`, `"openapi createOrder 201"`, `"profile PAGE-1"`, `"SPEC.md V3"`.
 
-Cannot cite a source → the behavior is unconstrained → STOP. Log it in `specs/logs/04-spec-gaps.md` and fix the spec first (Stage 02 before freeze, Stage 00 after). ⊥ invent the value inside the fixture: a value invented here is a decision the spec never made, and a second builder reading only the spec could not reproduce it.
+Cannot cite a source → the behavior is unconstrained → STOP. Log it in `specs/logs/04-spec-gaps.md` and fix the spec first (Stage 03 before freeze, Stage 00 after). ⊥ invent the value inside the fixture: a value invented here is a decision the spec never made, and a second builder reading only the spec could not reproduce it.
 
 Inputs (request payloads, seed rows, CLI arguments) are the author's free choice. Expected outputs never are.
 
@@ -169,11 +169,11 @@ Generated profile cases (`"tags": ["generated"]`, citing only `profile XXX-n` ru
 
 Not gaps (normalized away): header-name case, `{"$eq": x}` vs `x`, the order of concurrent `responses`, headers or subset-mode keys that only one author chose to assert (asserting less is not a disagreement). Byte-identical A and B never satisfy a gate.
 
-Rules: each author works in a fresh context with only the spec files; ⊥ resolve a gap by picking one answer — fix the spec, re-predict, re-diff. `$unspecified` never enters `specs/fixtures/` (`sdd.cjs check` rejects it). Stage 03p gates on a fresh zero-gap sampled diff (one case per operation/command, authors who never saw the prototype); Stage 04 on a fresh zero-gap diff whose A side is the final `specs/fixtures/cases`.
+Rules: each author works in a fresh context with only the spec files; ⊥ resolve a gap by picking one answer — fix the spec, re-predict, re-diff. `$unspecified` never enters `specs/fixtures/` (`sdd.cjs check` rejects it). Stage 03 gates on a fresh zero-gap sampled diff (one case per operation/command, authors who never saw the prototype); Stage 04 on a fresh zero-gap diff whose A side is the final `specs/fixtures/cases`.
 
 ## Prototype recording (Stage 04 interpretation A)
 
-Stage 04 gets its first interpretation of every domain case for free: `node specs/.sdd/scripts/oracle.cjs record --target default --cases-dir specs/changes/oracle/requests --out specs/changes/oracle/recorded.json` runs the request-only cases against the accepted Stage 03p prototype and fills `expect` from what it observed, generalizing ids and timestamps into matchers. `record` never writes into `specs/fixtures/`.
+Stage 04 gets its first interpretation of every domain case for free: `node specs/.sdd/scripts/oracle.cjs record --target default --cases-dir specs/changes/oracle/requests --out specs/changes/oracle/recorded.json` runs the request-only cases against the prototype accepted in Stage 02 and hardened in Stage 03 and fills `expect` from what it observed, generalizing ids and timestamps into matchers. `record` never writes into `specs/fixtures/`.
 
 Every recorded case carries a `recorded:<target>@<time>` entry in `derivedFrom`. **It is provenance, not a citation.** It says where the value came from; it cannot say why the spec requires it. Before a recorded case is compared (`diff-expect`) or moved into `specs/fixtures/`, its author adds SPEC, contract or profile citations for every expected value:
 - a value the spec pins → cite it (the prototype agreed with the spec);
@@ -208,4 +208,4 @@ Black-box `@playwright/test` specs in `specs/fixtures/ui/`, written in Stage 04 
 
 ## Adoption (characterization)
 
-Stage 01b drafts request-only cases (steps without expectations) in `specs/changes/adoption/requests/`, then runs `oracle.cjs record --target <existing build> --cases-dir specs/changes/adoption/requests --out specs/changes/adoption/recorded.json`. `record` fills expectations from observed behavior, generalizing ids and timestamps into matchers. Review every recorded expectation with the user: recorded behavior includes existing bugs. Keep them, tagged `"tags": ["tech-debt"]`, until a Class 1 change fixes them. Then move the reviewed `recorded.json` (not the drafts) into `specs/fixtures/cases/` before freezing.
+An adopted codebase is recorded exactly like a prototype, in Stage 04 (§Prototype recording): request-only cases for the slice being hardened in `specs/changes/oracle/requests/`, `oracle.cjs record` against the running system, every recorded value cited from the spec Stage 01b drafted and Stage 03 completed, and a spec-only author predicting interpretation B. A recorded value nothing pins is a spec gap, as always. Recorded behavior includes existing bugs: a bug the user confirmed as tech debt at a Stage 02 walkthrough (a `[TECH DEBT]` row of `GAPS.md`) keeps its case, tagged `"tags": ["tech-debt"]`, until a Class 1 change retires it; a bug the user wants fixed is fixed in the code (DECnnn) before it is recorded. Nothing is recorded in Stage 01b.

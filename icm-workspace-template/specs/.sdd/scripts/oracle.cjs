@@ -16,7 +16,7 @@
  * diff   — run the same cases (probes included) against two independent builds and report every
  *          observation that differs outside the declared degrees of freedom.
  * record — characterize an existing build: fill in missing expectations from what it actually does
- *          (Stage 01b adoption). Writes to --out, never into the frozen fixtures.
+ *          (adopted codebases, Stage 04). Writes to --out, never into the frozen fixtures.
  * diff-ui — compare UI observations (ARIA snapshots + test ids) recorded by ui-observe.cjs for two builds.
  * env    — print the frozen build environment (oracle.config.json#buildEnv) as shell exports; every graded
  *          build must be started with it.

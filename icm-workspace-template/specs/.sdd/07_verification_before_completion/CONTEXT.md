@@ -55,7 +55,7 @@ Run in order; stop at the first failure and route it (Failure Routing).
 5. UI projects: frozen UI specs → `specs/logs/ui-e2e.json` with 0 failed, 0 flaky; `VAT_REPORT.md` verdict PASS.
 6. `IMPLEMENTATION_PHASES.md`: every task `[x]`; `dev-swarm-reconciliation.md`: zero ❌.
 
-Build A that grew from the 03p prototype passing L1 proves the CODE conforms to the oracle — not that the spec alone determines it (the oracle's expectations were partly recorded from that same code). An L1-only certificate ! say so in `EQUIVALENCE_REPORT.md` (row "Build A origin"). Only L2 — a spec-only build B — certifies the spec as sufficient.
+Build A that grew from the Stage 02 prototype passing L1 proves the CODE conforms to the oracle — not that the spec alone determines it (the oracle's expectations were partly recorded from that same code). An L1-only certificate ! say so in `EQUIVALENCE_REPORT.md` (row "Build A origin"). Only L2 — a spec-only build B — certifies the spec as sufficient.
 
 **L2 — Equivalence-verified** (required when `manifest.json#equivalenceTarget` = 2, the default)
 1. `node specs/.sdd/scripts/sdd.cjs export ../<project>-eqb` — copies ONLY the frozen set (plus unchecked phases and regenerated entry files) into a fresh directory. If build B ran in lockstep (Stage 05 tip), run `sdd.cjs export ../<project>-eqb --update` instead to bring it to the current lock.
@@ -80,7 +80,7 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 |------|----------|
 | Lock | v<N> <hash12> — `sdd.cjs verify` ✓ |
 | Coverage | <coverage line from `sdd.cjs check`> |
-| Build A origin | prototype (03p) → Stage 05 / fresh Stage 05 build |
+| Build A origin | prototype (02) → Stage 05 / fresh Stage 05 build |
 | Oracle (build A) | <passed>/<total> — `specs/logs/oracle/run-default.json` @ <finishedAt> |
 | UI specs | <expected> passed, 0 failed, 0 flaky — `specs/logs/ui-e2e.json` (UI only) |
 | VAT | PASS — `specs/VAT_REPORT.md` (UI only) |

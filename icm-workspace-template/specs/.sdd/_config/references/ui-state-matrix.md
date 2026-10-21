@@ -1,6 +1,6 @@
 # UI State Matrix
 
-**⛔ GATE:** You are FORBIDDEN from writing DESIGN.md or transitioning out of Stage 01 until the UI State Matrix has been completed for every interactive component. This gate exists because the brainstorming visual questions naturally focus on the success state. Empty, loading, error, and edge-case states are systematically missed unless explicitly enforced.
+**Stage 01 writes the matrix; Stage 02 shows every state; Stage 03 captures every state.** The brainstorming questions naturally focus on the success state, so empty, loading, error and edge-case states are listed here explicitly. A cell the interview did not answer is a `GAPS.md` row (kind `ui`) with a provisional state the prototype renders — the user judges it on screen, not in a question.
 
 For each interactive component identified during brainstorming, you MUST explicitly confirm or design the following states:
 
@@ -16,10 +16,10 @@ For each interactive component identified during brainstorming, you MUST explici
 - **Edge Case**: What happens with unusual data (0 rows, 10K rows, missing fields)?
 
 **Rules:**
-1. Every cell marked "?" must be resolved with the user before proceeding.
+1. Every cell marked "?" is either answered or a `GAPS.md` row with a provisional state; the prototype renders the provisional state and the demo resolves it.
 2. "Same as empty" or "Show error toast" are valid answers — but they must be explicit.
 3. The completed matrix MUST appear in the DESIGN.md's UI State Matrix section.
 4. Every non-success state gets a pinned test id (`<component>-empty|-loading|-error`, profile UI-4) and its text in the SPEC §14 Copy table.
-5. Downstream: Stage 03 wireframes every state; Stage 04 writes ≥ 1 frozen UI spec per state; Stage 06 verifies each one renders.
+5. Downstream: Stage 02 makes every state reachable in the prototype; Stage 03 captures every state as a wireframe; Stage 04 writes ≥ 1 frozen UI spec per state; Stage 06 verifies each one renders.
 
-*(Screen layout walks and wireframes are produced in Stage 03 after the spec is hardened. Brainstorming focuses on requirements exploration and design direction — not production wireframes.)*
+*(Wireframes are captured from the accepted prototype in Stage 03. Brainstorming focuses on requirements exploration and design direction — not production wireframes.)*

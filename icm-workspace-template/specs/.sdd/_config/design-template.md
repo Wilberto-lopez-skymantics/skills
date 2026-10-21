@@ -2,8 +2,8 @@
 
 This file defines the canonical template and validation rules for `specs/DESIGN.md`. It is used by:
 - Stage 01 — creates the initial DESIGN.md using this template
-- Stage 02 — verifies DESIGN.md exists and conforms (spec self-review checks 8–11, 17–18)
-- Stage 03 — reads tokens to generate wireframes and folds approved deviations back into them
+- Stage 02 — the prototype renders from these tokens only
+- Stage 03 — verifies the captured wireframes against the tokens and folds approved deviations back into them
 - Stage 05 — Frontend Engineer and Design Token Auditor use these tokens
 - Stage 06 — compares rendered computed styles against these tokens
 

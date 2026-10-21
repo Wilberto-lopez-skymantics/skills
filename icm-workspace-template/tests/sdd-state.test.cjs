@@ -46,7 +46,7 @@ const swarmLog = n => Array.from({ length: n }, (_, i) => `## 🔄 Iteration ${i
 
 // ---------- A1: Stage 00 resume and stage order ----------
 
-test('A1: Stage 00 --resume 04 leads to Stage 04, not back to 03p', () => {
+test('A1: Stage 00 --resume 04 leads to Stage 04, not back to the prototype', () => {
   const p = project({ example: true });
   freeze(p);
   p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
@@ -58,30 +58,63 @@ test('A1: Stage 00 --resume 04 leads to Stage 04, not back to 03p', () => {
   assert.match(p.sdd('transition', '--completed', '04').out, /✓ resuming after Stage 00/);
 });
 
-test('A1: Stage 04 still requires 03p after Stage 02', () => {
+test('A1: Stage 00 --resume 02 reworks the prototype; --resume 03 re-hardens', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 3, stepName: '02_adversarial_swarm_analysis' });
-  assert.match(p.sdd('status').out, /Next stage: 03p_prototype/);
-  assert.match(p.sdd('transition', '--completed', '04').out, /✗ 03p_prototype has not been completed/);
+  freeze(p);
+  p.write('specs/backprop-log.md', '## SCR-001\n');
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  assert.equal(p.sdd('transition', '--completed', '00', '--resume', '02').code, 0);
+  assert.match(p.sdd('status').out, /Next stage: 02_prototype/);
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  assert.equal(p.sdd('transition', '--completed', '00', '--resume', '03').code, 0);
+  assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
 });
 
-test('A1: --resume accepts only 01|01b|02|04|05', () => {
+test('A1: Stage 04 is out of order before hardening', () => {
   const p = project({ example: true });
-  for (const target of ['03', '03p']) {
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
+  assert.match(p.sdd('transition', '--completed', '04').out, /✗ 04_writing_implementation_phases is out of order: lastCompletedStep=2/);
+});
+
+test('A1: --resume accepts only 01|01b|02|03|04|05', () => {
+  const p = project({ example: true });
+  for (const target of ['06', '00', '07']) {
     const t = p.sdd('transition', '--completed', '00', '--resume', target);
     assert.notEqual(t.code, 0);
-    assert.match(t.out, /is not a resume target: use one of 01\|01b\|02\|04\|05/);
-    assert.match(t.out, /resume at 02/);
+    assert.match(t.out, /is not a resume target: use one of 01\|01b\|02\|03\|04\|05/);
   }
-  assert.match(p.sdd('transition', '--completed', '00', '--resume', '06').out, /is not a resume target/);
-  assert.match(p.sdd('transition', '--completed', '00', '--resume', '00').out, /is not a resume target/);
+  assert.equal(p.sdd('transition', '--completed', '00', '--resume', '03p').code, 2, 'the old 03p stage id is gone');
 });
 
-test('A1: non-UI project at lastCompletedStep 2 goes to 03p', () => {
+test('A1: every project type goes 01 → 02 prototype → 03 hardening → 04', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
-  assert.match(p.sdd('status').out, /Next stage: 03p_prototype/);
-  assert.match(p.sdd('transition', '--completed', '03p').out, /✓ prototype on the reviewed spec draft/);
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  assert.match(p.sdd('status').out, /Next stage: 02_prototype/);
+  assert.match(p.sdd('transition', '--completed', '02').out, /✓ prototype of the slice brief/);
+  assert.match(p.sdd('transition', '--completed', '03').out, /✗ 03_hardening is out of order/);
+  p.state({ lastCompletedStep: 1, stepName: '01b_adoption' });
+  assert.match(p.sdd('transition', '--completed', '02').out, /✓ walkthrough of the adopted system as the prototype/);
+  assert.match(p.sdd('transition', '--completed', '04').out, /✗ 04_writing_implementation_phases is out of order/, 'no freeze-as-is shortcut: an adopted codebase still goes through 02 and 03');
+});
+
+test('01b: inventory + draft — the same gates as 01 (draft sections, interview log, placeholders allowed), then 02 is the walkthrough', () => {
+  const p = project({ example: true });
+  fs.rmSync(p.at('specs/contracts'), { recursive: true });
+  fs.rmSync(p.at('specs/logs/01-interview.md'));
+  p.state({ lastCompletedStep: -1, stepName: 'Pending Adoption' });
+  assert.match(p.sdd('status').out, /Next stage: 01b_adoption/);
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md').replace('## 13. Limits & Non-Functional', '## 13. Limits & Non-Functional\nTBD — Stage 03\n'));
+  let t = p.sdd('transition', '--completed', '01b', '--project-type', 'backend-service');
+  assert.equal(t.code, 1);
+  assert.match(t.out, /✓ adoption of an existing codebase/);
+  assert.match(t.out, /✓ SPEC.md draft: §0, §1, §3, §4, §5 filled \(placeholders elsewhere are allowed until Stage 03\)/);
+  assert.match(t.out, /✗ missing specs\/logs\/01-interview.md \(one row per question asked\)/);
+  p.write('specs/logs/01-interview.md', '# Interview\n| # | Question | Answer | Recorded in |\n|---|---|---|---|\n| 1 | Is the published state intended to be terminal? | Yes | DEC002 |\n');
+  t = p.sdd('transition', '--completed', '01b', '--project-type', 'backend-service');
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /✓ specs\/logs\/01-interview.md: 1 question\(s\) \(budget 12\)/);
+  assert.match(p.sdd('status').out, /Next stage: 02_prototype/);
 });
 
 // ---------- A2: slice cap counts the slice, not the whole contract ----------
@@ -125,7 +158,7 @@ test('A2: a lock that predates outcome recording reports the slice as unknown', 
 
 test('A3: swarm rounds restart at the transition that opens a new iteration', () => {
   const p = project({ example: true });
-  p.write('specs/logs/02-swarm.md', swarmLog(3));
+  p.write('specs/logs/03-swarm.md', swarmLog(3));
   assert.match(p.sdd('readiness').out, /Red Team 3\/3 round\(s\)/);
 
   p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
@@ -135,7 +168,7 @@ test('A3: swarm rounds restart at the transition that opens a new iteration', ()
   assert.equal(JSON.parse(last).swarmHeadings, 3);
   assert.match(p.sdd('readiness').out, /Red Team 0\/3 round\(s\)/, 'no rounds logged in the new iteration yet');
 
-  p.write('specs/logs/02-swarm.md', swarmLog(3) + '\n' + swarmLog(1));
+  p.write('specs/logs/03-swarm.md', swarmLog(3) + '\n' + swarmLog(1));
   assert.match(p.sdd('readiness').out, /Red Team 1\/3 round\(s\)/);
 });
 
@@ -143,7 +176,7 @@ test('A3: swarm rounds restart at the transition that opens a new iteration', ()
 
 test('A4: Stage 00 refuses before the first freeze and points to GAPS.md', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
   p.write('specs/backprop-log.md', '## SCR-001\n');
   const t = p.sdd('transition', '--completed', '00', '--resume', '05');
   assert.equal(t.code, 1);
@@ -152,63 +185,76 @@ test('A4: Stage 00 refuses before the first freeze and points to GAPS.md', () =>
   assert.match(p.sdd('status').out, /lock:\s+none .* specs\/GAPS\.md row instead of running Stage 00/);
 });
 
-// ---------- Prototype-first order: 02 → 03p → (03, UI) → 04 ----------
+// ---------- Prototype-first order: 01 → 02 prototype → 03 hardening (+ wireframes for UI) → 04 ----------
 
 const L = require('../specs/.sdd/scripts/sdd-lib.cjs');
 const uiManifest = p => {
   const m = p.json('specs/contracts/manifest.json');
   p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, projectType: 'fullstack-app', interfaces: ['http', 'browser'] }));
 };
+const PROTOTYPE_RECORD = '# Prototype record\n**Run:** docker compose up -d\n\n| Version | Date | Changed | Gaps closed | Decisions |\n|---|---|---|---|---|\n| v0 | 2026-01-01 | first demo | — | — |\n';
 
-test('order: non-UI 02 → 03p → 04; UI 02 → 03p → 03 → 04', () => {
+test('order: the same linear path for UI and non-UI projects; 06 only for UI', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
-  assert.match(p.sdd('status').out, /Next stage: 03p_prototype/);
-  p.state({ lastCompletedStep: 3, stepName: '03p_prototype' });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
   assert.match(p.sdd('status').out, /Next stage: 04_writing_implementation_phases/);
-  assert.match(p.sdd('transition', '--completed', '04').out, /✓ next stage after the accepted prototype/);
+  assert.match(p.sdd('transition', '--completed', '04').out, /✓ next stage after lastCompletedStep=3/);
+  p.state({ lastCompletedStep: 4, stepName: '04_writing_implementation_phases' });
+  assert.match(p.sdd('transition', '--completed', '06').out, /✗ 06_visual_acceptance_testing applies only to UI projects/);
 
   uiManifest(p);
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
-  assert.match(p.sdd('status').out, /Next stage: 03p_prototype/);
-  assert.match(p.sdd('transition', '--completed', '03').out, /✗ 03p_prototype has not been completed: wireframes are captured from the accepted prototype/);
-  p.state({ lastCompletedStep: 3, stepName: '03p_prototype' });
-  assert.match(p.sdd('status').out, /Next stage: 03_interactive_wireframing/);
-  assert.match(p.sdd('transition', '--completed', '04').out, /✗ 03_interactive_wireframing has not been completed/);
-  assert.match(p.sdd('transition', '--completed', '03').out, /✓ wireframes captured from the accepted prototype/);
-  // 04 after 03 needs 03p in this iteration's transitions, not just a stepName.
-  p.state({ lastCompletedStep: 3, stepName: '03_interactive_wireframing' });
-  assert.match(p.sdd('transition', '--completed', '04').out, /✗ 03p_prototype has not been completed/);
-  p.write('specs/logs/transitions.jsonl', [
-    JSON.stringify({ ts: '2026-01-01T00:00:00Z', completed: '01_brainstorming' }),
-    JSON.stringify({ ts: '2026-01-02T00:00:00Z', completed: '03p_prototype', approvedBy: 'tester' }),
-    JSON.stringify({ ts: '2026-01-03T00:00:00Z', completed: '03_interactive_wireframing' }),
-  ].join('\n') + '\n');
-  assert.match(p.sdd('transition', '--completed', '04').out, /✓ next stage after the accepted prototype and its wireframes/);
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
+  const t = p.sdd('transition', '--completed', '03').out;
+  assert.match(t, /✗ no wireframes in specs\/wireframes\/ \(UI project: capture every screen state from the prototype/);
+  assert.match(t, /✗ DESIGN.md §Approved Wireframes links wireframes/);
+  p.state({ lastCompletedStep: 5, stepName: '05_development_swarm' });
+  assert.match(p.sdd('status').out, /Next stage: 06_visual_acceptance_testing/);
 });
 
-test('03p: acceptance comes from --approved-by, never from a line the agent types', () => {
+test('02: acceptance comes from --approved-by, never from a line the agent types; no contracts or rounds yet', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
-  p.write('specs/logs/03p-prototype.md', '# Prototype record\n**Run:** docker compose up -d\n**User acceptance:** ACCEPTED\n');
-  let t = p.sdd('transition', '--completed', '03p');
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  fs.rmSync(p.at('specs/contracts'), { recursive: true });
+  p.write('specs/logs/02-prototype.md', '# Prototype record\n**Run:** docker compose up -d\n**User acceptance:** ACCEPTED\n');
+  let t = p.sdd('transition', '--completed', '02');
   assert.equal(t.code, 1);
   assert.match(t.out, /✗ missing --approved-by "<user>"/);
-  assert.match(t.out, /✗ specs\/logs\/03p-prototype.md: no Versions table/);
-  assert.match(t.out, /✗ no Red Team round logged \(round 1 attacks the whole slice with the prototype running/);
-  p.write('specs/logs/03p-prototype.md', '# Prototype record\n**Run:** docker compose up -d\n\n| Version | Date | Changed | Gaps closed | Decisions |\n|---|---|---|---|---|\n| v0 | 2026-01-01 | first demo | — | — |\n');
-  p.write('specs/logs/02-swarm.md', swarmLog(1));
-  t = p.sdd('transition', '--completed', '03p');
-  assert.match(t.out, /✓ specs\/logs\/03p-prototype.md: run command recorded, 1 prototype version\(s\) shown/);
-  assert.match(t.out, /✓ 1 Red Team round\(s\) logged this iteration/);
-  assert.match(p.sdd('transition', '--completed', '03p', '--approved-by', 'Wil').out, /✓ prototype accepted by Wil/);
+  assert.match(t.out, /✗ specs\/logs\/02-prototype.md: no Versions table/);
+  assert.doesNotMatch(t.out, /Red Team|check --contracts|rulings/, 'the prototype stage asks for no hardening artifact');
+  p.write('specs/logs/02-prototype.md', PROTOTYPE_RECORD);
+  t = p.sdd('transition', '--completed', '02');
+  assert.match(t.out, /✓ specs\/logs\/02-prototype.md: run command recorded, 1 prototype version\(s\) shown/);
+  assert.match(p.sdd('transition', '--completed', '02', '--approved-by', 'Wil').out, /✓ prototype accepted by Wil/);
   assert.doesNotMatch(p.sdd('readiness').out, /missing --approved-by/, 'readiness is a report, not a transition');
+  const rec = JSON.parse(p.read('specs/logs/transitions.jsonl').trim().split('\n').pop());
+  assert.equal(rec.approvedBy, 'Wil');
 });
 
-test('03p on an iteration: existing cases must stay green unless DECISION_LOG names them', () => {
+test('03: hardening needs valid contracts, a complete spec, the Outcome Table, the inventory, rounds, rulings and the sampled diff', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  fs.rmSync(p.at('specs/logs/03-swarm.md'), { force: true });
+  let t = p.sdd('transition', '--completed', '03').out;
+  assert.match(t, /✓ sdd.cjs check --contracts passes \(contracts valid, spec complete\)/);
+  assert.match(t, /✗ missing specs\/logs\/03-swarm.md \(Outcome Table \+ Red Team rounds\)/);
+  assert.match(t, /✗ specs\/logs\/03-decisions.md was not updated during this stage|✓ specs\/logs\/03-decisions.md/);
+  assert.match(t, /✗ no Red Team round logged \(round 1 attacks the whole slice with the prototype running; `## 🔄 Iteration 1` heading in specs\/logs\/03-swarm.md\)/);
+  assert.match(t, /✗ no interpretation diff of the Outcome Table/);
+  assert.doesNotMatch(t, /--approved-by/, 'acceptance was given in Stage 02');
+  // A placeholder left in the spec blocks hardening (it was fine in Stages 01–02).
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md').replace('## 13. Limits & Non-Functional', '## 13. Limits & Non-Functional\n- Retention: TBD — Stage 03\n'));
+  t = p.sdd('transition', '--completed', '03').out;
+  assert.match(t, /✗ sdd.cjs check --contracts: 1 error\(s\) \(contracts valid, spec complete: no placeholders, every section\)/);
+});
+
+test('02 on an iteration: existing cases must stay green unless DECISION_LOG names them', () => {
   const p = project({ example: true });
   freeze(p);
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis', timestamp: '2026-01-01T00:00:00Z' });
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming', timestamp: '2026-01-01T00:00:00Z' });
+  p.write('specs/logs/02-prototype.md', PROTOTYPE_RECORD);
   fs.mkdirSync(p.at('specs/logs/oracle'), { recursive: true });
   const report = results => p.write('specs/logs/oracle/run-default.json', JSON.stringify({
     target: 'default', fixturesHash: L.hashTree(p.at('specs/fixtures/cases')), filtered: false, finishedAt: new Date().toISOString(),
@@ -219,7 +265,7 @@ test('03p on an iteration: existing cases must stay green unless DECISION_LOG na
   assert.match(p.sdd('readiness').out, /✗ iteration regression .*: 1 existing case\(s\) fail without a DECISION_LOG entry naming them \(NOTE-002\)/);
   fs.appendFileSync(p.at('specs/DECISION_LOG.md'), '| DEC007 | Change X | a, b | b | user decided | NOTE-002 |\n');
   // readiness prints only failing gates; the passing gate shows in the transition output.
-  assert.match(p.sdd('transition', '--completed', '03p').out, /✓ iteration regression .*: 1\/2 passed; 1 declared behavior change\(s\)/);
+  assert.match(p.sdd('transition', '--completed', '02').out, /✓ iteration regression .*: 1\/2 passed; 1 declared behavior change\(s\)/);
 });
 
 test('07: equivalenceCadence "release" certifies L1 with an explicit L2 pending row unless --release', () => {
@@ -247,7 +293,7 @@ test('check: warns when SPEC.md is too large to be read in one pass', () => {
 
 test('status: deferred gaps are shown as next-slice candidates', () => {
   const p = project({ example: true });
-  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Tags on notes | none (DEC001) | deferred |\n| G-002 | 03p | builder | Toast text | "Saved" | open |\n');
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Tags on notes | none (DEC001) | deferred |\n| G-002 | 03 | builder | Toast text | "Saved" | open |\n');
   assert.match(p.sdd('status').out, /gaps:\s+1 open in specs\/GAPS.md \(0 policy, need the user\), 1 deferred \(next-slice candidates\)/);
 });
 
@@ -280,6 +326,29 @@ test('check: placeholders are errors, hedged parameters are warnings, missing se
   assert.match(out, /interval not defined: "periodically"/);
   p.write('specs/SPEC.md', spec.replace('## 12. Configuration', '## Configuration'));
   assert.match(p.sdd('check', '--contracts').out, /✗ spec is missing section\(s\) §12/);
+});
+
+test('check --spec: the Stage 01 draft may keep placeholders; the sections a prototype needs must be filled', () => {
+  const p = project({ example: true });
+  fs.rmSync(p.at('specs/contracts'), { recursive: true });
+  p.state({ lastCompletedStep: 0, stepName: 'Project Initialization', projectType: 'backend-service' });
+  const spec = p.read('specs/SPEC.md');
+  p.write('specs/SPEC.md', spec.replace('## 13. Limits & Non-Functional', '## 13. Limits & Non-Functional\nTBD — Stage 03\n').replace('## 12. Configuration', '## Configuration'));
+  let out = p.sdd('check', '--spec');
+  assert.equal(out.code, 0, out.out);
+  assert.match(out.out, /· draft: 1 placeholder\(s\) left for Stage 03/);
+  assert.match(out.out, /⚠ spec is missing section\(s\) §12/);
+  assert.match(out.out, /· draft sections filled: §0, §1, §3, §4, §5 \(the prototype can be built\)/);
+  // The 01 gate: §5 reduced to a placeholder blocks the transition; a placeholder in §13 does not.
+  p.write('specs/logs/01-interview.md', '# Interview\n| # | Question | Answer | Recorded in |\n|---|---|---|---|\n| 1 | Q? | A | DEC001 |\n');
+  let t = p.sdd('transition', '--completed', '01', '--project-type', 'backend-service');
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /✓ SPEC.md draft: §0, §1, §3, §4, §5 filled \(placeholders elsewhere are allowed until Stage 03\)/);
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md').replace(/## 5\. Operations[\s\S]*?(?=## 6\.)/, '## 5. Operations\nTBD\n\n'));
+  t = p.sdd('transition', '--completed', '01', '--project-type', 'backend-service');
+  assert.equal(t.code, 1);
+  assert.match(t.out, /✗ SPEC.md draft: section\(s\) §5 missing or still a placeholder/);
+  assert.match(p.sdd('check', '--spec').out, /draft sections still to fill before the prototype: §5/);
 });
 
 test('check: profile overrides must agree between SPEC §11 and the manifest', () => {
@@ -341,36 +410,42 @@ test('01: open policy gaps are allowed (the prototype builds the provisional ans
   assert.equal(t.code, 1);
   assert.match(t.out, /✗ missing specs\/logs\/01-interview.md \(one row per question asked\)/);
   assert.match(t.out, /✓ specs\/GAPS.md: 1 row\(s\), 1 open \(allowed until Stage 04\)/);
-  const rows = Array.from({ length: 22 }, (_, i) => `| ${i + 1} | Q${i + 1}? | A${i + 1} | DEC001 |`).join('\n');
+  const rows = Array.from({ length: 14 }, (_, i) => `| ${i + 1} | Q${i + 1}? | A${i + 1} | DEC001 |`).join('\n');
   p.write('specs/logs/01-interview.md', `# Interview\n| # | Question | Answer | Recorded in |\n|---|---|---|---|\n${rows}\n`);
   t = p.sdd('transition', '--completed', '01', '--project-type', 'backend-service');
   assert.equal(t.code, 0, t.out);
-  assert.match(t.out, /✓ specs\/logs\/01-interview.md: 22 question\(s\) \(budget 20\) — over budget: the rest belongs in the prototype demos/);
+  assert.match(t.out, /✓ specs\/logs\/01-interview.md: 14 question\(s\) \(budget 12\) — over budget: the rest belongs in the prototype demos/);
 });
 
-test('02: contracts + Outcome Table only; no Red Team round or ruling is required before the prototype', () => {
+test('01 → 02 without any contract: the status after the interview asks only for the prototype', () => {
   const p = project({ example: true });
+  fs.rmSync(p.at('specs/contracts'), { recursive: true });
+  fs.rmSync(p.at('specs/logs/02-prototype.md'));
   p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
   const out = p.sdd('status').out;
   assert.match(out, /Exit gates for 02/);
-  assert.doesNotMatch(out, /Red Team round|rulings/);
-  assert.match(out, /missing specs\/logs\/02-swarm.md \(Outcome Table \(rounds are appended here in 03p\)\)/);
+  assert.doesNotMatch(out, /Red Team round|rulings|check --contracts|Outcome Table/);
+  assert.match(out, /✗ missing specs\/logs\/02-prototype.md \(prototype record\)/);
+  assert.match(p.sdd('readiness').out, /slice:\s+no contracts yet \(Stage 03 compiles them against the accepted prototype\)/);
 });
 
 test('readiness: budgets, the user\'s open questions verbatim, and the path to a full spec', () => {
   const p = project({ example: true });
-  p.state({ lastCompletedStep: 2, stepName: '02_adversarial_swarm_analysis' });
-  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Who may delete a shared note? | Owner only (DEC001, provisional) | open |\n| G-002 | 03p | builder | Toast text | "Saved" | open |\n');
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Who may delete a shared note? | Owner only (DEC001, provisional) | open |\n| G-002 | 03 | builder | Toast text | "Saved" | open |\n');
   const out = p.sdd('readiness').out;
-  assert.match(out, /budget:\s+interview 6\/20 question\(s\) · prototype 3\/3 version\(s\) · Red Team 0\/3 round\(s\)/);
+  assert.match(out, /budget:\s+interview 6\/12 question\(s\) · prototype 3\/3 version\(s\) · Red Team 0\/3 round\(s\)/);
   assert.match(out, /your questions \(1 open policy gap\(s\)/);
   assert.match(out, /G-001: Who may delete a shared note\? — provisional: Owner only \(DEC001, provisional\)/);
   assert.match(out, /agent questions: 1 open technical\/builder/);
-  assert.match(out, /path to a full \(frozen\) spec:\n\s+→ 03p: prototype demos/);
+  assert.match(out, /path to a full \(frozen\) spec:\n\s+→ 02: prototype demos/);
+  assert.match(out, /\n\s+03: contracts compiled against the prototype, spec completed, Red Team rounds, sampled interpretation diff \(agent/);
   assert.match(out, /\n\s+04: oracle recorded/);
-  assert.doesNotMatch(out, /\n\s+03: wireframes/, 'non-UI project has no Stage 03');
   assert.match(out, /next action \(yours\): try the prototype/);
+  assert.match(out, /gates \(all spec stages, freshness ignored\):\n\s+✓ 01 \d+\/\d+\n\s+✓ 02 \d+\/\d+\n\s+✗ 03 \d+\/\d+/);
   const m = p.json('specs/contracts/manifest.json');
   p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, budgets: { interviewQuestions: 5 } }));
   assert.match(p.sdd('readiness').out, /interview 6\/5 question\(s\) ⚠ over budget/);
+  uiManifest(p);
+  assert.match(p.sdd('readiness').out, /03: contracts compiled .*, wireframes captured from the prototype \(agent/);
 });

@@ -16,4 +16,4 @@ Working file, never frozen. One row per question the Lead Architect asked the us
 - **Question**: verbatim, one per row, one per message (the One Question at a Time rule).
 - **Answer**: the user's answer, or "(not yet — deferred to the prototype demo)" when the question is better asked with the product on screen.
 - **Recorded in**: the DECnnn and SPEC § the answer became, or the `G-nnn` row that holds the open question with its provisional assumption.
-- Over budget is a signal, not a block: the remaining questions belong in Stage 03p demos, where they are concrete.
+- Over budget is a signal, not a block: the remaining questions belong in the Stage 02 demos, where they are concrete.

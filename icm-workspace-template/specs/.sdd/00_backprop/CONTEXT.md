@@ -94,7 +94,7 @@ Append to `specs/backprop-log.md` (create if ∄):
 1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 00 --resume <stage>`:
    - `--resume 05` — oracle/spec patched; Stage 05 fixes the code (most common).
    - `--resume 04` — new behavior needs new implementation phases.
-   - `--resume 02` — the spec change touched contracts enough to need re-hardening.
-   - `--resume 01` — class D: the user must make a policy decision first (`--resume 01b` for adopted projects whose characterization must be re-recorded).
-   - No other target: 03 / 03p are refused. Prototype or wireframe rework → `--resume 02` (03p, then 03 for UI projects, follow it).
+   - `--resume 03` — the spec change touched contracts enough to need re-hardening (rounds against the prototype, re-captured wireframes).
+   - `--resume 02` — the product itself must change: rework the prototype with the user, then re-harden.
+   - `--resume 01` — class D: the user must make a policy decision first (`--resume 01b` for adopted projects whose inventory and draft must be redone).
 2. **Handoff:** Tell the user where the pipeline resumes and why.

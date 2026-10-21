@@ -15,7 +15,7 @@ ICM_DIR="${2:-$SKILLS_DIR/icm-workspace-template/specs/.sdd}"
 
 # Known intentional differences (stage:check:allowed_delta)
 # brainstorming gate: SKILL has SDD delegation meta-gate, CONTEXT uses stage routing
-KNOWN_DIFFS="01_brainstorming:gates:1 01_brainstorming:roles:1 03_interactive_wireframing:roles:1 04_writing_implementation_phases:roles:1"
+KNOWN_DIFFS="01_brainstorming:gates:1 01_brainstorming:roles:1 03_hardening:roles:1 04_writing_implementation_phases:roles:1"
 
 is_known_diff() {
   local stage="$1" check="$2" delta="$3"
@@ -34,9 +34,8 @@ is_known_diff() {
 # Mapping: ICM stage folder → skill name (using parallel arrays for bash 3 compat)
 STAGES=(
   "01_brainstorming"
-  "02_adversarial_swarm_analysis"
-  "03p_prototype"
-  "03_interactive_wireframing"
+  "02_prototype"
+  "03_hardening"
   "04_writing_implementation_phases"
   "05_development_swarm"
   "06_visual_acceptance_testing"
@@ -44,9 +43,8 @@ STAGES=(
 )
 SKILLS=(
   "brainstorming"
-  "adversarial-swarm-analysis"
   "sdd-prototype"
-  "interactive-wireframing"
+  "adversarial-swarm-analysis"
   "writing-implementation-phases"
   "development-swarm"
   "visual-acceptance-testing"
