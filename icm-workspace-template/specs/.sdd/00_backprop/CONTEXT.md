@@ -44,6 +44,7 @@ Create `specs/changes/SCR-NNN.md`:
 
 | Field | Value |
 |-------|-------|
+| Status | Draft |
 | Date | YYYY-MM-DD |
 | Trigger | oracle failure / diff divergence / bug report — link to evidence |
 | Observation | request → A vs B (or observed vs expected) |
@@ -56,14 +57,17 @@ Create `specs/changes/SCR-NNN.md`:
 | Pipeline change | CONTEXT.md / _config edit (class E only) |
 ```
 
+`Status` moves Draft → Approved (user said so) → Applied (lock vN) after the freeze, or → Rejected / Withdrawn. `sdd.cjs` reads it: an open SCR (anything but Applied, Rejected, Withdrawn) stops the next Stage 05 phase gate. See WORKSPACE_ROUTING §Spec Change Requests.
+
 ### 4. ⛔ GATE: user approval
-Present the SCR to the user. ⊥ edit any frozen file until the user explicitly approves this SCR. An SCR raised by a builder is never approved by that builder. A class E pipeline change needs its own separate approval.
+Present the SCR to the user. ⊥ edit any frozen file until the user explicitly approves this SCR (→ `Status | Approved`). An SCR raised by a builder is never approved by that builder. A class E pipeline change needs its own separate approval.
 
 ### 5. Apply
 Edit exactly the approved files. Then:
 - **Discrimination check (A′ and C):** run the new case(s) against the current build — `node specs/.sdd/scripts/oracle.cjs run --case <ids>`. They ! FAIL on the build that exhibits the defect (for divergences: on at least one of the two builds). A case that passes against the defective build does not catch the defect; rewrite it.
 - `node specs/.sdd/scripts/sdd.cjs check` → ! pass (coverage includes any new invariant).
-- `node specs/.sdd/scripts/sdd.cjs freeze --reason "SCR-NNN: <title>" --approved-by "<user>"`.
+- `node specs/.sdd/scripts/sdd.cjs freeze --reason "SCR-NNN: <title>" --approved-by "<user>"` (keeps the lock's certification claim; pass `--claim` only when this SCR changes the equivalence target).
+- Set the SCR's row to `| Status | Applied (lock vN) |`.
 
 ### 6. Log
 Append to `specs/backprop-log.md` (create if ∄):
@@ -77,8 +81,19 @@ Append to `specs/backprop-log.md` (create if ∄):
 
 ⊥ write or edit implementation code in this stage. The code fix is Stage 05's job, graded by the corrected oracle.
 
+### Hotfix lane (user-approved, ahead of the pipeline)
+
+For a shipped defect the user wants fixed before the full loop can run (production data, a release date). The user approves the hotfix itself, in writing, before any code change; record it in `specs/DECISION_LOG.md`.
+
+- The code change ⊥ edits a frozen file. A fix that needs a frozen-set change is not a hotfix: take the normal SCR route.
+- **Repro before and after:** an observation that fails on the current build and passes on the fix (for example: two sibling containers, `counts.missing` 3 → 0). Attach it to the SCR.
+- **Merge gate unchanged:** the full unfiltered oracle and (UI) the full frozen UI suite are green on the fix commit. ⊥ merge on a partial run.
+- **SCR with `| Status | Proposed |`**, naming the merge commit, committed right after the merge. Work that is new behavior outside the frozen spec (e.g. a user guide) is recorded the same way, class D.
+- **Re-grade at the next freeze.** `sdd.cjs freeze` refuses while any SCR is Proposed, unless its `--reason` names that SCR. Re-grading = the normal Steps 1–5 for that SCR: classify it, add the case that would have caught it (discrimination check against the pre-fix commit), approve, freeze, → Applied. Or the user withdraws it → Withdrawn. A Proposed SCR never survives into a later lock.
+
 ## Verify
 - `sdd.cjs verify` passes against the new lock.
+- Every SCR this stage touched has its final `Status` row.
 - New cases failed against the defective build before the fix (discrimination check).
 - ⊥ duplicate gaps: search the other stage contracts for the same blind spot (class E).
 

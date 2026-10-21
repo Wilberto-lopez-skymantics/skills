@@ -34,7 +34,7 @@ Roles: Core Architect, Security Auditor, AI/MLOps Engineer, Data Specialist, UX/
 Attack both spec prose and typed machine contracts:
 1. **Contract & Schema Auditor:** Field name/type mismatches between contracts and `SPEC.md`. Unpinned types (e.g. `string` instead of UUIDv7/regex/enum).
 2. **Systems Invariant Auditor:** Compliance with the Equivalence Profile — IDEM, OCC, PAGE, ERR, HTTP-9 evaluation order. Every deviation documented as an override.
-3. **Fork Tester:** ∀ operation, ask: *"Could two competent builders, reading only these files, return different observations?"* Probe each value in each response: status, headers, field presence, null vs absent, ordering, rounding, string normalization, error precedence. Any yes = finding. The persona's judgment is backed by the empirical Interpretation Diff (exit criterion 3).
+3. **Fork Tester:** ∀ operation, ask: *"Could two competent builders, reading only these files, return different observations?"* Probe each value in each response: status, headers, field presence, null vs absent, ordering, rounding, string normalization, error precedence. Any yes = finding. A rule scoped to "this module | project | tenant | owner" is a fork until an outcome exercises a **sibling container holding colliding data** (another module of the same project, another project, a deleted row in the sibling): single-container rows cannot tell "this module" from "everything". The persona's judgment is backed by the empirical Interpretation Diff (exit criterion 3).
 4. **Edge-Case Hunter:** Missing fallback behavior, undefined error paths, unhandled timeouts.
 5. **Chaos Engineer:** Assumptions about ordering, consistency, availability. Split-brain scenarios.
 6. **Resource Starver:** Unbounded growth, missing pagination, no retention policy.
@@ -55,6 +55,12 @@ Before the first Blue Team draft, classify the project and apply `../_config/ref
 #### Machine validation before every Red Team pass
 Run `node specs/.sdd/scripts/sdd.cjs check --contracts` and paste the output into the iteration log. Errors → fix before attacking: the Red Team's time goes to semantics, not syntax.
 
+#### Round budget, API vs UI, and delegation (set before round 1)
+- **Models:** record the primary subagent model and its fallback before the first round (WORKSPACE_ROUTING §Delegation). A critic or predictor that stops without a report → fallback model, smaller brief. ⊥ relaunch the same brief.
+- **Round cap:** a milestone date exists (Stage 01 calendar entry) → record `maxRedTeamRounds: N` in a DECISION_LOG entry and at the top of `specs/logs/02-swarm.md` before round 1. ⊥ discover the cap mid-loop. Reaching the cap may waive exit criterion 2 (the confirming clean round) only if that entry says so. Criteria 1, 3, 3b, 4 and 5 are never waived. No date → no cap: the loop runs to the exit criteria.
+- **Two counts per round:** each iteration log carries `Findings: API <n> · UI <m>`. API = operations, contracts, errors, storage, lifecycles, limits. UI = visible copy, layout, test ids. Behavior behind a screen (what a button does, which error a form shows) is API.
+- **UI deferral:** once a complete round returns API 0, later findings that are only visible copy, layout or test ids are not fixed in Stage 02: append each to `specs/logs/02-deferred-ui.md` as `- [ ] R<round>-<id> <finding>` and leave them out of the clean-round count. Stage 03 resolves them in the wireframes and the copy table; `transition --completed 03` refuses while any is unchecked. Non-UI projects ⊥ defer.
+
 #### Mandatory Visible Iteration Logs
 ⊥ claim "internally looped" (all iterations inside one hidden thought block with only the final output shown). Execute iterations sequentially without stopping for user input (except policy escalations). Write each iteration log in full, using the Adversarial Swarm Iteration Log format ∈ `../_config/iteration-log-format.md`, and append it to `specs/logs/02-swarm.md` — the persisted log is the audit trail, the chat shows a summary.
 
@@ -63,9 +69,9 @@ Run `node specs/.sdd/scripts/sdd.cjs check --contracts` and paste the output int
 #### Exit criteria (objective, all required)
 ⊥ minimum iteration counts and ⊥ forced failures: a manufactured finding is noise that hides real ones. The loop ends only when ALL hold:
 1. `sdd.cjs check --contracts` passes (output in the final iteration log).
-2. A complete Red Team round, ALL personas, finds zero new findings.
+2. A complete Red Team round, ALL personas, finds zero new findings (deferred UI-only findings excluded; a cap waives this round only per its DECISION_LOG entry).
 3. The **Outcome Table** is complete: ∀ operation | command, every observable outcome (success + each reachable error, with its trigger) is listed and pinned in the contracts. It is the input for Stage 04 coverage. The gate cross-checks it against openapi/cli.json: nothing missing, nothing undeclared.
-3b. **Interpretation Diff (empirical Fork Test):** turn every Outcome Table row into a request-only case (one file per suite in `specs/changes/interp/requests/`; titles neutral — `Predict: POST /orders`, never the expected outcome). Two fresh sub-agents — given ONLY `specs/SPEC.md`, `specs/contracts/` and the Equivalence Profile, never the swarm log or this conversation — each copy the requests and write the full expected response with `derivedFrom` citations, using `{"$unspecified": "<what is missing>"}` where the files do not determine a value (`specs/changes/interp/a/`, `…/b/`). Then `node specs/.sdd/scripts/oracle.cjs diff-expect --a specs/changes/interp/a --b specs/changes/interp/b --label interp` ! report zero gaps. Each gap → fix the spec or contracts (policy gaps → ask the user), then re-predict the affected cases. ⊥ resolve a gap by choosing one author's answer. These cases are the starting point for Stage 04.
+3b. **Interpretation Diff (empirical Fork Test):** turn every Outcome Table row into a request-only case (one file per suite in `specs/changes/interp/requests/`; titles neutral — `Predict: POST /orders`, never the expected outcome). Two fresh sub-agents — given ONLY `specs/SPEC.md`, `specs/contracts/` and the Equivalence Profile, never the swarm log or this conversation — each copy the requests and write the full expected response with `derivedFrom` citations, using `{"$unspecified": "<what is missing>"}` where the files do not determine a value (`specs/changes/interp/a/`, `…/b/`). Then `node specs/.sdd/scripts/oracle.cjs diff-expect --a specs/changes/interp/a --b specs/changes/interp/b --label interp` ! report zero gaps. Each gap → fix the spec or contracts (policy gaps → ask the user), then re-predict the affected cases. ⊥ resolve a gap by choosing one author's answer. These cases are the starting point for Stage 04. The diff need not wait for the loop to end: once the API count is in the single digits, start it beside the remaining rounds, and after each spec edit re-predict only the cases that edit touches. The final run ! be fresh (after the last spec edit) — the gate checks it.
 4. `../_config/spec-self-review.md` checks 1–19 pass, reported as "Spec self-review passed: N checks clear, M issues fixed inline."
 5. The Pre-Pass Hardening Verification Checklist below is in the final iteration log.
 
@@ -82,6 +88,7 @@ Execute this exact loop:
 0. **Pre-Flight Context Map:** Identify ∀ frameworks/versions ∈ target architecture → SPEC §10 Observable Environment.
 0b. **Pre-Flight Codebase Grounding (∃ existing code):** Reconciler ! read existing files before Blue Team drafts.
 0c. **Project Type Classification:** confirm type → `manifest.json`.
+0d. **Round budget & models:** record fallback model, and the round cap if a date exists (above).
 1. **Generation Pass:** Blue Team → draft `specs/SPEC.md` AND contracts. **! pass Completeness Checklist + `sdd.cjs check --contracts`.**
 2. **Adversarial Pass:** Critic Council attacks prose and contracts. ∀ finding ! be logged ∈ Iteration Log format.
 3. **Resolution:** Technical findings → Blue Team fixes via the profile. Policy findings → escalate (above).
@@ -97,5 +104,6 @@ Execute this exact loop:
 - `specs/SPEC.md` (Hardened, with §9 Equivalence Boundary)
 - `specs/contracts/manifest.json` + matrix-required contracts
 - `specs/DECISION_LOG.md` (policy escalations, profile overrides)
-- `specs/logs/02-swarm.md` (iteration logs + Outcome Table)
+- `specs/logs/02-swarm.md` (iteration logs with `Findings: API n · UI m` per round + Outcome Table)
+- `specs/logs/02-deferred-ui.md` (UI-only findings deferred to Stage 03, if any)
 - `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)

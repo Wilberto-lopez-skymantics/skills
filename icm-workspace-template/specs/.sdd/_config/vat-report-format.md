@@ -36,11 +36,24 @@ Shared format templates for Visual Acceptance Testing reports. Used by Stage 06 
 ```markdown
 ## 🎨 Design Token Verification
 
-| Component | Property | DESIGN.md Token | Expected Value | Rendered Value | Status |
-|-----------|----------|-----------------|----------------|----------------|--------|
-| chat-card-user | borderLeft | colors.accent | #00D4FF | #00D4FF | PASS |
-| send-button | backgroundColor | colors.accent | #00D4FF | #3B82F6 | FAIL |
+Every row of `specs/logs/06-token-audit.md` (from `sdd.cjs token-audit --stage 06`), measured with `getComputedStyle` — not a sample, not a screenshot:
+
+| Component | State | Property | Token | Expected | Measured | Match |
+|---|---|---|---|---|---|---|
+| chat-card-user | base | borderLeft | `{colors.accent}` | `#00D4FF` | rgb(0, 212, 255) | ✅ |
+| send-button | hover | backgroundColor | `{colors.accent-hover}` | `#3B82F6` | rgb(0, 212, 255) | ❌ |
 ```
+
+## UI Spec Runs
+
+```markdown
+| Run | Command | Result |
+|-----|---------|--------|
+| Full suite | `… --reporter=json` → specs/logs/ui-e2e.json | 252 passed, 0 failed, 0 flaky |
+| Keyboard / focus ×20 | `… --grep "@keyboard|@focus" --repeat-each=20` → specs/logs/ui-repeat.json | 600 passed, 0 failed, 0 flaky |
+```
+
+A walker stopped by a shared limit (HTTP 429 on sign-in) is **BLOCKED** and re-run with its own accounts or a reset window; it is not a FAIL. A control the spec says is absent for that role or state is a PASS when absent.
 
 ## Debug Artifact Scan
 

@@ -423,6 +423,11 @@ function startServer() {
     }
   }
 
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') console.log(JSON.stringify({ type: 'port-in-use', port: Number(PORT) }));
+    else console.error(err.message);
+    process.exit(1);
+  });
   server.listen(PORT, HOST, () => {
     const info = JSON.stringify({
       type: 'server-started', port: Number(PORT), host: HOST,
@@ -431,6 +436,13 @@ function startServer() {
     });
     console.log(info);
     fs.writeFileSync(path.join(STATE_DIR, 'server-info'), info + '\n');
+    // One URL per project: start-server.sh hands this back instead of starting a second server.
+    if (PROJECT_DIR) {
+      try {
+        fs.mkdirSync(path.join(PROJECT_DIR, 'specs', 'brainstorming'), { recursive: true });
+        fs.writeFileSync(path.join(PROJECT_DIR, 'specs', 'brainstorming', 'current-server.json'), JSON.stringify({ ...JSON.parse(info), pid: process.pid }) + '\n');
+      } catch (e) { console.error('current-server.json:', e.message); }
+    }
   });
 }
 

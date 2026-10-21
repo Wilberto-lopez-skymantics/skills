@@ -7,6 +7,8 @@ description: "Browser-based visual acceptance testing for UI projects. Walks eve
 
 # Visual Acceptance Testing (VAT)
 
+**Authority:** ∃ `specs/.sdd/06_visual_acceptance_testing/CONTEXT.md` in the project → that file is the stage contract; follow it and run its `sdd.cjs` commands. This skill is its portable summary; `scripts/validate-icm-sync.sh` checks that the rules below appear in both.
+
 ## Overview
 Closes gap between "code compiles & tests pass" and "user actually sees what spec promised." Uses `browser_subagent` to empirically verify ∀ visual & interactive elements ∈ architecture spec.
 
@@ -113,3 +115,9 @@ Referenced by:
 - `development-swarm` Step 4.5 (between Deploy & Reconciliation)
 - `verification-before-completion` (required verification type for UI)
 - `spec-driven-development` Step 9a (visual gate before lifecycle completion)
+
+## Verdict rules (mirror of the Stage 06 stage contract)
+- **Walkers:** parallel walkers get their own accounts, or the sign-in rate window is reset for the group. A walker stopped by a shared limit (HTTP 429) is BLOCKED and re-run — not a FAIL.
+- **Every token row measured:** `sdd.cjs token-audit --stage 06` → a computed-style value for every DESIGN component × state × property, ✅ | ❌. A screenshot is not a measured value; a sample is not an audit.
+- **Absent by spec ≠ FAIL:** a control the spec says is absent for that role or state passes when absent.
+- **Keyboard / focus specs** run with `--repeat-each=20`; cite repeat and pass counts. One clean run is not evidence for them.
