@@ -48,13 +48,15 @@ Unsure between Class 0 and 1 → Class 1.
 
 `sdd.cjs freeze` (end of Stage 04) hashes these into `specs/spec.lock.json`:
 - `specs/SPEC.md` (+ `specs/spec/**` modules, each linked from SPEC.md), `specs/DESIGN.md`, `specs/CODING_STANDARDS.md` (if used), `specs/contracts/**`, `specs/fixtures/**`, `specs/wireframes/**`
-- the pipeline itself: `specs/.sdd/**` except `_config/sdd-state.json`
+- the pipeline itself: `specs/.sdd/**` except `_config/sdd-state.json` — pinned as **one** entry (`pipeline: { version, hash }`, the version from this file's header), not file by file; `verify` reports an upgrade as one line: `pipeline 2026.10.20-v3.4 → 2026.10.21-v3.5`
 
 Working files outside the lock: `DECISION_LOG.md`, `GAPS.md`, `IMPLEMENTATION_PHASES.md` (only checkboxes change after freeze), `logs/**` (incl. `01-interview.md`, `02-prototype.md`, `03-swarm.md`, `03-rulings.md`, `03-decisions.md`), `changes/**` (incl. `changes/oracle/**` scratch cases and tools), `backprop-log.md`, `phase-integrity-check.md`, `dev-swarm-reconciliation.md`, `vat-checklist.md`, `VAT_REPORT.md`, `EQUIVALENCE_REPORT.md`.
 
 After the freeze, a frozen file changes through exactly two doors, both ending in a user-approved `sdd.cjs freeze`:
 1. **Class 1 iteration** — Stages 01 → 02 → 03 → 04 edit the spec set; the lock stays broken until Stage 04 re-freezes it with the user's approval. The previous slice's oracle guards the prototype during 02 and 03 (undeclared failures refuse the transition).
 2. **Stage 00 Spec Change Request** (Class 2) — SCR → explicit user approval → edit → `sdd.cjs freeze --reason "SCR-NNN: …" --approved-by "<user>"`.
+
+A template upgrade (`sdd.cjs upgrade --from <template-root>`) moves only the pipeline pin: the lock then differs by that one line and the re-freeze — still the user's approval, nothing in the spec moved — is `sdd.cjs freeze --reason "upgrade: <version>" --approved-by "<user>"`.
 
 `sdd.cjs verify` detects every other change. Every gate from Stage 04 on refuses while the lock is broken, so no build can be graded against an unapproved spec.
 

@@ -760,6 +760,7 @@ function outcomeTableGate(p, ctx) {
 function runCheck(p, { contractsOnly, specOnly, info }) {
   const r = new Report();
   decisionDriftReport(p, r);
+  decisionSupersessionReport(p, r);
   if (specOnly) {
     // Draft mode: no contracts yet (Stages 01–02). The project type comes from the state file, not a manifest.
     const ctx = { ops: [], errorCodes: new Map(), machines: [], transitions: new Map(), commands: [], manifest: null, typeDef: (info && info.typeDef) || null, matrix: null, draft: true };
@@ -863,9 +864,30 @@ function expectDiffGate(p, freshAfter, mustBindFixtures, minCases = 1) {
 function lockGate(p) {
   const v = L.verifyLock(p.root);
   if (!v.exists) return [[false, 'no specs/spec.lock.json (freeze at end of Stage 04)'], v];
-  if (!v.valid) return [[false, `frozen set modified since lock v${v.lock.lockVersion}: ${[...v.modified, ...v.added.map(f => `+${f}`), ...v.removed.map(f => `-${f}`)].join(', ') || 'lock file tampered'}`], v];
+  if (!v.valid) return [[false, `frozen set modified since lock v${v.lock.lockVersion}: ${lockChanges(v).join('; ') || 'lock file tampered'}`], v];
   return [[true, `lock v${v.lock.lockVersion} intact (${v.lock.hash.slice(0, 12)})`], v];
 }
+
+/** Every difference between the lock and the frozen set: the pipeline pin as one line, then the spec files. */
+function lockChanges(v) {
+  const out = [];
+  const pl = L.pipelineLine(v);
+  if (pl) out.push(pl);
+  const files = [...v.modified.map(f => `~${f}`), ...v.added.map(f => `+${f}`), ...v.removed.map(f => `-${f}`)];
+  if (files.length) out.push(files.join(', '));
+  return out;
+}
+
+/** Spec-file counts for a modified lock, e.g. "2 changed, 1 added, 0 removed" — or null when only the pipeline moved. */
+function specFileCounts(v) {
+  if (!v.modified.length && !v.added.length && !v.removed.length) return null;
+  return `${v.modified.length} changed, ${v.added.length} added, ${v.removed.length} removed`;
+}
+
+const lockFileCount = l => l.modified.length + l.added.length + l.removed.length;
+const lockTileText = l => { const n = lockFileCount(l); return [l.pipeline.changed ? 'pipeline changed' : null, n ? `${n} spec file(s) changed` : null].filter(Boolean).join(', '); };
+
+const REFREEZE_HINT = v => v && v.pipeline && v.pipeline.changed && !specFileCounts(v) ? ` — re-freeze with the user's approval: \`sdd.cjs freeze --reason "upgrade: ${v.pipeline.to}" --approved-by "<user>"\`` : '';
 
 /** A required working file; with freshAfter it must also have been written during this stage. */
 function fileGate(p, f, why, freshAfter) {
@@ -941,6 +963,60 @@ function decisionDriftReport(p, r) {
   if (!d) return;
   if (d.changed.length) r.warn(`DECISION_LOG.md is append-only, but ${d.changed.length} row(s) recorded at ${d.ts} were rewritten since: ${d.changed.slice(0, 8).join(', ')}${d.changed.length > 8 ? ', …' : ''} — a changed decision is a new entry that cites the old one; derived artifacts (traceability, design packages) cite rows by id`);
   if (d.removed.length) r.warn(`DECISION_LOG.md: ${d.removed.length} row(s) recorded at ${d.ts} are gone: ${d.removed.slice(0, 8).join(', ')} — never delete an entry; supersede it`);
+}
+
+// Supersession: a row whose text says `supersedes DECnnn` (case-insensitive, one or more ids) replaces those rows.
+// The replaced rows stay in the log (append-only) but no longer count: a [PENDING-<ROLE>] row that is superseded
+// drops off the agenda, readiness and the dashboard.
+const PENDING_TAG = /\[PENDING-([A-Z][A-Z0-9-]*)\]/g;
+const DECISION_ROW = /^\|\s*(DEC\d{3})\s*\|\s*((?:[^|\\]|\\.)*?)\s*\|/;
+
+/** The ids a row says it supersedes: `supersedes DEC003`, `Supersedes DEC003, DEC005 and DEC007`. */
+function supersededIdsIn(line) {
+  const ids = [];
+  for (const m of line.matchAll(/\bsupersedes\s+((?:DEC\d{3}\b[\s,;&]*(?:and\s+)?)+)/gi)) {
+    for (const id of m[1].match(/DEC\d{3}/gi) || []) ids.push(id.toUpperCase());
+  }
+  return ids;
+}
+
+/** Every `| DECnnn |` row of specs/DECISION_LOG.md in file order: { id, title, roles, supersedes, line }. */
+function decisionEntries(p) {
+  const out = [];
+  for (const line of readText(p.decisionLog).split(/\r?\n/)) {
+    const m = line.match(DECISION_ROW);
+    if (!m) continue;
+    out.push({ id: m[1], title: m[2].replace(/\s+/g, ' ').slice(0, 160), roles: [...new Set([...line.matchAll(PENDING_TAG)].map(x => x[1]))], supersedes: supersededIdsIn(line).filter(id => id !== m[1]), line });
+  }
+  return out;
+}
+
+/** The set of ids that some row of the log supersedes. */
+function supersededDecisions(p) {
+  const out = new Set();
+  for (const e of decisionEntries(p)) for (const id of e.supersedes) out.add(id);
+  return out;
+}
+
+/** The [PENDING-<ROLE>]-tagged rows that no row supersedes — the agenda's, readiness's and the dashboard's one rule. */
+function pendingDecisions(p) {
+  const superseded = supersededDecisions(p);
+  return decisionEntries(p).filter(e => e.roles.length && !superseded.has(e.id));
+}
+const pendingTagCount = p => pendingDecisions(p).reduce((n, e) => n + e.roles.length, 0);
+
+/** `supersedes` must name rows that exist; a pending row cited by a later row that does not say `supersedes` is probably an answer that forgot the word. */
+function decisionSupersessionReport(p, r) {
+  const entries = decisionEntries(p);
+  if (!entries.length) return;
+  const known = new Set(entries.map(e => e.id));
+  for (const e of entries) for (const id of e.supersedes) if (!known.has(id)) r.error(`DECISION_LOG.md: ${e.id} supersedes ${id}, which is not in specs/DECISION_LOG.md`);
+  const superseded = supersededDecisions(p);
+  entries.forEach((e, i) => {
+    if (!e.roles.length || superseded.has(e.id)) return;
+    const citing = entries.slice(i + 1).filter(later => new RegExp(`\\b${e.id}\\b`).test(later.line)).map(later => later.id);
+    if (citing.length) r.warn(`DECISION_LOG.md: ${citing.join(', ')} cite${citing.length === 1 ? 's' : ''} pending ${e.id} without superseding it — if that row is the answer, write "supersedes ${e.id}" in it so ${e.id} drops off the agenda`);
+  });
 }
 
 // ========== Gap register, rulings ledger, slice cap (prototype-first pipeline) ==========
@@ -1061,12 +1137,97 @@ function sliceOutcomes(p, ctx) {
   return { total: all.length, slice: all.filter(k => !prev.has(k)).length };
 }
 
+/** Operation ids named in SPEC.md §5 (bullet, table row or heading starting with a backticked identifier), index and modules together. */
+function specOperationNames(p) {
+  const files = L.specFiles(p.root);
+  if (!files.length) return [];
+  const sec = specSection(files.map(f => readText(path.join(p.root, f))).join('\n'), 5) || '';
+  return [...new Set([...sec.matchAll(/^\s*(?:[-*]|\||#+)\s*(?:[\d.]+\s+)?`([A-Za-z_][\w.-]*)`/gm)].map(m => m[1]))];
+}
+
+/**
+ * What the accepted prototype declares, recorded in its Stage 02 transition row (sliceLedger reads it back at Stage 03).
+ * Contract outcome keys when the contracts exist and check clean; else the operations SPEC.md §5 names (`spec:<id>`);
+ * else null with a note. The row keeps every other field.
+ */
+function acceptedOutcomes(p) {
+  if (exists(p.manifest)) {
+    try {
+      const { r, ctx } = runCheck(p, { contractsOnly: true });
+      if (!r.errors.length) return { outcomes: declaredOutcomes(ctx).sort(), outcomesSource: 'contracts' };
+    } catch { /* unreadable contracts: fall back to the spec */ }
+  }
+  const ops = specOperationNames(p);
+  if (ops.length) return { outcomes: ops.map(n => `spec:${n}`), outcomesSource: 'spec' };
+  return { outcomes: null, outcomesSource: null, outcomesNote: 'no contracts and no operation named in SPEC.md §5 at acceptance: under a rolling cadence this slice\'s outcomes are counted with the next accepted prototype\'s (or as the whole set)' };
+}
+
+const outcomeOp = k => String(k).split(':')[1] || '';
+
+/**
+ * Rolling cadence: one entry per prototype accepted since the last lock (Stage 02 rows of transitions.jsonl), each sized by the
+ * current declared outcomes it introduced. An outcome belongs to the first slice whose row recorded its key, else to the first slice
+ * whose row recorded its operation (spec rows name operations only), else — added while hardening, under no accepted prototype —
+ * to the last slice (`hardening` counts them). Outcomes in the lock belong to no slice. slice === null: the lock predates recording.
+ * No row since the lock → slices is empty and `slice` is the whole set (the default cadence's count).
+ */
+function sliceLedger(p, ctx) {
+  const all = declaredOutcomes(ctx);
+  let lockKeys = [];
+  let since = null;
+  if (exists(p.lock)) {
+    let lock = null;
+    try { lock = L.readJson(p.lock); } catch { /* unreadable lock: lockGate reports it */ }
+    if (!lock || !Array.isArray(lock.outcomes)) return { total: all.length, slice: null, slices: null };
+    lockKeys = lock.outcomes;
+    since = lock.frozenAt || null;
+  }
+  const lockSet = new Set(lockKeys);
+  const seenKeys = new Set(lockKeys);
+  const seenOps = new Set(lockKeys.map(outcomeOp));
+  const slices = [];
+  for (const t of readTransitions(p).filter(t => t.completed === L.STAGES['02'].name && (!since || t.ts > since))) {
+    const keys = Array.isArray(t.outcomes) ? t.outcomes : [];
+    const ops = new Set(keys.map(outcomeOp).filter(o => o && !seenOps.has(o)));
+    const fresh = new Set(keys.filter(k => !seenKeys.has(k)));
+    slices.push({ n: slices.length + 1, ts: t.ts, approvedBy: t.approvedBy || null, source: t.outcomesSource || null, size: 0, hardening: 0, _keys: fresh, _ops: ops });
+    keys.forEach(k => seenKeys.add(k));
+    ops.forEach(o => seenOps.add(o));
+  }
+  const fresh = all.filter(k => !lockSet.has(k));
+  if (!slices.length) return { total: all.length, slice: fresh.length, slices: [] };
+  for (const k of fresh) {
+    let s = slices.find(x => x._keys.has(k)) || slices.find(x => x._ops.has(outcomeOp(k)));
+    if (!s) { s = slices[slices.length - 1]; s.hardening++; }
+    s.size++;
+  }
+  return { total: all.length, slice: fresh.length, slices: slices.map(({ _keys, _ops, ...rest }) => rest) };
+}
+
+/** "#1 9, #2 21 (3 added in hardening)" — one entry per accepted slice. */
+function sliceList(slices) {
+  return slices.map(s => `#${s.n} ${s.size}${s.hardening ? ` (${s.hardening} added in hardening)` : ''}`).join(', ');
+}
+
 function sliceCapGate(p, ctx) {
   const m = ctx.manifest || {};
   const cap = m.sliceCap || DEFAULT_SLICE_CAP;
-  const { total, slice } = sliceOutcomes(p, ctx);
   const needsDecision = cap > DEFAULT_SLICE_CAP;
   if (needsDecision && !citesDecision(p, m.sliceCapDecision)) return [false, `manifest.sliceCap ${cap} exceeds the default ${DEFAULT_SLICE_CAP}: manifest.sliceCapDecision must cite a DECnnn in specs/DECISION_LOG.md`];
+  const split = 'split the slice with the user, or raise manifest.sliceCap with a recorded user decision';
+  if (m.prototypeCadence === 'rolling') {
+    // Several prototypes were accepted before this hardening pass: the cap reads per accepted slice, not for their sum.
+    const { total, slice, slices } = sliceLedger(p, ctx);
+    if (slice === null) return [true, `slice size unknown: specs/spec.lock.json predates outcome recording (the next freeze records it); ${total} declared outcome(s) in total (cap ${cap} per slice)`];
+    if (!slices.length) {
+      if (slice > cap) return [false, `rolling cadence, but no accepted prototype recorded its outcomes since the last lock: the whole set counts as one slice — ${slice} new declared outcome(s), cap ${cap} (${total} in total): ${split}`];
+      return [true, `rolling cadence: no accepted prototype recorded its outcomes since the last lock, so the whole set counts as one slice — ${slice} new declared outcome(s) (cap ${cap}); ${total} in total`];
+    }
+    const over = slices.filter(s => s.size > cap);
+    if (over.length) return [false, `rolling cadence: slice ${over.map(s => `#${s.n} (accepted ${String(s.ts).slice(0, 10)}${s.approvedBy ? ` by ${s.approvedBy}` : ''}) adds ${s.size}`).join('; ')} declared outcome(s), cap ${cap} per slice — slices since the last lock: ${sliceList(slices)}; ${total} in total: ${split}`];
+    return [true, `rolling cadence: ${slices.length} accepted slice(s) since the last lock, each within cap ${cap} — ${sliceList(slices)} new declared outcome(s); ${total} in total`];
+  }
+  const { total, slice } = sliceOutcomes(p, ctx);
   if (slice === null) return [true, `slice size unknown: specs/spec.lock.json predates outcome recording (the next freeze records it); ${total} declared outcome(s) in total (cap ${cap} per slice)`];
   if (slice > cap) return [false, `slice adds ${slice} declared outcome(s), cap ${cap} (${total} in total): split the scope into slices (each runs 01 → 07), or raise manifest.sliceCap with a recorded user decision`];
   return [true, `slice size: ${slice} new declared outcome(s) (cap ${cap}); ${total} in total`];
@@ -1301,7 +1462,7 @@ function orderCheck(stage, state, info) {
   if (stage === '00') return [true, 'Stage 00 may run at any time'];
   // manifest.prototypeCadence "rolling": several slices are prototyped (01 → 02 each) before one hardening pass;
   // the next slice's brief may follow an accepted prototype. The slice cap still applies at Stage 03.
-  if (stage === '01' && last === 2 && info.manifest && info.manifest.prototypeCadence === 'rolling') return [true, 'rolling prototypes (manifest.prototypeCadence): the next slice\'s brief follows the accepted prototype; hardening is deferred and the slice cap applies at Stage 03'];
+  if (stage === '01' && last === 2 && info.manifest && info.manifest.prototypeCadence === 'rolling') return [true, 'rolling prototypes (manifest.prototypeCadence): the next slice\'s brief follows the accepted prototype; hardening is deferred and the slice cap applies per accepted slice at Stage 03'];
   // Before Stage 03 there is no manifest to declare a cadence: the user chooses at acceptance (harden now, or another slice first; recorded as a DECnnn that Stage 03 writes into the manifest).
   if (stage === '01' && last === 2 && !info.manifest) return [true, 'next slice before hardening (no contracts yet: the cadence is the user\'s choice at acceptance, recorded as a DECnnn; Stage 03 declares it in manifest.prototypeCadence)'];
   if (stage === '06' && !info.ui) return [false, `${L.STAGES[stage].name} applies only to UI projects`];
@@ -1369,7 +1530,12 @@ function cmdStatus(p) {
   if (state.notes) console.log(`          ${state.notes}`);
   const v = exists(p.lock) ? L.verifyLock(p.root) : null;
   if (!v) console.log(`  lock:   none (frozen set is not locked yet); a defect or spec gap found now is ${PRE_FREEZE_ROUTE}`);
-  else console.log(`  lock:   v${v.lock.lockVersion} ${v.lock.hash.slice(0, 12)} — ${v.valid ? 'INTACT' : `MODIFIED (${v.modified.length} changed, ${v.added.length} added, ${v.removed.length} removed)`}`);
+  else {
+    const counts = specFileCounts(v);
+    const pl = L.pipelineLine(v);
+    console.log(`  lock:   v${v.lock.lockVersion} ${v.lock.hash.slice(0, 12)} — ${v.valid ? 'INTACT' : `MODIFIED (${counts ? `spec files: ${counts}${pl ? '; pipeline, see below' : ''}` : 'pipeline only'}${!v.intact ? '; lock file edited by hand' : ''})`}`);
+    if (pl) console.log(`          ${pl}${REFREEZE_HINT(v)}`);
+  }
   const run = latestReport(p, 'run-', () => true);
   if (run) console.log(`  oracle: ${run.passed}/${run.total} passed on "${run.target}" at ${run.finishedAt}${v && run.lockHash === v.lock.hash ? '' : ' (STALE: different lock)'}${run.filtered ? ' (filtered)' : ''}`);
   const diff = latestReport(p, 'diff-', () => true);
@@ -1421,8 +1587,15 @@ function cmdReadiness(p) {
   const { r, ctx } = runCheck(p, { contractsOnly: false });
   if (ctx.manifest) {
     const cap = ctx.manifest.sliceCap || DEFAULT_SLICE_CAP;
-    const { total, slice } = sliceOutcomes(p, ctx);
-    console.log(`  slice:   ${slice === null ? 'unknown (lock predates outcome recording)' : `${slice} new declared outcome(s)`} (cap ${cap}); ${total} in total across ${ctx.ops.length + ctx.commands.length} operation(s)/command(s)`);
+    const across = `across ${ctx.ops.length + ctx.commands.length} operation(s)/command(s)`;
+    if (ctx.manifest.prototypeCadence === 'rolling') {
+      const { total, slice, slices } = sliceLedger(p, ctx);
+      const sizes = slice === null ? 'unknown (lock predates outcome recording)' : slices.length ? `${slices.length} accepted slice(s) since the last lock: ${sliceList(slices)} new declared outcome(s)` : `${slice} new declared outcome(s) (no accepted prototype recorded its outcomes since the last lock: counted as one slice)`;
+      console.log(`  slice:   rolling cadence — ${sizes} (cap ${cap} per slice); ${total} in total ${across}`);
+    } else {
+      const { total, slice } = sliceOutcomes(p, ctx);
+      console.log(`  slice:   ${slice === null ? 'unknown (lock predates outcome recording)' : `${slice} new declared outcome(s)`} (cap ${cap}); ${total} in total ${across}`);
+    }
   } else console.log('  slice:   no contracts yet (Stage 03 compiles them against the accepted prototype)');
   const { rows, errors } = readGaps(p);
   if (rows === null) console.log(`  gaps:    no ${GAPS_FILE} yet`);
@@ -1451,8 +1624,8 @@ function cmdReadiness(p) {
     console.log(`  your questions (${policy.length} open policy gap(s); the prototype builds the provisional answer until you decide):`);
     for (const g of policy) console.log(`    ${g.id}: ${g.gap || '(no text)'} — provisional: ${g['draft assumption'] || '(none)'}`);
   }
-  const pendingTags = (readText(p.decisionLog).match(/\[PENDING-[A-Z][A-Z0-9-]*\]/g) || []).length;
-  if (pendingTags) console.log(`  pending:  ${pendingTags} [PENDING-<ROLE>] tag(s) in DECISION_LOG.md — \`sdd.cjs agenda\` lists them with the open policy gaps`);
+  const pendingTags = pendingTagCount(p);
+  if (pendingTags) console.log(`  pending:  ${pendingTags} [PENDING-<ROLE>] tag(s) in DECISION_LOG.md (superseded rows not counted) — \`sdd.cjs agenda\` lists them with the open policy gaps`);
   const otherOpen = (rows || []).filter(g => g.status === 'open' && g.kind !== 'policy').length;
   if (otherOpen) console.log(`  agent questions: ${otherOpen} open technical/builder/ui/oracle gap(s) — resolved by the swarm via the profile, no user time`);
 
@@ -1481,19 +1654,14 @@ function cmdReadiness(p) {
 
 // ========== agenda, metrics, spec-outline, upgrade ==========
 
-const PENDING_TAG = /\[PENDING-([A-Z][A-Z0-9-]*)\]/g;
-
-/** The questions only people outside the agent can answer: open policy gaps, and every decision tagged [PENDING-<ROLE>]. */
+/** The questions only people outside the agent can answer: open policy gaps, and every decision tagged [PENDING-<ROLE>] that no later row supersedes. */
 function agendaData(p) {
   const gaps = (readGaps(p).rows || []).filter(g => g.status === 'open' && g.kind === 'policy');
   const byRole = new Map();
-  for (const line of readText(p.decisionLog).split(/\r?\n/)) {
-    const m = line.match(/^\|\s*(DEC\d{3})\s*\|\s*((?:[^|\\]|\\.)*?)\s*\|/);
-    if (!m) continue;
-    const roles = [...line.matchAll(PENDING_TAG)].map(x => x[1]);
-    for (const role of new Set(roles)) {
+  for (const e of pendingDecisions(p)) {
+    for (const role of e.roles) {
       if (!byRole.has(role)) byRole.set(role, []);
-      byRole.get(role).push({ id: m[1], title: m[2].replace(/\s+/g, ' ').slice(0, 160) });
+      byRole.get(role).push({ id: e.id, title: e.title });
     }
   }
   return { gaps, byRole };
@@ -1504,7 +1672,7 @@ function cmdAgenda(p, args) {
   const L_ = [];
   L_.push('# Agenda — questions for people outside the pipeline');
   L_.push('');
-  L_.push(`Derived by \`sdd.cjs agenda\` on ${new Date().toISOString().slice(0, 10)} from ${GAPS_FILE} (open policy rows) and specs/DECISION_LOG.md (\`[PENDING-<ROLE>]\` tags). Regenerate, do not edit; an answer becomes a DECISION_LOG entry (a new row citing the pending one) and a spec edit, which removes the item from the next run.`);
+  L_.push(`Derived by \`sdd.cjs agenda\` on ${new Date().toISOString().slice(0, 10)} from ${GAPS_FILE} (open policy rows) and specs/DECISION_LOG.md (\`[PENDING-<ROLE>]\` tags). Regenerate, do not edit; an answer becomes a DECISION_LOG entry (a new row whose text says \`supersedes DECnnn\`, naming the pending row) and a spec edit, which removes the item from the next run.`);
   L_.push('');
   L_.push(`## Open policy questions for the product owner (${gaps.length})`);
   L_.push('');
@@ -1521,7 +1689,7 @@ function cmdAgenda(p, args) {
     L_.push('|---|---|');
     for (const r of rows) L_.push(`| ${r.id} | ${r.title.replace(/\|/g, '\\|')} |`);
   }
-  if (!byRole.size) { L_.push(''); L_.push('No decision carries a `[PENDING-<ROLE>]` tag.'); }
+  if (!byRole.size) { L_.push(''); L_.push('No decision carries a `[PENDING-<ROLE>]` tag that a later row has not superseded.'); }
   const text = L_.join('\n') + '\n';
   if (args.flags.write) {
     const f = path.join(p.logs, 'agenda.md');
@@ -1640,6 +1808,13 @@ function cmdUpgrade(p, args) {
   let logFile = path.join(p.logs, `upgrade-${tag}.md`);
   fs.mkdirSync(p.logs, { recursive: true });
   for (let n = 2; exists(logFile); n++) logFile = path.join(p.logs, `upgrade-${tag}-${n}.md`); // an earlier, filled-in log is never overwritten
+  // The pipeline is one entry of the lock: after an upgrade the lock differs by that pin alone (unless spec files moved too).
+  const lockV = exists(p.lock) ? L.verifyLock(p.root) : null;
+  const lockNote = !lockV
+    ? 'No lock exists yet; the first freeze (end of Stage 04) pins this pipeline version.'
+    : lockV.valid
+      ? `The lock v${lockV.lock.lockVersion} still matches (same pipeline files).`
+      : `The lock v${lockV.lock.lockVersion} now differs ${specFileCounts(lockV) ? `by the pipeline pin (${L.pipelineLine(lockV)}) and by spec files (${specFileCounts(lockV)})` : `only by the pipeline pin: ${L.pipelineLine(lockV)}`}. Re-freeze with the user's approval: \`sdd.cjs freeze --reason "upgrade: ${newVersion}" --approved-by "<user>"\` (every gate from Stage 04 on refuses until then).`;
   const cp = require('child_process');
   const run = cmd => { const r = cp.spawnSync(process.execPath, [__filename, cmd, '--root', p.root], { encoding: 'utf8' }); return (r.stdout + r.stderr).trim(); };
   const body = `# Upgrade to pipeline ${newVersion} (${new Date().toISOString().slice(0, 10)})
@@ -1650,7 +1825,7 @@ Resume with: "Read ${L.rel(p.root, logFile)}, run \`node specs/.sdd/scripts/sdd.
 - \`specs/.sdd/\` → template \`${newVersion}\` (was \`${oldVersion}\`): ${added.length} file(s) added, ${changed.length} changed, ${removed.length} removed. State file ${mapped ? `mapped: ${mapped}` : `untouched${state === null ? ' (none existed)' : ''}`}.
 - Logs renamed: ${renamed.length ? renamed.join('; ') : 'none needed'}.
 - Entry files: ${entries.join('; ')}.
-- Written by \`sdd.cjs upgrade --from ${from}\`. Pipeline files are part of the frozen set: a lock, if one exists, is now modified and is re-frozen with the user's approval at the next Stage 04.
+- Written by \`sdd.cjs upgrade --from ${from}\`. ${lockNote}
 
 ### Files added
 ${added.map(f => `- ${f}`).join('\n') || '- none'}
@@ -1679,6 +1854,7 @@ No \`transition\` or \`freeze\` without the user's explicit word; never hand-edi
 `;
   fs.writeFileSync(logFile, body);
   console.log(`Upgraded specs/.sdd: ${oldVersion} → ${newVersion} (${added.length} added, ${changed.length} changed, ${removed.length} removed)`);
+  if (lockV && !lockV.valid) console.log(`  lock: ${lockNote}`);
   if (mapped) console.log(`  state mapped: ${mapped}`);
   renamed.forEach(x => console.log(`  renamed ${x}`));
   entries.forEach(x => console.log(`  ${x}`));
@@ -1714,7 +1890,7 @@ function dashboardData(p) {
   const open = (rows || []).filter(g => g.status === 'open');
   const by = k => open.filter(g => g.kind === k).length;
   const agenda = agendaData(p);
-  const pendingTags = (readText(p.decisionLog).match(/\[PENDING-[A-Z][A-Z0-9-]*\]/g) || []).length;
+  const pendingTags = pendingTagCount(p);
   const drift = decisionDrift(p);
   const run = latestReport(p, 'run-', () => true);
   const diff = latestReport(p, 'diff-', () => true);
@@ -1722,7 +1898,12 @@ function dashboardData(p) {
   const sp = specPath(info);
   const idx = next ? sp.findIndex(([s]) => s === next) : -1;
   let slice = null;
-  if (ctx.manifest) { const so = sliceOutcomes(p, ctx); slice = { declared: so.slice, total: so.total, cap: ctx.manifest.sliceCap || DEFAULT_SLICE_CAP, operations: ctx.ops.length + ctx.commands.length }; }
+  if (ctx.manifest) {
+    const rolling = ctx.manifest.prototypeCadence === 'rolling';
+    const so = rolling ? sliceLedger(p, ctx) : sliceOutcomes(p, ctx);
+    // Under a rolling cadence `slices` lists every prototype accepted since the last lock with the outcomes it introduced (the cap reads per entry).
+    slice = { declared: so.slice, total: so.total, cap: ctx.manifest.sliceCap || DEFAULT_SLICE_CAP, operations: ctx.ops.length + ctx.commands.length, cadence: rolling ? 'rolling' : 'slice', slices: rolling ? so.slices : null };
+  }
   const m = info.manifest || {};
   return {
     generatedAt: new Date().toISOString(),
@@ -1748,7 +1929,7 @@ function dashboardData(p) {
     decisions: { count: Object.keys(decisionRows(p)).length, drift: drift && (drift.changed.length || drift.removed.length) ? { since: drift.ts, changed: drift.changed, removed: drift.removed } : null },
     check: { errors: r.errors.length, warnings: r.warnings.length, firstErrors: r.errors.slice(0, 8), coverage: r.notes.find(n => n.startsWith('coverage:')) || null },
     oracle: { run: run ? { passed: run.passed, total: run.total, target: run.target, at: run.finishedAt, stale: !(v && run.lockHash === v.lock.hash), filtered: !!run.filtered } : null, diff: diff ? { a: diff.a, b: diff.b, divergent: diff.divergentCases, at: diff.finishedAt } : null, expectDiff: ed ? { label: ed.label, compared: ed.totalCases, divergent: ed.divergentCases, at: ed.finishedAt } : null },
-    lock: v ? { version: v.lock.lockVersion, hash: v.lock.hash, intact: v.valid, modified: v.modified, added: v.added, removed: v.removed, frozenAt: v.lock.frozenAt || v.lock.createdAt || null } : null,
+    lock: v ? { version: v.lock.lockVersion, hash: v.lock.hash, intact: v.valid, modified: v.modified, added: v.added, removed: v.removed, pipeline: { version: v.pipeline.legacy ? null : v.lock.pipeline.version, changed: v.pipeline.changed, from: v.pipeline.from, to: v.pipeline.to, line: L.pipelineLine(v) }, frozenAt: v.lock.frozenAt || v.lock.createdAt || null } : null,
     slice,
     versions: versions || [],
     transitions: transitions.map(t => ({ ts: t.ts, completed: t.completed, resume: t.resume || null, approvedBy: t.approvedBy || null, release: !!t.release, note: t.note || '', metrics: t.metrics || {} })),
@@ -1761,6 +1942,13 @@ function renderDashboard(d) {
   const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
   const when = s => (s ? esc(String(s).replace('T', ' ').slice(0, 16)) : '—');
   const n = x => (typeof x === 'number' ? x.toLocaleString('en-US') : esc(x));
+  // Slice sizes: one count for the default cadence; under rolling, one per prototype accepted since the last lock.
+  const sliceText = sl => {
+    if (sl.declared === null) return 'this slice: unknown new (lock predates outcome recording)';
+    if (sl.cadence !== 'rolling') return `this slice: ${n(sl.declared)} new`;
+    if (!sl.slices || !sl.slices.length) return `${n(sl.declared)} new, counted as one slice (no accepted prototype recorded its outcomes since the last lock)`;
+    return `per accepted slice since the last lock: ${sl.slices.map(x => `#${x.n} ${n(x.size)}${x.hardening ? ` (+${n(x.hardening)} in hardening)` : ''}`).join(' · ')} new`;
+  };
   const details = (summary, body, openIt) => `<details${openIt ? ' open' : ''}><summary>${summary}</summary><div class="dbody">${body}</div></details>`;
   const pill = (kind, text) => `<span class="pill ${kind}">${{ ok: '✓', warn: '!', bad: '✗', neutral: '·' }[kind]} ${esc(text)}</span>`;
   // A long message folds: its first clause stays on the line; a comma list of paths becomes columns.
@@ -1797,7 +1985,7 @@ function renderDashboard(d) {
     d.gaps ? tile('Open gaps', `${d.gaps.open}`, d.gaps.policy ? pill('warn', `${d.gaps.policy} need you`) : pill('ok', 'none need you'), d.gaps.policy ? 'warn' : 'ok') : tile('Open gaps', '—', '<span class="muted">no GAPS.md yet</span>'),
     tile('Pending decisions', `${d.pending.tags}`, d.pending.byRole.length ? `<span class="muted">${esc(d.pending.byRole.map(r => `${r.items.length} ${r.role}`).join(', '))}</span>` : '<span class="muted">no [PENDING-ROLE] tags</span>', d.pending.tags ? 'warn' : 'ok'),
     d.oracle.run ? tile('Oracle', `${n(d.oracle.run.passed)}<span class="muted">/${n(d.oracle.run.total)}</span>`, d.oracle.run.stale ? pill('warn', 'stale lock') : pill(d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad', d.oracle.run.passed === d.oracle.run.total ? 'green' : `${d.oracle.run.total - d.oracle.run.passed} failing`), d.oracle.run.stale ? 'warn' : d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad') : tile('Oracle', '—', '<span class="muted">no run yet</span>'),
-    d.lock ? tile('Lock', `v${esc(d.lock.version)}`, d.lock.intact ? pill('ok', 'intact') : pill('bad', `${d.lock.modified.length + d.lock.added.length + d.lock.removed.length} files changed`), d.lock.intact ? 'ok' : 'bad') : tile('Lock', '—', '<span class="muted">not frozen yet</span>'),
+    d.lock ? tile('Lock', `v${esc(d.lock.version)}`, d.lock.intact ? pill('ok', 'intact') : pill('bad', lockTileText(d.lock)), d.lock.intact ? 'ok' : 'bad') : tile('Lock', '—', '<span class="muted">not frozen yet</span>'),
     tile('Check', `${d.check.errors}<span class="muted"> err</span>`, d.check.warnings ? pill('warn', `${d.check.warnings} warnings`) : pill('ok', 'no warnings'), d.check.errors ? 'bad' : d.check.warnings ? 'warn' : 'ok'),
   ].join('');
 
@@ -1814,7 +2002,7 @@ function renderDashboard(d) {
 
   const lockRow = !d.lock ? '<span class="muted">none yet — the frozen set is not locked; a defect found now is a gap row in the current stage, not a Stage 00 change</span>'
     : d.lock.intact ? `${pill('ok', `v${d.lock.version} intact`)} <code>${esc(String(d.lock.hash).slice(0, 12))}</code>${d.lock.frozenAt ? ` <span class="muted">frozen ${when(d.lock.frozenAt)}</span>` : ''}`
-      : `${pill('bad', `v${d.lock.version} modified`)} ${d.lock.modified.length} changed, ${d.lock.added.length} added, ${d.lock.removed.length} removed — re-frozen only with the user's approval at the next Stage 04 or through an SCR${details('files', `<ul class="cols mono">${[...d.lock.modified.map(f => `~ ${f}`), ...d.lock.added.map(f => `+ ${f}`), ...d.lock.removed.map(f => `− ${f}`)].map(f => `<li>${esc(f)}</li>`).join('')}</ul>`)}`;
+      : `${pill('bad', `v${d.lock.version} modified`)} ${d.lock.pipeline.changed ? `<b>${esc(d.lock.pipeline.line)}</b>${lockFileCount(d.lock) ? '; ' : ''}` : ''}${lockFileCount(d.lock) ? `spec files: ${d.lock.modified.length} changed, ${d.lock.added.length} added, ${d.lock.removed.length} removed` : ''} — ${d.lock.pipeline.changed && !lockFileCount(d.lock) ? `re-frozen with the user's approval: <code>sdd.cjs freeze --reason "upgrade: ${esc(d.lock.pipeline.to)}"</code>` : 're-frozen only with the user\'s approval at the next Stage 04 or through an SCR'}${lockFileCount(d.lock) ? details('files', `<ul class="cols mono">${[...d.lock.modified.map(f => `~ ${f}`), ...d.lock.added.map(f => `+ ${f}`), ...d.lock.removed.map(f => `− ${f}`)].map(f => `<li>${esc(f)}</li>`).join('')}</ul>`) : ''}`;
   const checkRow = `${pill(d.check.errors ? 'bad' : 'ok', `${d.check.errors} error(s)`)} ${pill(d.check.warnings ? 'warn' : 'neutral', `${d.check.warnings} warning(s)`)}${d.check.coverage ? `<div class="small muted">${esc(d.check.coverage)}</div>` : ''}${d.check.firstErrors.length ? details('first errors', `<ul class="gates small">${d.check.firstErrors.map(e => `<li class="bad"><span class="mark">✗</span><div>${md(e)}</div></li>`).join('')}</ul>`) : ''}`;
   const oracleRow = d.oracle.run ? `${pill(d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad', `${d.oracle.run.passed}/${d.oracle.run.total} passed`)} on "${esc(d.oracle.run.target)}" at ${when(d.oracle.run.at)}${d.oracle.run.stale ? ` ${pill('warn', 'stale: different lock')}` : ''}${d.oracle.run.filtered ? ' <span class="muted">(filtered)</span>' : ''}` : '<span class="muted">no run yet — Stage 04 derives the cases, Stage 05 runs them</span>';
   const evidence = `<dl class="kv"><dt>Lock</dt><dd>${lockRow}</dd><dt>Check</dt><dd>${checkRow}</dd><dt>Oracle</dt><dd>${oracleRow}</dd>${d.oracle.diff ? `<dt>Diff</dt><dd>${esc(d.oracle.diff.a)} vs ${esc(d.oracle.diff.b)}: ${pill(d.oracle.diff.divergent ? 'bad' : 'ok', `${d.oracle.diff.divergent} divergent`)} at ${when(d.oracle.diff.at)}</dd>` : ''}${d.oracle.expectDiff ? `<dt>Diff-expect</dt><dd>"${esc(d.oracle.expectDiff.label)}": ${d.oracle.expectDiff.compared} compared, ${d.oracle.expectDiff.divergent} with gaps at ${when(d.oracle.expectDiff.at)}</dd>` : ''}<dt>Decisions</dt><dd>${d.decisions.count} row(s)${d.pending.tags ? `, ${d.pending.tags} pending tag(s)` : ''}${d.decisions.drift ? ` ${pill('bad', 'append-only violated')} rows rewritten or removed since ${when(d.decisions.drift.since)}: <code>${esc([...d.decisions.drift.changed, ...d.decisions.drift.removed.map(x => '-' + x)].join(', '))}</code>` : ''}</dd></dl>`;
@@ -1869,7 +2057,7 @@ ${now}${pathList}
 <h3>All spec stages <span class="muted">(freshness ignored: what is still missing, not what was done this stage)</span></h3><ul class="gates">${specGates}</ul></section>
 <section class="card c6"><h2>Budgets</h2>${budget('Interview questions', d.budgets.interview.used, d.budgets.interview.budget)}${budget('Prototype versions', d.budgets.prototype.used, d.budgets.prototype.budget)}${budget('Red Team rounds, this iteration', d.budgets.redTeam.used, d.budgets.redTeam.budget)}
 <p class="note">Counts the user can read: never a score, never a block.</p>
-<h2 style="margin-top:20px">Settings</h2><dl class="kv"><dt>Cadence</dt><dd>prototype <b>${esc(s.prototypeCadence)}</b> · equivalence ${esc(s.equivalenceCadence)}</dd><dt>Equivalence</dt><dd>${esc(s.equivalenceTarget)}</dd><dt>Slice cap</dt><dd>${esc(s.sliceCap)} declared outcomes${d.slice ? `<div class="small muted">this slice: ${d.slice.declared === null ? 'unknown' : n(d.slice.declared)} new · ${n(d.slice.total)} in total across ${d.slice.operations} operation(s)</div>` : '<div class="small muted">no contracts yet (Stage 03)</div>'}</dd><dt>Budgets</dt><dd>${s.budgets.interviewQuestions} questions · ${s.budgets.prototypeVersions} versions · ${s.budgets.swarmRounds} rounds</dd><dt>Interfaces</dt><dd>${esc(d.project.interfaces.join(', ') || '—')}</dd></dl></section>
+<h2 style="margin-top:20px">Settings</h2><dl class="kv"><dt>Cadence</dt><dd>prototype <b>${esc(s.prototypeCadence)}</b> · equivalence ${esc(s.equivalenceCadence)}</dd><dt>Equivalence</dt><dd>${esc(s.equivalenceTarget)}</dd><dt>Slice cap</dt><dd>${esc(s.sliceCap)} declared outcomes${d.slice && d.slice.cadence === 'rolling' ? ' per accepted slice' : ''}${d.slice ? `<div class="small muted">${sliceText(d.slice)} · ${n(d.slice.total)} in total across ${d.slice.operations} operation(s)</div>` : '<div class="small muted">no contracts yet (Stage 03)</div>'}</dd><dt>Budgets</dt><dd>${s.budgets.interviewQuestions} questions · ${s.budgets.prototypeVersions} versions · ${s.budgets.swarmRounds} rounds</dd><dt>Interfaces</dt><dd>${esc(d.project.interfaces.join(', ') || '—')}</dd></dl></section>
 <section class="card"><h2>Gaps and questions</h2>${gapsBlock}${pendingBlock}</section>
 <section class="card"><h2>Evidence</h2>${evidence}</section>
 <section class="card"><h2>Prototype versions</h2>${versions}</section>
@@ -1906,7 +2094,7 @@ function cmdFreeze(p, args) {
   const cur = L.currentLockState(p.root);
   const now = new Date().toISOString();
   const history = prev
-    ? [...(prev.lock.history || []), { lockVersion: prev.lock.lockVersion, frozenAt: prev.lock.frozenAt, reason: prev.lock.reason, approvedBy: prev.lock.approvedBy, hash: prev.lock.hash }]
+    ? [...(prev.lock.history || []), { lockVersion: prev.lock.lockVersion, frozenAt: prev.lock.frozenAt, reason: prev.lock.reason, approvedBy: prev.lock.approvedBy, hash: prev.lock.hash, pipeline: prev.lock.pipeline ? prev.lock.pipeline.version : null }]
     : [];
   const lock = {
     tool: 'sdd',
@@ -1916,6 +2104,9 @@ function cmdFreeze(p, args) {
     reason,
     approvedBy: by,
     hash: cur.hash,
+    // The pipeline (specs/.sdd/** except the state file) pinned as one entry: its version and one hash over its files.
+    pipeline: cur.pipeline,
+    // Spec content, one hash per file.
     files: cur.files,
     // Baseline for the next slice's cap (sliceCapGate counts only outcomes not in this list). Not part of the hash.
     outcomes: declaredOutcomes(ctx).sort(),
@@ -1923,21 +2114,23 @@ function cmdFreeze(p, args) {
   };
   if (prev) {
     console.log(`Re-freezing (v${prev.lock.lockVersion} → v${lock.lockVersion}). Changes:`);
+    if (L.pipelineLine(prev)) console.log(`  ~ ${L.pipelineLine(prev)}`);
     prev.modified.forEach(f => console.log(`  ~ ${f}`));
     prev.added.forEach(f => console.log(`  + ${f}`));
     prev.removed.forEach(f => console.log(`  - ${f}`));
   }
   L.writeJson(p.lock, lock);
-  console.log(`Frozen ${Object.keys(cur.files).length} file(s) as lock v${lock.lockVersion} (${cur.hash.slice(0, 12)}) → specs/spec.lock.json`);
+  console.log(`Frozen ${Object.keys(cur.files).length} spec file(s) + pipeline ${cur.pipeline.version} as lock v${lock.lockVersion} (${cur.hash.slice(0, 12)}) → specs/spec.lock.json`);
   return 0;
 }
 
 function cmdVerify(p) {
   const v = L.verifyLock(p.root);
   if (!v.exists) { console.log('✗ no specs/spec.lock.json — nothing is frozen yet'); return 1; }
-  if (v.valid) { console.log(`✓ frozen set intact: lock v${v.lock.lockVersion} (${v.lock.hash.slice(0, 12)}), ${Object.keys(v.lock.files).length} file(s)`); return 0; }
+  if (v.valid) { console.log(`✓ frozen set intact: lock v${v.lock.lockVersion} (${v.lock.hash.slice(0, 12)}), ${Object.keys(v.lock.files).length} spec file(s) + pipeline ${v.lock.pipeline.version}`); return 0; }
   console.log(`✗ frozen set differs from lock v${v.lock.lockVersion}:`);
   if (!v.intact) console.log('  ! spec.lock.json hash does not match its own file list (lock edited by hand)');
+  if (L.pipelineLine(v)) console.log(`  ~ ${L.pipelineLine(v)}${REFREEZE_HINT(v)}`);
   v.modified.forEach(f => console.log(`  ~ ${f}`));
   v.added.forEach(f => console.log(`  + ${f}`));
   v.removed.forEach(f => console.log(`  - ${f}`));
@@ -1991,7 +2184,10 @@ function cmdTransition(p, args) {
   L.writeJson(p.state, next);
   fs.mkdirSync(p.logs, { recursive: true });
   const record = { ts: now, completed: L.STAGES[stage].name, resume: resume ? L.STAGES[resume].name : null, lastCompletedStep: last, lockHash: v && v.valid ? v.lock.hash : null, note };
-  if (stage === '02') record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
+  if (stage === '02') {
+    record.approvedBy = approvedBy; // the user's acceptance of the prototype (never self-attested in a file the agent writes)
+    Object.assign(record, acceptedOutcomes(p)); // what this slice declares: the per-slice cap under a rolling cadence reads it at Stage 03
+  }
   if (stage === '07') record.release = release;
   record.metrics = stageMetrics(p); // where the time went: rounds, gaps, outcomes, cases per stage, comparable across projects
   // These open a new iteration: Stage 03's round cap counts swarm-log headings from here (swarmRounds).
@@ -2015,9 +2211,13 @@ function cmdExport(p, args) {
   if (!v.valid) fail('export refused: the frozen set must be locked and intact (sdd.cjs verify)');
   const bPhases = update && exists(path.join(out, 'specs', 'IMPLEMENTATION_PHASES.md')) ? fs.readFileSync(path.join(out, 'specs', 'IMPLEMENTATION_PHASES.md'), 'utf8') : '';
   const bState = update && exists(path.join(out, 'specs/.sdd/_config/sdd-state.json')) ? L.readJson(path.join(out, 'specs/.sdd/_config/sdd-state.json')) : null;
+  // The frozen set: the spec files listed in the lock plus the pipeline (pinned as one entry, copied file by file).
+  const frozen = [...Object.keys(v.lock.files), ...L.pipelineFiles(p.root)];
   if (update) {
     // Remove frozen files that no longer exist in the new lock; B's own code is never touched.
-    for (const f of Object.keys(L.readJson(bLock).files)) if (!(f in v.lock.files)) fs.rmSync(path.join(out, f), { force: true });
+    const keep = new Set(frozen);
+    const stale = [...Object.keys(L.readJson(bLock).files || {}), ...L.pipelineFiles(out)];
+    for (const f of stale) if (!keep.has(f)) fs.rmSync(path.join(out, f), { force: true });
   }
   const copy = (relPath, transform) => {
     const src = path.join(p.root, relPath);
@@ -2026,7 +2226,7 @@ function cmdExport(p, args) {
     if (transform) fs.writeFileSync(dst, transform(fs.readFileSync(src, 'utf8')));
     else fs.copyFileSync(src, dst);
   };
-  for (const f of Object.keys(v.lock.files)) copy(f);
+  for (const f of frozen) copy(f);
   copy('specs/spec.lock.json');
   if (exists(p.phases)) {
     // Fresh export: every task unchecked. Update: keep B's progress on tasks whose text is unchanged.
@@ -2052,7 +2252,7 @@ function cmdExport(p, args) {
     timestamp: new Date().toISOString(),
     notes: `Independent equivalence build ${update ? 'resynced to' : 'exported from'} lock v${v.lock.lockVersion} (${v.lock.hash.slice(0, 12)}). Build with Stage 05 using ONLY these files.`,
   });
-  console.log(`${update ? 'Resynced' : 'Exported'} ${Object.keys(v.lock.files).length} frozen file(s) ${update ? 'into' : 'to'} ${out}`);
+  console.log(`${update ? 'Resynced' : 'Exported'} ${frozen.length} frozen file(s) (${Object.keys(v.lock.files).length} spec + pipeline ${v.lock.pipeline.version}) ${update ? 'into' : 'to'} ${out}`);
   console.log('Next: open that directory in a FRESH agent session (no access to the first implementation) and run Stage 05.');
   return 0;
 }

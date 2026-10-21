@@ -42,6 +42,9 @@ function project({ example = false } = {}) {
 }
 
 const freeze = p => assert.equal(p.sdd('freeze', '--reason', 'test', '--approved-by', 'tester').code, 0);
+/** Copy the template's pipeline (specs/.sdd) into the project so the lock pins a real version. */
+const withPipeline = p => { fs.cpSync(path.join(TEMPLATE, 'specs/.sdd'), p.at('specs/.sdd'), { recursive: true, filter: f => !/sdd-state\.json$/.test(f) }); return p; };
+const bumpPipeline = (p, version) => p.write('specs/.sdd/WORKSPACE_ROUTING.md', p.read('specs/.sdd/WORKSPACE_ROUTING.md').replace(/<!-- version: .*? -->/, `<!-- version: ${version} -->`));
 const swarmLog = n => Array.from({ length: n }, (_, i) => `## 🔄 Iteration ${i + 1} (round ${i + 1} of max 3 — full)\n`).join('\n');
 
 // ---------- A1: Stage 00 resume and stage order ----------
@@ -510,6 +513,32 @@ test('agenda: open policy gaps and [PENDING-<ROLE>] decisions, grouped by role; 
   assert.match(p.read('specs/logs/agenda.md'), /# Agenda/);
 });
 
+test('agenda: a row that says `supersedes DECnnn` drops the pending row from agenda, readiness and the dashboard; check warns on a citation without the word and errors on an unknown id', () => {
+  const p = project({ example: true });
+  fs.appendFileSync(p.at('specs/DECISION_LOG.md'), '| DEC007 | Ghost timeout [PENDING-SME] | 5, 7 | 7 min | until experts confirm | SPEC §4 |\n| DEC008 | Retention [PENDING-LEGAL] | 1y, 7y | 7y | regulation unknown | SPEC §6 |\n| DEC009 | Ghost timeout confirmed | 5, 7 | 7 min | experts confirmed DEC007 | SPEC §4 |\n');
+  let out = p.sdd('check', '--contracts').out;
+  assert.match(out, /⚠ DECISION_LOG.md: DEC009 cites pending DEC007 without superseding it — .*write "supersedes DEC007"/);
+  assert.match(p.sdd('agenda').out, /## Working assumptions pending SME \(1\)[\s\S]*DEC007/, 'a citation alone is not an answer');
+  assert.match(p.sdd('readiness').out, /pending:\s+2 \[PENDING-<ROLE>\] tag\(s\)/);
+  fs.appendFileSync(p.at('specs/DECISION_LOG.md'), '| DEC010 | Ghost timeout: 7 min — Supersedes DEC007 | 5, 7 | 7 min | experts confirmed | SPEC §4 |\n');
+  out = p.sdd('check', '--contracts').out;
+  assert.doesNotMatch(out, /cites pending DEC007/, 'the superseding row silences the warning');
+  assert.match(out, /→ PASS/);
+  const agenda = p.sdd('agenda').out;
+  assert.doesNotMatch(agenda, /DEC007/);
+  assert.doesNotMatch(agenda, /pending SME/);
+  assert.match(agenda, /## Working assumptions pending LEGAL \(1\)[\s\S]*DEC008/);
+  assert.match(p.sdd('readiness').out, /pending:\s+1 \[PENDING-<ROLE>\] tag\(s\)/);
+  const j = JSON.parse(p.sdd('dashboard', '--json').out);
+  assert.equal(j.pending.tags, 1);
+  assert.deepEqual(j.pending.byRole.map(r => r.role), ['LEGAL']);
+  fs.appendFileSync(p.at('specs/DECISION_LOG.md'), '| DEC011 | Retention: 7y, supersedes DEC042 and DEC008 | 1y, 7y | 7y | legal confirmed | SPEC §6 |\n');
+  out = p.sdd('check', '--contracts').out;
+  assert.match(out, /✗ DECISION_LOG.md: DEC011 supersedes DEC042, which is not in specs\/DECISION_LOG.md/);
+  assert.doesNotMatch(p.sdd('agenda').out, /DEC008/, 'several ids after one `supersedes`');
+  assert.doesNotMatch(p.sdd('readiness').out, /pending:/);
+});
+
 test('metrics: one row per transition; spec-outline: section sizes', () => {
   const p = project({ example: true });
   assert.match(p.sdd('metrics').out, /No transitions yet/);
@@ -625,4 +654,182 @@ test('upgrade: legacy state names are mapped to today\'s numbering (03p accepted
   assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
   assert.equal(p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first.md'), 'filled in by the agent\n', 'the filled-in log is kept');
   assert.match(p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first-2.md'), /State file mapped: 03p_prototype/);
+});
+
+// ---------- v3.5: the pipeline is one lock entry ----------
+
+test('lock: pipeline pin — a pipeline change is one line (never a file list); a spec file still reports by name; the re-freeze is one line too', () => {
+  const p = withPipeline(project({ example: true }));
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
+  freeze(p);
+  const lock = p.json('specs/spec.lock.json');
+  assert.equal(lock.pipeline.version, '2026.10.21-v3.5-prototype-first');
+  assert.match(lock.pipeline.hash, /^[0-9a-f]{64}$/);
+  assert.ok(Object.keys(lock.files).length > 0 && Object.keys(lock.files).every(f => !f.startsWith('specs/.sdd/')), 'lock.files holds the spec content only');
+  assert.match(p.sdd('verify').out, /✓ frozen set intact: lock v1 \([0-9a-f]{12}\), \d+ spec file\(s\) \+ pipeline 2026\.10\.21-v3\.5-prototype-first/);
+  // one pipeline file changes (a template upgrade)
+  bumpPipeline(p, '2026.10.22-v3.6-prototype-first');
+  const v = p.sdd('verify');
+  assert.equal(v.code, 1);
+  assert.match(v.out, /~ pipeline 2026\.10\.21-v3\.5-prototype-first → 2026\.10\.22-v3\.6-prototype-first — re-freeze with the user's approval: `sdd\.cjs freeze --reason "upgrade: 2026\.10\.22-v3\.6-prototype-first"/);
+  assert.doesNotMatch(v.out, /specs\/\.sdd\//, 'no pipeline file is listed');
+  assert.doesNotMatch(v.out, /~ specs\//, 'no spec file is listed');
+  const st = p.sdd('status').out;
+  assert.match(st, /lock:\s+v1 [0-9a-f]{12} — MODIFIED \(pipeline only\)\n\s+pipeline 2026\.10\.21-v3\.5-prototype-first → 2026\.10\.22-v3\.6-prototype-first/);
+  const gate = p.sdd('transition', '--completed', '04').out;
+  assert.match(gate, /✗ frozen set modified since lock v1: pipeline 2026\.10\.21-v3\.5-prototype-first → 2026\.10\.22-v3\.6-prototype-first\n/);
+  assert.doesNotMatch(gate, /specs\/\.sdd\//);
+  const j = JSON.parse(p.sdd('dashboard', '--json').out);
+  assert.deepEqual([j.lock.intact, j.lock.modified, j.lock.pipeline.changed, j.lock.pipeline.from, j.lock.pipeline.to], [false, [], true, '2026.10.21-v3.5-prototype-first', '2026.10.22-v3.6-prototype-first']);
+  assert.equal(p.sdd('dashboard').code, 0);
+  assert.match(p.read('specs/logs/dashboard.html'), /pipeline changed/);
+  // a spec file changes too: still reported by name, next to the pipeline line
+  p.write('specs/SPEC.md', p.read('specs/SPEC.md') + '\n<!-- edited -->\n');
+  const v2 = p.sdd('verify').out;
+  assert.match(v2, /~ pipeline 2026\.10\.21-v3\.5-prototype-first → 2026\.10\.22-v3\.6-prototype-first/);
+  assert.match(v2, /~ specs\/SPEC\.md/);
+  assert.match(p.sdd('status').out, /MODIFIED \(spec files: 1 changed, 0 added, 0 removed; pipeline, see below\)/);
+  assert.match(p.sdd('transition', '--completed', '04').out, /frozen set modified since lock v1: pipeline [^;]+; ~specs\/SPEC\.md/);
+  // the re-freeze after an upgrade
+  const f = p.sdd('freeze', '--reason', 'upgrade: 2026.10.22-v3.6-prototype-first', '--approved-by', 'Ada');
+  assert.equal(f.code, 0, f.out);
+  assert.match(f.out, /Re-freezing \(v1 → v2\)\. Changes:\n  ~ pipeline 2026\.10\.21-v3\.5-prototype-first → 2026\.10\.22-v3\.6-prototype-first\n  ~ specs\/SPEC\.md\n/);
+  const lock2 = p.json('specs/spec.lock.json');
+  assert.equal(lock2.pipeline.version, '2026.10.22-v3.6-prototype-first');
+  assert.equal(lock2.history[0].pipeline, '2026.10.21-v3.5-prototype-first');
+  assert.match(p.sdd('verify').out, /✓ frozen set intact: lock v2/);
+});
+
+test('lock: an old-format lock (pipeline hashed file by file, no pipeline entry) reads as a modified pipeline, never crashes', () => {
+  const p = withPipeline(project({ example: true }));
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
+  freeze(p);
+  const lock = p.json('specs/spec.lock.json');
+  const files = { ...lock.files };
+  for (const f of L.pipelineFiles(p.root)) files[f] = L.hashFile(p.at(f));
+  const { pipeline, ...rest } = lock;
+  p.write('specs/spec.lock.json', JSON.stringify({ ...rest, toolVersion: '2026.10.20-v3.4', hash: L.manifestHash(files), files }));
+  const v = p.sdd('verify');
+  assert.equal(v.code, 1);
+  assert.match(v.out, /~ pipeline unpinned → 2026\.10\.21-v3\.5-prototype-first \(the lock predates the pipeline pin/);
+  assert.doesNotMatch(v.out, /lock edited by hand/, 'the old hash formula is still recognized');
+  assert.doesNotMatch(v.out, /~ specs\//, 'the spec files match: only the pin is missing');
+  const st = p.sdd('status');
+  assert.equal(st.code, 0, st.out);
+  assert.match(st.out, /MODIFIED \(pipeline only\)/);
+  assert.match(p.sdd('transition', '--completed', '04').out, /frozen set modified since lock v1: pipeline unpinned → 2026\.10\.21-v3\.5-prototype-first/);
+  const j = JSON.parse(p.sdd('dashboard', '--json').out);
+  assert.deepEqual([j.lock.intact, j.lock.pipeline.changed, j.lock.pipeline.version, j.lock.modified], [false, true, null, []]);
+  // a user-approved re-freeze pins it
+  assert.equal(p.sdd('freeze', '--reason', 'upgrade: 2026.10.21-v3.5-prototype-first', '--approved-by', 'Ada').code, 0);
+  assert.equal(p.json('specs/spec.lock.json').pipeline.version, '2026.10.21-v3.5-prototype-first');
+  assert.match(p.sdd('verify').out, /✓ frozen set intact: lock v2/);
+});
+
+test('upgrade: on a locked project the log says the lock now differs only by the pipeline pin', () => {
+  const p = withPipeline(project({ example: true }));
+  bumpPipeline(p, '2026.10.18-v3.3-prototype-first');
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
+  freeze(p);
+  const t = p.sdd('upgrade', '--from', TEMPLATE);
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /lock: The lock v1 now differs only by the pipeline pin: pipeline 2026\.10\.18-v3\.3-prototype-first → 2026\.10\.21-v3\.5-prototype-first\. Re-freeze with the user's approval: `sdd\.cjs freeze --reason "upgrade: 2026\.10\.21-v3\.5-prototype-first" --approved-by "<user>"`/);
+  const log = p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first.md');
+  assert.match(log, /now differs only by the pipeline pin: pipeline 2026\.10\.18-v3\.3-prototype-first → 2026\.10\.21-v3\.5-prototype-first/);
+  assert.match(log, /lock:\s+v1 [0-9a-f]{12} — MODIFIED \(pipeline only\)/, 'the status captured in the log shows the one-line diff');
+});
+
+test('export: the build-B workspace holds the spec files plus every pipeline file, its lock verifies, and --update drops stale pipeline files', () => {
+  const p = withPipeline(project({ example: true }));
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
+  freeze(p);
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-b-'));
+  const e = p.sdd('export', out);
+  assert.equal(e.code, 0, e.out);
+  const lock = p.json('specs/spec.lock.json');
+  const pipeline = L.pipelineFiles(p.root);
+  assert.match(e.out, new RegExp(`Exported ${Object.keys(lock.files).length + pipeline.length} frozen file\\(s\\) \\(${Object.keys(lock.files).length} spec \\+ pipeline 2026\\.10\\.21-v3\\.5-prototype-first\\)`));
+  const expected = new Set([...Object.keys(lock.files), ...pipeline, 'specs/spec.lock.json', 'specs/IMPLEMENTATION_PHASES.md', 'specs/.sdd/_config/sdd-state.json', 'AGENTS.md', 'CLAUDE.md', '.cursorrules']);
+  const actual = new Set(L.listFiles(out).map(f => path.relative(out, f)));
+  assert.deepEqual([...actual].sort(), [...expected].sort(), 'exactly the frozen set, the lock, the phases, the state and the entry files');
+  const bv = spawnSync(process.execPath, [SDD, 'verify', '--root', out], { encoding: 'utf8' });
+  assert.match(bv.stdout, /✓ frozen set intact: lock v1/, 'B is on the same intact lock');
+  // --update: a pipeline file that no longer exists in the template is removed from B
+  fs.writeFileSync(path.join(out, 'specs/.sdd/03p_prototype.md'), 'stale\n');
+  assert.equal(p.sdd('export', out, '--update').code, 0);
+  assert.ok(!fs.existsSync(path.join(out, 'specs/.sdd/03p_prototype.md')), 'stale pipeline file removed');
+  assert.deepEqual([...new Set(L.listFiles(out).map(f => path.relative(out, f)))].sort(), [...expected].sort());
+});
+
+// ---------- Rolling cadence: the cap reads per accepted slice, from the outcomes each Stage 02 row records ----------
+
+const lastRow = p => JSON.parse(p.read('specs/logs/transitions.jsonl').trim().split('\n').pop());
+
+test('rolling cap: two accepted slices each under the cap pass Stage 03 although their sum exceeds it; default cadence counts the whole set', () => {
+  const p = project({ example: true });
+  const manifest = p.json('specs/contracts/manifest.json');
+  const spec = p.read('specs/SPEC.md');
+  fs.renameSync(p.at('specs/contracts'), p.at('contracts-later')); // prototypes come before the contracts, as a rolling project runs
+  // Slice 1: §5 names the service and collection operations only (9 outcomes once the contracts are compiled).
+  p.write('specs/SPEC.md', spec.replace(/### 5\.2 Single note[\s\S]*?(?=## 6\.)/, ''));
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  p.write('specs/logs/02-prototype.md', PROTOTYPE_RECORD);
+  let t = p.sdd('transition', '--completed', '02', '--approved-by', 'Wil');
+  assert.equal(t.code, 0, t.out);
+  let rec = lastRow(p);
+  assert.equal(rec.approvedBy, 'Wil');
+  assert.deepEqual(rec.outcomes, ['spec:getHealth', 'spec:createNote', 'spec:listNotes'], 'no contracts yet: the operations SPEC.md §5 names');
+  assert.equal(rec.outcomesSource, 'spec');
+  // Slice 2: the single-note operations (21 outcomes).
+  p.write('specs/logs/01-interview.md', p.read('specs/logs/01-interview.md'));
+  t = p.sdd('transition', '--completed', '01');
+  assert.equal(t.code, 0, t.out);
+  p.write('specs/SPEC.md', spec);
+  p.write('specs/logs/02-prototype.md', PROTOTYPE_RECORD);
+  t = p.sdd('transition', '--completed', '02', '--approved-by', 'Wil');
+  assert.equal(t.code, 0, t.out);
+  assert.equal(lastRow(p).outcomes.length, 7);
+  // Stage 03 compiles the contracts and declares the cadence. Cap 25: 9 and 21 each pass; 30 together would not.
+  fs.renameSync(p.at('contracts-later'), p.at('specs/contracts'));
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...manifest, prototypeCadence: 'rolling', sliceCap: 25 }));
+  t = p.sdd('transition', '--completed', '03').out;
+  assert.match(t, /✓ rolling cadence: 2 accepted slice\(s\) since the last lock, each within cap 25 — #1 9, #2 21 new declared outcome\(s\); 30 in total/);
+  assert.match(p.sdd('readiness').out, /slice:\s+rolling cadence — 2 accepted slice\(s\) since the last lock: #1 9, #2 21 new declared outcome\(s\) \(cap 25 per slice\); 30 in total across 7 operation\(s\)/);
+  const j = JSON.parse(p.sdd('dashboard', '--json').out);
+  assert.equal(j.slice.cadence, 'rolling');
+  assert.deepEqual(j.slice.slices.map(s => [s.n, s.size, s.source, s.approvedBy]), [[1, 9, 'spec', 'Wil'], [2, 21, 'spec', 'Wil']]);
+  assert.equal(p.sdd('dashboard').code, 0);
+  assert.match(p.read('specs/logs/dashboard.html'), /25 declared outcomes per accepted slice.*per accepted slice since the last lock: #1 9 · #2 21 new · 30 in total/);
+  // Default cadence, same rows: the whole set is one slice and the cap refuses.
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...manifest, sliceCap: 25 }));
+  t = p.sdd('transition', '--completed', '03').out;
+  assert.match(t, /✗ slice adds 30 declared outcome\(s\), cap 25 \(30 in total\)/);
+  assert.match(p.sdd('readiness').out, /slice:\s+30 new declared outcome\(s\) \(cap 25\); 30 in total/);
+});
+
+test('rolling cap: a single accepted slice over the cap still fails; with no accepted row since the lock the whole set is one slice', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 1, stepName: '01_brainstorming' });
+  p.write('specs/logs/02-prototype.md', PROTOTYPE_RECORD);
+  const t = p.sdd('transition', '--completed', '02', '--approved-by', 'Wil');
+  assert.equal(t.code, 0, t.out);
+  const rec = lastRow(p);
+  assert.equal(rec.outcomesSource, 'contracts');
+  assert.equal(rec.outcomes.length, 30, 'contracts exist: the declared outcome keys');
+  assert.ok(rec.outcomes.includes('op:updateNote:412'));
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, prototypeCadence: 'rolling', sliceCap: 25 }));
+  assert.match(p.sdd('transition', '--completed', '03').out, /✗ rolling cadence: slice #1 \(accepted \d{4}-\d{2}-\d{2} by Wil\) adds 30 declared outcome\(s\), cap 25 per slice — slices since the last lock: #1 30; 30 in total: split the slice with the user/);
+  // After a freeze the row predates the lock: nothing new, no slice to count.
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, prototypeCadence: 'rolling' }));
+  freeze(p);
+  const lock = p.json('specs/spec.lock.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, prototypeCadence: 'rolling', sliceCap: 15 }));
+  assert.match(p.sdd('readiness').out, /slice:\s+rolling cadence — 0 new declared outcome\(s\) \(no accepted prototype recorded its outcomes since the last lock: counted as one slice\) \(cap 15 per slice\); 30 in total/);
+  // A lock that froze only 10 of today's outcomes, no accepted prototype since: the whole set is one slice, as under the default cadence.
+  p.write('specs/spec.lock.json', JSON.stringify({ ...lock, outcomes: lock.outcomes.slice(0, 10) }));
+  assert.match(p.sdd('readiness').out, /✗ rolling cadence, but no accepted prototype recorded its outcomes since the last lock: the whole set counts as one slice — 20 new declared outcome\(s\), cap 15 \(30 in total\)/);
+  const { outcomes, ...legacy } = lock;
+  p.write('specs/spec.lock.json', JSON.stringify(legacy));
+  assert.match(p.sdd('readiness').out, /slice:\s+rolling cadence — unknown \(lock predates outcome recording\) \(cap 15 per slice\); 30 in total/);
 });

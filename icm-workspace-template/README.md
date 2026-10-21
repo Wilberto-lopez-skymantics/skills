@@ -26,7 +26,13 @@ No global rules. No plugin install.
 node /path/to/skills/icm-workspace-template/specs/.sdd/scripts/sdd.cjs upgrade --from /path/to/skills/icm-workspace-template --root /path/to/your-project
 ```
 
-It replaces `specs/.sdd/` with the newer template, keeps the state file (mapping an older pipeline's stage names to today's numbering, e.g. an accepted `03p_prototype` becomes Stage 02 complete), renames the log files whose names changed between versions, regenerates the entry files when they are still the template's copy (a customized one is left alone with a note), and writes `specs/logs/upgrade-<version>.md` with the status and readiness output and two sections for the agent to fill: where the project stands per slice, and the next actions. Pipeline files are part of the frozen set, so a locked project shows the lock as modified until the next user-approved freeze. Release history and open items: [`Future_work.md`](Future_work.md).
+It replaces `specs/.sdd/` with the newer template, keeps the state file (mapping an older pipeline's stage names to today's numbering, e.g. an accepted `03p_prototype` becomes Stage 02 complete), renames the log files whose names changed between versions, regenerates the entry files when they are still the template's copy (a customized one is left alone with a note), and writes `specs/logs/upgrade-<version>.md` with the status and readiness output and two sections for the agent to fill: where the project stands per slice, and the next actions. The pipeline is one entry of the lock (`pipeline: { version, hash }`), so on a locked project the upgrade leaves a one-line diff — `sdd.cjs verify` prints `pipeline 2026.10.20-v3.4 → 2026.10.21-v3.5`, no file list — and the upgrade log says so. The re-freeze is still the user's call:
+
+```bash
+node specs/.sdd/scripts/sdd.cjs freeze --reason "upgrade: 2026.10.21-v3.5-prototype-first" --approved-by "<user>"
+```
+
+A lock written before the pin existed (every pipeline file hashed one by one) reads as "pipeline unpinned" until that re-freeze. Release history and open items: [`Future_work.md`](Future_work.md).
 
 ## The Core Mission: Observational Equivalence
 
@@ -102,7 +108,7 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 | `sdd.cjs status` | Current stage, lock state, latest evidence, and the next stage's exit gates |
 | `sdd.cjs check [--contracts \| --spec]` | Validate manifest, contracts, the spec's structure (required sections, placeholders, hedged numbers, §11 ↔ manifest overrides, every operation named, UI components ↔ DESIGN.md, module links, size), oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code; exemptions by class) and phase binding. `--spec` checks the Stage 01–02 draft alone: placeholders and unfilled sections are reported, not errors, and the sections a prototype needs are listed |
 | `sdd.cjs readiness` | Report only (exit 0): slice size vs cap, gaps by kind, budgets vs actuals (interview questions, prototype versions, Red Team rounds), the user's open policy questions verbatim, coverage, latest diff-expect, the path to a frozen spec with the user's next action, failing gates for 01/02/03/04 |
-| `sdd.cjs agenda [--write]` | The questions only people outside the pipeline can answer: open policy gaps and every `[PENDING-<ROLE>]` decision, grouped by role (`--write` → `specs/logs/agenda.md`) |
+| `sdd.cjs agenda [--write]` | The questions only people outside the pipeline can answer: open policy gaps and every `[PENDING-<ROLE>]` decision, grouped by role (`--write` → `specs/logs/agenda.md`). An answer is a new row whose text says `supersedes DECnnn`; the superseded row then drops off the agenda, the readiness count and the dashboard |
 | `sdd.cjs metrics` | One row per transition with its recorded metrics (questions, versions, rounds, gaps, outcomes, cases): where the time went, comparable across slices |
 | `sdd.cjs spec-outline` | Size of every SPEC section and module, to plan the split into `specs/spec/<module>.md` |
 | `sdd.cjs dashboard [--out F] [--json] [--open]` | One self-contained HTML page (no scripts, no network) with the pipeline strip, the next stage and the user's next action, exit gates, budgets, settings, gaps and questions, the agenda, lock/check/oracle evidence, prototype versions and the transition history; `specs/logs/dashboard.html` by default, rewritten by every transition; `--json` emits the same data for other tools |
@@ -269,7 +275,7 @@ What experience with real projects says about running the pipeline well:
 - **Keep the spec readable in one pass.** `check` warns above 120 KB per file and `sdd.cjs spec-outline` shows where the bytes are; Stage 03 splits by surface into `specs/spec/<module>.md` with `SPEC.md` as the index (every module linked), and keeps tables in the contracts.
 - **The decision log is append-only, and the tool knows.** Every transition fingerprints the rows; `check` and `status` warn when an earlier row changes. Derived artifacts cite decisions by id.
 - **Derived artifacts.** A complete spec set generates traditional deliverables mechanically: the `design-package` skill (systems-engineering package) is the first; an API reference from `openapi.yaml`, a user manual from the §14 copy table and wireframes, and a test plan from the cases and phases follow the same pattern (impact analysis, permanent ids, revisions).
-- **Cadence is a decision.** `prototypeCadence: "rolling"` lets several slices be prototyped before one hardening pass, with the cap enforced at Stage 03 for everything accumulated. Default is L2 on every slice; teams shipping several slices before a release set `equivalenceCadence: "release"`, keep the lockstep build B green, and certify L2 once with `--release`. A pending slice is never called L2.
+- **Cadence is a decision.** `prototypeCadence: "rolling"` lets several slices be prototyped before one hardening pass; hardening then runs in slice-sized passes in acceptance order, and the cap is enforced at Stage 03 per accepted slice (each `transition --completed 02` records the slice's declared outcomes in `transitions.jsonl`; `readiness` and the dashboard show one size per slice), never for their sum. Default is L2 on every slice; teams shipping several slices before a release set `equivalenceCadence: "release"`, keep the lockstep build B green, and certify L2 once with `--release`. A pending slice is never called L2.
 
 ## Relationship to the SDD skills
 
@@ -284,4 +290,4 @@ Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 ```
 
-The lock (`specs/spec.lock.json`) records the hash of every pipeline file a project was built with; upgrading the template is a frozen-set change and requires a re-freeze.
+The lock (`specs/spec.lock.json`) pins the pipeline a project was built with as one entry — its version and one hash over every file under `specs/.sdd/` — next to the per-file hashes of the spec content; upgrading the template is a frozen-set change and requires a re-freeze (`freeze --reason "upgrade: <version>"`), whose diff is that one line.

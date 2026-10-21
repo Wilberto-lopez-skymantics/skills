@@ -463,9 +463,13 @@ function getPath(obj, expr) {
 
 // ========== Lock (frozen set) ==========
 
+// Spec content: hashed per file into lock.files.
 const FROZEN_FILES = ['specs/SPEC.md', 'specs/DESIGN.md', 'specs/CODING_STANDARDS.md'];
 // specs/spec/ holds optional spec modules (SPEC.md stays the index and links each one).
-const FROZEN_DIRS = ['specs/spec', 'specs/contracts', 'specs/fixtures', 'specs/wireframes', 'specs/.sdd'];
+const FROZEN_DIRS = ['specs/spec', 'specs/contracts', 'specs/fixtures', 'specs/wireframes'];
+// The pipeline: frozen too, but pinned as ONE lock entry (lock.pipeline = { version, hash }) so an
+// upgrade shows as a one-line version change rather than a list of every file under specs/.sdd/.
+const PIPELINE_DIR = 'specs/.sdd';
 const FROZEN_EXCLUDE = new Set(['specs/.sdd/_config/sdd-state.json']);
 const IGNORED_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'node_modules', '.git']);
 
@@ -480,6 +484,7 @@ function walk(dir, out) {
   }
 }
 
+/** Spec content files (project-relative, sorted): the per-file part of the lock. */
 function frozenFiles(root) {
   const files = [];
   for (const f of FROZEN_FILES) {
@@ -488,6 +493,26 @@ function frozenFiles(root) {
   }
   for (const d of FROZEN_DIRS) walk(path.join(root, d), files);
   return files.map(f => rel(root, f)).filter(r => !FROZEN_EXCLUDE.has(r)).sort();
+}
+
+/** Pipeline files (project-relative, sorted): everything under specs/.sdd except the state file. */
+function pipelineFiles(root) {
+  const files = [];
+  walk(path.join(root, PIPELINE_DIR), files);
+  return files.map(f => rel(root, f)).filter(r => !FROZEN_EXCLUDE.has(r)).sort();
+}
+
+/** The template version from WORKSPACE_ROUTING.md's `<!-- version: … -->` comment. */
+function pipelineVersion(root) {
+  let text = '';
+  try { text = fs.readFileSync(path.join(root, PIPELINE_DIR, 'WORKSPACE_ROUTING.md'), 'utf8'); } catch { return 'unknown'; }
+  const m = text.match(/<!--\s*version:\s*(.+?)\s*-->/);
+  return m ? m[1] : 'unknown';
+}
+
+/** Whether a lock-file path belongs to the pipeline (old-format locks listed them one by one). */
+function isPipelinePath(f) {
+  return f === PIPELINE_DIR || f.startsWith(PIPELINE_DIR + '/');
 }
 
 // ========== Spec text (SPEC.md + modules) ==========
@@ -528,36 +553,69 @@ function manifestHash(files) {
   return h.digest('hex');
 }
 
+/** One pin for the whole pipeline: its version and a hash over the sorted file list and their hashes. */
+function pipelineState(root) {
+  const files = {};
+  for (const r of pipelineFiles(root)) files[r] = hashFile(path.join(root, r));
+  return { version: pipelineVersion(root), hash: manifestHash(files) };
+}
+
+/** The lock hash: the spec files plus the pipeline pin as one entry. */
+function lockHash(files, pipeline) {
+  return manifestHash({ ...files, [PIPELINE_DIR]: pipeline.hash });
+}
+
 function currentLockState(root) {
   const files = {};
   for (const r of frozenFiles(root)) files[r] = hashFile(path.join(root, r));
-  return { files, hash: manifestHash(files) };
+  const pipeline = pipelineState(root);
+  return { files, pipeline, hash: lockHash(files, pipeline) };
 }
 
+/**
+ * Compare the lock with the frozen set. `added`/`removed`/`modified` list spec files only;
+ * `pipeline` reports the pin as one line: { changed, from, to, legacy }.
+ * An old-format lock (per-file pipeline hashes, no `pipeline` entry) is read as a modified pipeline.
+ */
 function verifyLock(root) {
   const p = projectPaths(root);
-  if (!fs.existsSync(p.lock)) return { exists: false, valid: false, added: [], removed: [], modified: [] };
+  if (!fs.existsSync(p.lock)) return { exists: false, valid: false, added: [], removed: [], modified: [], pipeline: { changed: false, from: null, to: pipelineVersion(root), legacy: false } };
   const lock = readJson(p.lock);
+  const lockFiles = lock.files && typeof lock.files === 'object' ? lock.files : {};
+  const legacy = !lock.pipeline || typeof lock.pipeline !== 'object';
   const current = currentLockState(root);
   const added = [];
   const removed = [];
   const modified = [];
+  const specFilesInLock = Object.fromEntries(Object.entries(lockFiles).filter(([f]) => !isPipelinePath(f)));
   for (const f of Object.keys(current.files)) {
-    if (!(f in lock.files)) added.push(f);
-    else if (lock.files[f] !== current.files[f]) modified.push(f);
+    if (!(f in specFilesInLock)) added.push(f);
+    else if (specFilesInLock[f] !== current.files[f]) modified.push(f);
   }
-  for (const f of Object.keys(lock.files)) if (!(f in current.files)) removed.push(f);
-  const intact = lock.hash === manifestHash(lock.files);
+  for (const f of Object.keys(specFilesInLock)) if (!(f in current.files)) removed.push(f);
+  const pipeline = legacy
+    ? { changed: true, from: 'unpinned', to: current.pipeline.version, legacy: true }
+    : { changed: lock.pipeline.hash !== current.pipeline.hash, from: lock.pipeline.version, to: current.pipeline.version, legacy: false };
+  const intact = legacy ? lock.hash === manifestHash(lockFiles) : lock.hash === lockHash(lockFiles, lock.pipeline);
   return {
     exists: true,
-    valid: intact && !added.length && !removed.length && !modified.length,
+    valid: intact && !added.length && !removed.length && !modified.length && !pipeline.changed,
     intact,
     lock,
     current,
     added,
     removed,
     modified,
+    pipeline,
   };
+}
+
+/** The pipeline change as one line (`pipeline 2026.10.20-v3.4 → 2026.10.21-v3.5`), or null when unchanged. */
+function pipelineLine(v) {
+  if (!v || !v.pipeline || !v.pipeline.changed) return null;
+  const { from, to, legacy } = v.pipeline;
+  if (legacy) return `pipeline unpinned → ${to} (the lock predates the pipeline pin; it listed the pipeline file by file)`;
+  return from === to ? `pipeline ${to} (files changed, same version)` : `pipeline ${from} → ${to}`;
 }
 
 // ========== Fixtures (oracle cases) ==========
@@ -774,6 +832,10 @@ module.exports = {
   getPath,
   listFiles,
   frozenFiles,
+  pipelineFiles,
+  pipelineVersion,
+  pipelineState,
+  pipelineLine,
   hashFile,
   specFiles,
   specText,
