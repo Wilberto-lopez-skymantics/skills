@@ -1,0 +1,50 @@
+{
+  "skill_name": "design-package",
+  "evals": [
+    {
+      "id": 1,
+      "name": "adopt-existing-package",
+      "prompt": "We built docs/design-package last night from the prompt you gave me (it's derived from commit bc67109). Set it up so we can keep updating it as the spec evolves — don't change its content, my systems engineer already started reading it.",
+      "expected_output": "Package adopted as revision 1: manifest.json stamped with the bc67109 baseline, CHANGELOG.md with a Revision 1 baseline entry, README revision history and manifest convention, revision-1 banners; no requirement, decision, interface, TBR, gap or diagram content changed; specs/ untouched; pkg.py check reports 0 errors.",
+      "files": [
+        "fixture: clone of the repo at stage-01-brainstorming plus the uncommitted docs/design-package and docs/README.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "update-after-sme-session",
+      "prompt": "The SMEs met this morning. I logged their answer as DEC101 (they confirmed the ghost and No Radar thresholds but moved feed silence to 3 minutes) and updated SPEC.md, including a new invariant V438. Bring the design package up to date for the systems engineer.",
+      "expected_output": "Revision 2: DEC101 classified and traced; requirements on DEC043/DEC047 updated in place with their IDs kept (feed-silence threshold 3 min, DEC101 added to sources); V438 cited; TBR-10/TBR-14 closed or updated with 'Closed in rev 2' wording as appropriate and affected requirement statuses adjusted; ZEN-DIA-05e updated or marked pending redraw; CHANGELOG revision 2 entry with counts; README key numbers and 07 coverage updated; pkg.py check 0 errors; manifest stamped revision 2; specs/ untouched; no ID renumbered or deleted.",
+      "files": [
+        "fixture: adopted clone (revision 1 at bc67109) plus a commit adding DEC101, editing V31 and §4.1 Freshness, and adding V438"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "refresh-when-nothing-changed",
+      "prompt": "can you refresh the design package before I send it to Dave tomorrow?",
+      "expected_output": "Reports that the spec set has not changed since revision 1 and the package is current; runs the check; makes no edits to the package; specs/ untouched.",
+      "files": [
+        "fixture: adopted clone (revision 1 at bc67109), no spec changes"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "verification-status-after-oracle-run",
+      "prompt": "We re-froze slice 2a this morning (lock v2) and ran the full oracle: 385/385 green. Which requirements are actually verified now, and which Test requirements have no case behind them?",
+      "expected_output": "Runs pkg.py derive --write (or verify); reports per-method counts from 10-verification-status.md with the run file and its lock binding ('current lock'); lists Test-method requirements with status unverified as verification gaps; does not edit requirements' Verification attributes to add case ids; no edits under specs/; the derived chapters and the VCRM block are regenerated, not hand-edited.",
+      "files": [
+        "fixture: adopted clone at lock v2 with specs/logs/oracle/run-default.json bound to that lock"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "review-comments-to-change-requests",
+      "prompt": "Dave (our systems engineer) read the package. His comments: (1) ZEN-SR-FUN-014 — a ghost should appear after 5 minutes, not 7; (2) ZEN-DIA-05a — the browser lane never shows the reconnect path; (3) ZEN-SR-INT-008 — the batch cap of 5,000 records seems low for live SWIM. Process them.",
+      "expected_output": "Three RC rows added to 12-review-log.md with targets and verbatim comments; pkg.py review --resolve run; (1) classified policy (DEC043 is [PENDING-SME], TBR-10) → draft SCR class D (or GAPS row if no lock) under specs/changes/review/, status accepted pending the product owner; (2) classified package defect → ZEN-DIA-05a marked pending redraw with the reconnect path noted, status package; (3) classified technical or policy depending on whether DEC106 is pending → draft; nothing else under specs/ touched; the user is asked to approve the drafts before any spec change; the final report lists the three comments and their drafts.",
+      "files": [
+        "fixture: adopted clone at revision 3"
+      ]
+    }
+  ]
+}

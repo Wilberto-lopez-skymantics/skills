@@ -133,6 +133,7 @@ All specs live in the project's `specs/` directory — the single source of trut
 | [`frontend-ui-design`](./frontend-ui-design/) | CSS standards, responsive design, a11y. Used by dev swarm for non-SDD React/Next.js projects. |
 | [`test-driven-development`](./test-driven-development/) | Red-green-refactor loop for backend logic. |
 | [`kubernetes-deployment`](./kubernetes-deployment/) | Safe infrastructure investigation and K8s manifest generation. |
+| [`design-package`](./design-package/) | Systems-engineering design package derived from an SDD spec set: "shall" requirements traced to decisions and invariants, design decision records, architecture and behavior views, an interface control table, and chapters derived mechanically from the pipeline (change control from the lock and SCRs, verification status from the oracle cases and runs, the UI baseline from the frozen wireframes, the gap register). Permanent ids, numbered revisions, impact analysis, and a review loop that turns a systems engineer's comments into change requests to the spec, never into package edits. |
 | [`ubiquitous-language`](./ubiquitous-language/) | DDD-style domain glossary — extracts canonical terms, flags ambiguities, enforces consistent terminology across specs and swarms. |
 
 ### Shared Resources
