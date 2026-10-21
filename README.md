@@ -2,343 +2,131 @@
 
 > **Code is a byproduct of the spec — never the other way around.**
 
-A curated set of AI agent skills that enforce a rigorous **Spec-Driven Development (SDD)** pipeline. Every skill ensures specifications are written, hardened, and phase-planned *before* implementation code is generated. If your project has a `specs/` folder, these skills govern the entire lifecycle — from ideation through adversarial review to verified, production-ready code.
+This repository holds the **Spec-Driven Development (SDD)** pipeline for AI coding agents: a gated workflow that takes an idea to a frozen specification complete enough that two independent agents, given only that specification, build systems an executable oracle cannot tell apart — and that checks the claim instead of asserting it.
 
-**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification** · **🏷️ Release `2026.09.28-v2`** · [**📖 Interactive Visual Guide**](./sdd-icm-documentation.html)
+**Current release:** ICM workspace template `2026.10.21-v3.5-prototype-first`. Everything else in this repository is either a companion skill that works on a template-built spec set, or the legacy v2 skills kept for projects that still run them.
 
-## Quick Start
+| Part | What it is | Status |
+|---|---|---|
+| [`icm-workspace-template/`](./icm-workspace-template/) | The pipeline itself: stage contracts, zero-dependency tools (`sdd.cjs`, `oracle.cjs`, `ui-capture.cjs`, `ui-specgen.cjs`), the Equivalence Profile, schemas, templates and a validated reference example. Copied into each project; the project records and locks the exact version it was built with. | **Maintained — the single source of the pipeline** |
+| [`design-package/`](./design-package/) | Skill that derives a systems-engineering design package from a template-built spec set, with a review loop back into the spec. | Maintained |
+| `brainstorming/`, `sdd-adoption/`, `adversarial-swarm-analysis/`, `interactive-wireframing/`, `writing-implementation-phases/`, `development-swarm/`, `spec-driven-development/`, `shared/` | The v2 pipeline as global agent skills (release `2026.09.28-v2`). | **Legacy** — kept for projects that still use them; not maintained against v3 (no oracle, lock, prototype stage or gated transitions there) |
+| `verification-before-completion/`, `visual-acceptance-testing/`, `ubiquitous-language/`, `frontend-ui-design/`, `test-driven-development/`, `kubernetes-deployment/`, `interpretable-context-methodology/` | General-purpose skills that do not depend on the pipeline version. | Usable with either |
 
-1. Clone this repo somewhere on disk:
+## Quick start (the template)
+
+1. Copy the template into your project root and open it in your agent (Claude Code, Codex, Cursor, Gemini, …):
    ```bash
-   git clone https://github.com/Wilberto-lopez-skymantics/skills.git ~/my-sdd-skills
+   cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,AGENTS.md,specs} /path/to/your-project/
    ```
+   The three entry files are identical copies of `specs/.sdd/_config/entrypoint.md`; if your project already has one, append that file's content to it. Node.js ≥ 18 is the only requirement (Playwright for UI projects).
+2. Ask the agent to start. It reads its entry file, runs `node specs/.sdd/scripts/sdd.cjs status`, and begins Stage 01 for a new product or Stage 01b for an existing codebase.
+3. What you will experience: a short interview (one question per message, within a budget), one slice brief to OK, and a **running prototype** to try and accept — before any contract, oracle case or wireframe is written. Hardening, the oracle and the freeze follow, against the running prototype. `node specs/.sdd/scripts/sdd.cjs readiness` tells you at any time what is left and what the next action is that is yours, and `sdd.cjs dashboard` renders the same as a page (`specs/logs/dashboard.html`, rewritten at every transition).
 
-2. Point your agent at the skills (see [Enforcing Skills](#enforcing-skills-via-user-rules) below).
+Already on an older template version? `node <new-template>/specs/.sdd/scripts/sdd.cjs upgrade --from <new-template> --root <your-project>` swaps the pipeline files, keeps your state, renames legacy logs, regenerates the entry files and writes `specs/logs/upgrade-<version>.md`.
 
-3. **(Recommended)** Resolve reference paths for full fidelity:
-   ```bash
-   # macOS
-   find ~/my-sdd-skills -name "*.md" -exec sed -i '' "s|{{SKILLS_DIR}}|$(cd ~/my-sdd-skills && pwd)|g" {} +
+The template's [README](./icm-workspace-template/README.md) is the full reference: the equivalence definition and its two certification levels, every stage and its exit gate, the tooling, change classes, the operating playbook and the release history (`icm-workspace-template/Future_work.md`).
 
-   # Linux
-   find ~/my-sdd-skills -name "*.md" -exec sed -i "s|{{SKILLS_DIR}}|$(cd ~/my-sdd-skills && pwd)|g" {} +
-   ```
+## The pipeline in one picture
 
-   > **Skip this step?** Skills still work — critical references (completeness checklists, design templates, spec review checks) have inline fallbacks that activate automatically. The agent will log when using a fallback. Run this step to enable full reference loading with detailed checklists, examples, and project-type adapters.
-
-## Two Ways to Use SDD
-
-This repository provides two delivery mechanisms for the same SDD pipeline. They implement identical stages and must stay synchronized.
-
-### Option A: Skill-Based (Global Agent Rules)
-
-For agents that support global skill instructions (Gemini Code Assist, Claude Code with global rules). The `spec-driven-development` orchestrator skill invokes sub-skills by name. See [Enforcing Skills](#enforcing-skills-via-user-rules) below.
-
-**Best for:** Teams with a single agent platform and centralized configuration.
-
-### Option B: ICM Workspace Template (Portable)
-
-For agents that don't support global skills, or for projects that need to be shared across teams/environments. The pipeline is encoded as a folder structure with `CONTEXT.md` files that any agent can read.
-
-**Best for:** Cross-team sharing, multi-agent environments, portable projects.
-
-1. Copy `icm-workspace-template/` contents (`.cursorrules`, `CLAUDE.md`, `specs/.sdd/`) to the root of your new project.
-2. If your agent supports auto-loading rules (Cursor with `.cursorrules`, Claude Code with `CLAUDE.md`), it will automatically find the routing instructions in `specs/.sdd/WORKSPACE_ROUTING.md`.
-3. Ask your agent to start the project — it will begin at `specs/.sdd/01_brainstorming/CONTEXT.md`.
-4. All spec outputs live in `specs/` at the project root. Pipeline machinery lives in `specs/.sdd/`.
-
-### Keeping Them in Sync
-
-The skills are the source of truth. The ICM template is a portable view of the same pipeline. Run the sync validator to detect drift:
-
-```bash
-./scripts/validate-icm-sync.sh
-```
-
-
-## The SDD Pipeline
-
-These skills form a sequential, gated pipeline. Each skill produces artifacts that the next consumes. Skipping a step or writing code before the spec is updated is a violation.
+See it, then harden it. The running prototype is the boundary between what the user is asked to define up front (little) and what the pipeline pins down afterwards (everything).
 
 ```mermaid
-flowchart TD
-    Start(["💡 Feature Request / User Brief"]) --> S01["<b>Stage 01: Socratic Brainstorming</b><br/>Lead Architect + Shadow Critic"]
-    Adoption["Existing Codebase"] --> S01b["<b>Stage 01b: Codebase Adoption</b><br/>Reverse-engineer specs & contracts"]
-    S01b --> S01
-
-    S01 --> G01{"<b>Gate 1: 4 Extraction Closures</b><br/>• Entity Lifecycle • Negative Space<br/>• Fork Test • Policy vs Mechanics"}
-    
-    G01 -- "0 Open Gaps" --> S02["<b>Stage 02: Adversarial Swarm Analysis</b><br/>Autonomous Contract Compiler"]
-    
-    S02 --> C_OUT["<b>Machine Contracts in specs/contracts/</b><br/>• openapi.yaml (RFC 9457 errors)<br/>• schema.sql (OCC + Idempotency)<br/>• statecharts.json • errors.json"]
-    
-    C_OUT --> UI_CHECK{"UI Project?"}
-    
-    UI_CHECK -- "Yes" --> S03["<b>Stage 03: Interactive Wireframing</b><br/>WYSIWYG HTML wireframes from tokens"]
-    UI_CHECK -- "No" --> S04["<b>Stage 04: Implementation Phases</b><br/>& Immutable Test Oracle Synthesis"]
-    S03 --> S04
-
-    S04 --> F_OUT["<b>Immutable Test Oracle in specs/fixtures/</b><br/>• api_cases.json (Exact I/O envelopes)<br/>• db_seed.sql • state_transitions.json"]
-    
-    F_OUT --> G_WALL{"<b>🔒 Anti-Tampering Wall</b><br/>Specs & Fixtures are strictly READ-ONLY"}
-    
-    G_WALL --> S05["<b>Stage 05: Development Swarm</b><br/>Test-Consumer Coders (Pass Oracle)"]
-    
-    S05 --> UI_TEST{"UI Project?"}
-    UI_TEST -- "Yes" --> S06["<b>Stage 06: Visual Acceptance Testing</b><br/>Browser-based visual validation against tokens"]
-    UI_TEST -- "No" --> S07["<b>Stage 07: Verification Before Completion</b><br/>Empirical Evidence & Bisimulation Proof"]
-    S06 --> S07
-
-    S07 --> G_FINAL{"<b>Bisimulation Gate</b><br/>100% Test Oracle Pass • Zero Drift"}
-    
-    G_FINAL -- "Passed" --> DONE(["🚀 Production / Shipped"])
-    
-    G_FINAL -. "Runtime Defect Escape" .-> S00["<b>Stage 00: Defect Backprop</b><br/>Trace Root Cause → Append §V Invariant"]
-    S00 -. "Spec Patch & Regression Fixture" .-> S01
+flowchart LR
+    S01["01 Brainstorm<br/>short interview · slice brief · draft spec"] --> S02["02 Prototype<br/>versions v0…vn · your answers on screen · you accept"]
+    S01b["01b Adopt existing code<br/>inventory · draft of today's behavior"] --> S02
+    S02 --> S03["03 Hardening<br/>contracts · Red Team · wireframes captured — prototype running"]
+    S03 --> S04["04 Oracle + freeze<br/>recorded vs predicted · lock"]
+    S04 --> S05["05 Spec-only build<br/>oracle green per phase"]
+    S05 --> S06["06 Visual acceptance<br/>UI only"] --> S07["07 Certification<br/>L1 run · L2 dual build + diff"]
+    S05 --> S07
+    S07 -. defect / divergence .-> S00["00 Backprop<br/>change request → approval → re-freeze"]
 ```
 
-**Execution Gates:** Before each major step, the agent presents the user with a gate showing what's about to happen, its token budget (🟢/🟡/🔴), whether it's skippable, and adjustable parameters. The user decides to proceed, skip, or adjust.
+| Stage | Who | Produces |
+|---|---|---|
+| 01 Brainstorm | you + agent (≤ 12 questions, one brief to OK) | `SPEC.md` draft, decision log, gap register with provisional answers, design tokens (UI) |
+| 01b Adoption | agent + you (same budget) | The same, written from what the code does today, plus a slicing plan |
+| 02 Prototype | you (demos) + agent (builds) | A working slice, one version row per demo, your acceptance recorded by the tool |
+| 03 Hardening | agent, prototype running; you answer batched policy questions | Machine contracts, a complete spec, Red Team rulings, captured wireframes (UI) |
+| 04 Oracle + freeze | agent; you approve the freeze | Oracle cases derived from the spec (two interpretations, zero disagreements), phases, `spec.lock.json` |
+| 05 Build | agent, spec-only | Build A continues the prototype; build B (for L2) starts from the frozen set alone |
+| 06 Visual acceptance | agent (UI only) | Screens graded against tokens, wireframes and frozen UI specs |
+| 07 Certification | agent reports to you | `EQUIVALENCE_REPORT.md`: L1 (oracle green on the lock) or L2 (two builds, zero divergences) |
+| 00 Backprop | agent proposes, you approve | Spec Change Request, re-freeze; never a code patch |
 
-## Spec Artifacts
+## What a finished spec set contains
 
-All specs live in the project's `specs/` directory — the single source of truth.
+Everything lives in the project's `specs/` directory. The **frozen set** is hashed into `specs/spec.lock.json` at the end of Stage 04 and changes only through the pipeline's own doors.
 
-| Document | Purpose | Produced By | Consumed By |
-|----------|---------|-------------|-------------|
-| `specs/SPEC.md` | **What** to build — contracts, hierarchy, data flow, invariants | brainstorming → adversarial | dev swarm, impl phases |
-| `specs/DESIGN.md` | **How it looks** — visual tokens, interaction states, UI State Matrix | brainstorming | wireframing, dev swarm |
-| `specs/DECISION_LOG.md` | **Why** we build this way — options considered, rationale | brainstorming | context for humans & swarms |
-| `specs/IMPLEMENTATION_PHASES.md` | **In what order** — sequenced, testable phases | writing-impl-phases | dev swarm (execution order) |
-| `specs/wireframes/` | **Visual source of truth** — approved WYSIWYG HTML screens | interactive-wireframing | dev swarm (pixel-perfect reference) |
+| Artifact | Holds | Frozen |
+|---|---|---|
+| `SPEC.md` (+ `spec/<module>.md`) | The rules, in a fixed 14-section structure; invariants as `Vn`; the Equivalence Boundary (what may vary between builds) | yes |
+| `contracts/` | `openapi.yaml`, `schema.sql`, `statecharts.json`, `errors.json`, `manifest.json`, … — machine-checked by `sdd.cjs check` | yes |
+| `fixtures/` | The oracle: cases every build is graded by, each expected value cited from the spec; frozen UI specs | yes |
+| `wireframes/` | Screen states captured from the accepted prototype (UI) | yes |
+| `DESIGN.md` | Design tokens and the UI State Matrix | yes |
+| `DECISION_LOG.md` | Every decision with its options and rationale; append-only, fingerprinted at each transition | no |
+| `GAPS.md` | Open questions with provisional answers, deferred features, uncited prototype decisions | no |
+| `IMPLEMENTATION_PHASES.md`, `changes/SCR-*.md`, `backprop-log.md`, `logs/` | Phases bound to oracle runs, Spec Change Requests and their defect traces, interview / prototype / Red Team / oracle logs, stage transitions with metrics | no |
 
-## Skills Reference
+## Derived artifacts
 
-### Core Pipeline
+A spec set this complete can generate the deliverables of a traditional process mechanically. The [`design-package`](./design-package/) skill is the first: a systems-engineering package ("shall" requirements traced to decisions and invariants, design decision records, architecture and behavior views, an interface control table, change control from the lock and change requests, verification status from the oracle runs, the UI baseline from the wireframes) with permanent ids, numbered revisions, impact analysis, and a review loop that turns a reviewer's comments into change requests to the spec — never into package edits. An API reference, a user manual and a test plan follow the same pattern and are listed as open work.
 
-| Skill | Purpose |
-|-------|---------|
-| [`spec-driven-development`](./spec-driven-development/) | The governor — enforces "spec first, code second." Orchestrates the lifecycle, execution gates, checkpoints, drift handling, and bug escape hardening. |
-| [`brainstorming`](./brainstorming/) | Ideas → design → specs. Confidence assessment, theme brainstorming, decision log, DESIGN.md, spec merge. Includes Visual Companion for live browser mockups. |
-| [`adversarial-swarm-analysis`](./adversarial-swarm-analysis/) | Harden specs via Creator vs Critic loop. 6 Blue + 6 Red Team personas. Minimum 3 iterations. Completeness checklists with project-type adapters. |
-| [`interactive-wireframing`](./interactive-wireframing/) | Screen-by-screen WYSIWYG HTML wireframes from DESIGN.md tokens and SPEC.md hierarchy. Iterative user approval. |
-| [`writing-implementation-phases`](./writing-implementation-phases/) | Spec → dependency-ordered, testable phase checklist. Phase integrity validation. |
-| [`development-swarm`](./development-swarm/) | Code via Builder vs Critic loop. 5 Blue + 8 Red Team personas. Context7 pre-flight. Design Token Auditor. VAT gate. Post-implementation reconciliation. |
-
-### Supporting Skills
-
-| Skill | Purpose |
-|-------|---------|
-| [`visual-acceptance-testing`](./visual-acceptance-testing/) | Browser-based verification: screen walk, interaction audit, design token verification (computed styles vs DESIGN.md), debug artifact scan. |
-| [`verification-before-completion`](./verification-before-completion/) | Empirical proof gate — run builds/tests/commands before claiming anything works. |
-| [`frontend-ui-design`](./frontend-ui-design/) | CSS standards, responsive design, a11y. Used by dev swarm for non-SDD React/Next.js projects. |
-| [`test-driven-development`](./test-driven-development/) | Red-green-refactor loop for backend logic. |
-| [`kubernetes-deployment`](./kubernetes-deployment/) | Safe infrastructure investigation and K8s manifest generation. |
-| [`design-package`](./design-package/) | Systems-engineering design package derived from an SDD spec set: "shall" requirements traced to decisions and invariants, design decision records, architecture and behavior views, an interface control table, and chapters derived mechanically from the pipeline (change control from the lock and SCRs, verification status from the oracle cases and runs, the UI baseline from the frozen wireframes, the gap register). Permanent ids, numbered revisions, impact analysis, and a review loop that turns a systems engineer's comments into change requests to the spec, never into package edits. |
-| [`ubiquitous-language`](./ubiquitous-language/) | DDD-style domain glossary — extracts canonical terms, flags ambiguities, enforces consistent terminology across specs and swarms. |
-
-### Shared Resources
-
-The `shared/` directory contains templates and format definitions referenced by multiple skills. This is the **source of truth** for shared resources.
-
-> **`shared/` vs `_config/`:** The ICM workspace template copies these files into `icm-workspace-template/specs/.sdd/_config/` for portability — ICM workspaces must be self-contained folders. When updating shared resources, edit `shared/` first, then sync to `_config/`. Run `./scripts/validate-icm-sync.sh` to detect drift.
-
-| File | Used By |
-|------|---------|
-| `shared/role-standards.md` | Dev swarm, adversarial swarm (default role behavioral standards) |
-| `shared/spec-self-review.md` | SDD orchestrator (14-step completeness gate) |
-| `shared/design-template.md` | Brainstorming, wireframing (DESIGN.md template + token checklist) |
-| `shared/decision-log-template.md` | Brainstorming (DECISION_LOG.md template) |
-| `shared/iteration-log-format.md` | Adversarial swarm, dev swarm (iteration log + reconciliation formats) |
-| `shared/vat-report-format.md` | VAT (screen walk, interaction, design token, debug scan reports) |
-| `shared/visual-companion.md` | Brainstorming, wireframing (browser companion guide) |
-
-## Directory Structure
+## Repository layout
 
 ```
 skills/
-├── shared/                           # Source of truth for shared templates
-│   ├── spec-self-review.md
-│   ├── design-template.md
-│   ├── decision-log-template.md
-│   ├── iteration-log-format.md
-│   ├── vat-report-format.md
-│   └── visual-companion.md
-├── scripts/                          # Tooling
-│   └── validate-icm-sync.sh          # Skills ↔ ICM drift detector
-├── icm-workspace-template/           # Portable ICM template (Option B)
-│   ├── README.md                     # Setup guide + ICM theory
-│   ├── CLAUDE.md                     # Agent pointer → specs/.sdd/
-│   ├── .cursorrules                  # Agent pointer → specs/.sdd/
-│   └── specs/.sdd/                   # Pipeline machinery
-│       ├── WORKSPACE_ROUTING.md      # Layer 0+1: identity + routing
-│       ├── _config/                  # Layer 3: portable copy of shared/
-│       ├── 00_backprop/CONTEXT.md    # Bug → source fix loop
-│       ├── 01_brainstorming/         # Ideas → specs
-│       ├── 02_adversarial_swarm_analysis/
-│       ├── 03_interactive_wireframing/
-│       ├── 04_writing_implementation_phases/
-│       ├── 05_development_swarm/
-│       ├── 06_visual_acceptance_testing/
-│       └── 07_verification_before_completion/
-├── spec-driven-development/          # The governor / orchestrator (Option A)
-│   └── SKILL.md
-├── brainstorming/                    # Ideas → specs
-│   ├── SKILL.md
-│   ├── spec-document-reviewer-prompt.md
-│   ├── references/
-│   │   ├── confidence-assessment.md
-│   │   ├── theme-brainstorming.md
-│   │   └── ui-state-matrix.md
-│   └── scripts/                      # Visual Companion server
-├── adversarial-swarm-analysis/       # Spec hardening
-│   ├── SKILL.md
-│   └── references/
-│       └── completeness-checklist.md
-├── interactive-wireframing/          # WYSIWYG wireframes
-│   └── SKILL.md
-├── writing-implementation-phases/    # Spec → phase checklist
-│   └── SKILL.md
-├── development-swarm/                # Code generation + validation
-│   └── SKILL.md
-├── visual-acceptance-testing/        # Browser-based visual QA
-│   └── SKILL.md
-├── verification-before-completion/   # Empirical proof gate
-│   └── SKILL.md
-├── ubiquitous-language/              # Domain glossary
-│   └── SKILL.md
-├── frontend-ui-design/               # CSS/a11y standards
-│   └── SKILL.md
-├── test-driven-development/          # TDD loop
-│   ├── SKILL.md
-│   └── testing-anti-patterns.md
-└── kubernetes-deployment/            # K8s manifests
-    └── SKILL.md
+├── icm-workspace-template/        # THE PIPELINE (v3.5). Copy into a project. README = full reference.
+│   ├── specs/.sdd/                #   stage contracts, tools, Equivalence Profile, schemas, templates, example
+│   ├── tests/                     #   state-machine tests (node --test tests/*.test.cjs)
+│   └── Future_work.md             #   release history and open items
+├── design-package/                # Companion skill: SE design package derived from a spec set
+├── scripts/validate-icm-sync.sh   # Compares the legacy v2 skills with the template stages (historical)
+├── shared/                        # Legacy v2 shared templates (the template carries its own under _config/)
+├── brainstorming/ sdd-adoption/ adversarial-swarm-analysis/ interactive-wireframing/
+│   writing-implementation-phases/ development-swarm/ spec-driven-development/   # Legacy v2 pipeline skills
+├── verification-before-completion/ visual-acceptance-testing/ ubiquitous-language/
+│   frontend-ui-design/ test-driven-development/ kubernetes-deployment/
+│   interpretable-context-methodology/                                            # General-purpose skills
+└── sdd-icm-documentation.html     # Visual guide to the pipeline and the ICM idea (open in a browser)
 ```
 
-## Token Efficiency
+## Why a template instead of global skills
 
-All skill files use **caveman encoding** — a compression technique that drops articles, filler, and hedging while preserving all technical content. This reduces token consumption by ~42% compared to prose-heavy instructions.
+Global agent skills live outside the project: they are not portable (a teammate needs the same setup), not auditable (the instructions that shaped the code are invisible to review) and not versioned (a project cannot say which pipeline built it). The Interpretable Context Methodology (ICM, [paper](https://arxiv.org/html/2603.16021)) moves the orchestration into the project's own files: a routing document, one contract per stage, reference material loaded on demand, and the working artifacts. The pipeline files are part of the frozen set, so every project records and locks the exact version it was built with, and `sdd.cjs upgrade` moves it to a newer one deliberately.
 
-Each file includes a decoder key:
+Stage contracts use a compact notation (`!` = must, `⊥` = never, `∀` = for all, `∃` = exists, `→` = becomes) with a decoder line at the top of each file, so an agent reads about 80 lines to route and one stage contract to work.
+
+## Companion and general-purpose skills
+
+| Skill | Purpose |
+|---|---|
+| [`design-package`](./design-package/) | Systems-engineering design package derived from a spec set; impact analysis per revision; review comments become change requests (see above) |
+| [`verification-before-completion`](./verification-before-completion/) | Evidence before claims: run the command, read the output, then say it passes |
+| [`visual-acceptance-testing`](./visual-acceptance-testing/) | Browser-based visual QA: screen walk, interaction audit, token verification, debug-artifact scan (the template's Stage 06 is its pipeline form) |
+| [`ubiquitous-language`](./ubiquitous-language/) | Domain glossary: canonical terms, flagged ambiguities, consistent naming across specs |
+| [`interpretable-context-methodology`](./interpretable-context-methodology/) | How to work in any ICM-structured workspace (routing document, stage folders, contracts) |
+| [`frontend-ui-design`](./frontend-ui-design/), [`test-driven-development`](./test-driven-development/), [`kubernetes-deployment`](./kubernetes-deployment/) | Standalone engineering skills, independent of the pipeline |
+
+Install a skill by copying its folder (with its `references/` and `scripts/` subfolders) to wherever your agent reads skills from: `~/.claude/skills/<name>/` for Claude Code, `~/.gemini/config/skills/<name>/` for Gemini Code Assist, or a project's `.claude/skills/` for a per-project skill (the `design-package` skill is used that way).
+
+## Legacy: the v2 global skills
+
+Release `2026.09.28-v2` delivered the pipeline as global skills orchestrated by `spec-driven-development` (with `sdd-adoption` for existing codebases), with `shared/` templates and a user-rule snippet that forced the governor on every request. Those files are unchanged and still work for projects started with them, but the v3 pipeline exists only in the template: the oracle, the lock, the Equivalence Profile, the prototype stage, gated transitions and the measured L2 certification have no counterpart in the skills. New projects should start from the template; a v2 project can be brought over with Stage 01b (adoption), using its existing `SPEC.md` as evidence of intent.
+
+To keep using the v2 skills, copy the pipeline skill folders and `shared/` to your agent's skill directory, resolve `{{SKILLS_DIR}}` in the copied markdown to that directory's absolute path, and add this to your agent's global instructions:
+
 ```
-<!-- DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes
-     ∀ = for all | ∃ = exists | & = and | | = or -->
-```
-
-Additionally, large reference sections are extracted into `references/` subdirectories and loaded on-demand, keeping per-invocation context lean.
-
-## Recommended: Context7 MCP Server
-
-Several skills (`development-swarm`, `adversarial-swarm-analysis`) benefit from querying latest framework docs via [Context7](https://context7.com) before writing code.
-
-If available, the `context7` MCP server provides verified, up-to-date framework documentation during pre-flight checks. Without it, agents will fall back to web search or training knowledge — the pipeline still works, but generated code may not reflect the latest API changes.
-
-## Enforcing Skills via User Rules
-
-The `spec-driven-development` skill is the **top-level governor** — it orchestrates all sub-skills in the correct sequence. You only need to enforce the governor, not each sub-skill individually.
-
-Add these to your agent's global custom instructions (update paths after cloning):
-
-```xml
-<!-- spec-driven-development enforcement -->
 You MUST use the Spec-Driven Development skill (instructions located at
 /path/to/skills/spec-driven-development/SKILL.md) EVERY TIME there is a
 request for a new feature, update, or bugfix in a project that contains
 a specs/ folder. Never write code before updating the spec.
-<!-- spec-driven-development enforcement -->
-
-<!-- verification-before-completion enforcement -->
-You MUST use the Verification Before Completion skill (instructions located at
-/path/to/skills/verification-before-completion/SKILL.md) EVERY TIME you are
-about to claim that a task is complete, a bug is fixed, or tests are passing.
-Evidence before assertions, always.
-<!-- verification-before-completion enforcement -->
-
-<!-- anti-sycophancy -->
-Do not be blindly agreeable or sycophantic. Always challenge, question,
-or push back on the user's instructions if you identify a better, more
-efficient, safer, or more idiomatic approach.
-<!-- anti-sycophancy -->
 ```
 
-> **Why not enforce sub-skills directly?** They are invoked by `spec-driven-development` at the right moment. Enforcing them separately could trigger code generation or spec hardening outside the SDD lifecycle.
+`scripts/validate-icm-sync.sh` compares the legacy skills with the template's stage contracts; it reports drift rather than preventing it and is kept for anyone comparing the two.
 
-## Platform Setup
+## Recommended: Context7 MCP server
 
-### What to install
-
-The repo contains **skills** (install these) and **infrastructure** (don't install):
-
-| Directory | Type | Install? |
-|-----------|------|----------|
-| `adversarial-swarm-analysis/` | Skill | ✓ |
-| `brainstorming/` | Skill | ✓ |
-| `development-swarm/` | Skill | ✓ |
-| `frontend-ui-design/` | Skill | ✓ |
-| `interactive-wireframing/` | Skill | ✓ |
-| `kubernetes-deployment/` | Skill | ✓ |
-| `spec-driven-development/` | Skill | ✓ |
-| `test-driven-development/` | Skill | ✓ |
-| `ubiquitous-language/` | Skill | ✓ |
-| `verification-before-completion/` | Skill | ✓ |
-| `visual-acceptance-testing/` | Skill | ✓ |
-| `writing-implementation-phases/` | Skill | ✓ |
-| `shared/` | Dependency | ✓ (required by multiple skills) |
-| `icm-workspace-template/` | Project template | ✗ (use via Quick Start Option B) |
-| `scripts/` | Tooling | ✗ |
-| `README.md` | Repo docs | ✗ |
-
-> **Important:** Some skills have `references/` or `scripts/` subdirectories containing checklists and templates referenced by SKILL.md. These subdirectories must be copied alongside SKILL.md — not just the SKILL.md file alone.
-
-### Gemini Code Assist / Antigravity
-
-Skills go in `~/.gemini/config/skills/<skill-name>/SKILL.md`.
-
-**Scriptable install** (agent or human can run this verbatim):
-```bash
-# 1. Clone the repo (source — don't modify this copy)
-git clone https://github.com/Wilberto-lopez-skymantics/skills.git /tmp/sdd-skills-source
-
-# 2. Define target
-TARGET="$HOME/.gemini/config/skills"
-mkdir -p "$TARGET"
-
-# 3. Copy skills + shared (preserving subdirectories like references/)
-for skill in adversarial-swarm-analysis brainstorming development-swarm \
-             frontend-ui-design interactive-wireframing kubernetes-deployment \
-             spec-driven-development test-driven-development ubiquitous-language \
-             verification-before-completion visual-acceptance-testing \
-             writing-implementation-phases shared; do
-  cp -r "/tmp/sdd-skills-source/$skill" "$TARGET/$skill"
-done
-
-# 4. Resolve reference paths (runs on destination, not source)
-find "$TARGET" -name "*.md" -exec sed -i '' "s|{{SKILLS_DIR}}|$TARGET|g" {} +
-# Linux: remove the '' after -i
-
-# 5. Verify
-echo "Installed $(ls -d $TARGET/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ') skills"
-grep -rl '{{SKILLS_DIR}}' "$TARGET" --include='*.md' | wc -l | tr -d ' '
-echo "unresolved template vars (should be 0)"
-
-# 6. Clean up source
-rm -rf /tmp/sdd-skills-source
-```
-
-Then add user rules as described in [Enforcing Skills](#enforcing-skills-via-user-rules).
-
-### Claude Code
-
-**Option A (Global):** Copy skills to `~/.claude/skills/` using the same script above (change `TARGET`).
-
-**Option B (Per-project, recommended):** Use the ICM template — copy `icm-workspace-template/` contents to your project root. Claude Code reads `CLAUDE.md` automatically. No global config needed.
-
-### Cursor
-
-**Recommended:** Use the ICM template — copy `icm-workspace-template/` contents to your project root. Cursor reads `.cursorrules` automatically. No global config needed.
-
-### Other Agents
-
-Any agent that can read files from disk and follows markdown instructions can use these skills. Either:
-- Point your agent's configuration at the `SKILL.md` files (Option A)
-- Copy the ICM template into your project (Option B — works with any agent)
+Stage 05 builders (and the legacy `development-swarm`) query the latest framework documentation through [Context7](https://context7.com) when it is available, and note "docs not verified" in their logs when it is not. The pipeline works without it; generated code may lag recent API changes.

@@ -91,6 +91,11 @@
       "type": "string",
       "pattern": "^DEC[0-9]+$"
     },
+    "prototypeCadence": {
+      "description": "\"slice\" (default): every slice runs 01 → 02 → 03 → 04 before the next one starts. \"rolling\": several slices are prototyped (01 → 02 each, to the user's acceptance) before one hardening pass; `transition --completed 01` is in order right after an accepted prototype, and the slice cap is enforced at Stage 03 for everything accumulated since the last lock.",
+      "type": "string",
+      "enum": ["slice", "rolling"]
+    },
     "equivalenceCadence": {
       "description": "When L2 (dual build + zero-divergence diff) is required for an equivalenceTarget of 2. \"iteration\" (default): every slice. \"release\": intermediate slices certify L1 with an explicit \"L2 pending\" row in EQUIVALENCE_REPORT.md; L2 is certified with `transition --completed 07 --release` before a release. Never claim L2 for a pending slice.",
       "enum": [

@@ -25,4 +25,4 @@ Use this mapping when writing the README, the overview or the changelog, or when
 | L1 oracle-conformant | Verified: the build passes every verification procedure against the current baseline |
 | L2 equivalence-verified | Two independent builds give identical observations: evidence the specification is unambiguous |
 | Slices (roadmap) | Incremental releases; each slice is a baseline increment |
-| Stages 01–07 (pipeline v3.4) | 01 requirements discovery (short interview, slice brief, draft spec) → 02 prototype demonstration and acceptance → 03 hardening (interface definition, design review, UI baseline captured from the prototype) → 04 verification design and baselining (freeze) → 05 implementation → 06 visual acceptance → 07 verification and certification |
+| Stages 01–07 (pipeline v3.4+) | 01 requirements discovery (short interview, slice brief, draft spec) → 02 prototype demonstration and acceptance → 03 hardening (interface definition, design review, UI baseline captured from the prototype) → 04 verification design and baselining (freeze) → 05 implementation → 06 visual acceptance → 07 verification and certification |

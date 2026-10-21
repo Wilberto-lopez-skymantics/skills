@@ -1,6 +1,8 @@
 #!/bin/bash
 # validate-icm-sync.sh
-# Validates that ICM CONTEXT.md files haven't drifted from their source SKILL.md files.
+# Compares the legacy v2 global skills (SKILL.md) with the ICM template's stage contracts (CONTEXT.md).
+# Historical: since v3 the template is the single source of the pipeline and the skills are not maintained
+# against it, so drift is expected; the report is for anyone comparing the two.
 # Compares structural elements: gates, persona counts, and output file references.
 #
 # Usage: ./scripts/validate-icm-sync.sh [SKILLS_DIR] [ICM_DIR]
@@ -199,6 +201,6 @@ if [ "$DRIFT_COUNT" -eq 0 ]; then
   exit 0
 else
   echo -e "${RED}✗ $DRIFT_COUNT stage(s) with drift out of $CHECKED_COUNT checked${NC}"
-  echo "  Review drifted stages and update either the SKILL.md or CONTEXT.md."
+  echo "  Expected since v3: the template is the maintained pipeline; the legacy skills are not updated to match it."
   exit 1
 fi

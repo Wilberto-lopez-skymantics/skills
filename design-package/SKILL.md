@@ -7,7 +7,7 @@ description: Build, adopt, update, check or review the systems-engineering desig
 
 `docs/design-package/` presents the SDD spec set in the terms a systems engineer works in: a concept of operations, "shall" requirements with verification methods, design decision records, architecture and behavior diagrams, an interface control table, traceability, a TBR register, and — derived mechanically by the helper script — the change-control record, the verification status of every requirement, the user-interface design baseline, the pipeline's own gap register and a review log. It is **derived and non-normative**. The frozen spec set (`specs/SPEC.md` and its modules, `specs/contracts/`, `specs/fixtures/`, `specs/wireframes/`, `specs/DESIGN.md`) is the baseline; where the package and the spec differ, the package is wrong.
 
-## What the package reads (the spec set, pipeline v3.4)
+## What the package reads (the spec set, pipeline v3.4+)
 
 | Source | Package use |
 |---|---|

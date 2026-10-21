@@ -39,6 +39,7 @@ Every demo the user sees is a **version**: one row in the `Versions` table of `s
 ### 3. Record & acceptance
 1. Write `specs/logs/02-prototype.md` (format: `../_config/prototype-record-template.md`): the `Run:` line Stages 03 and 04 start the prototype with, target, build environment, the `Versions` table (one row per demo).
 2. **⛔ GATE:** the stage ends only on the user's explicit acceptance, given on the command line: `node specs/.sdd/scripts/sdd.cjs transition --completed 02 --approved-by "<user>"`. ⊥ write acceptance into a file; the transition records who accepted in `specs/logs/transitions.jsonl`. Acceptance means "this is the product": Stage 03 may still change mechanics (status codes, envelopes, a tie-breaker) and shows anything the user can see as a further version row. Each further idea → next slice (`GAPS.md` deferred row + DECnnn).
+3. **What follows is the user's call, asked in the acceptance message:** harden this slice now (Stage 03), or prototype another slice first (`transition --completed 01` is in order after an accepted prototype while no contracts exist, or when `manifest.prototypeCadence` is `rolling`). Record the choice as a DECnnn; Stage 03 writes it into `manifest.prototypeCadence`. The slice cap applies at Stage 03 to everything accumulated.
 
 ## Outputs
 - Prototype code (build A from Stage 05 on)

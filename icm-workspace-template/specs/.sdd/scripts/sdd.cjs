@@ -34,6 +34,20 @@ const USAGE = `Usage:
                                          (--update resyncs an existing build-B workspace after a re-freeze)
   sdd.cjs readiness                      Report-only: how far the spec set is from freezable (open gaps,
                                          policy questions for the user, coverage, failing gates per stage)
+  sdd.cjs agenda [--write]               The questions only people outside the agent can answer: open policy
+                                         gaps and every decision tagged [PENDING-<ROLE>], grouped by role
+                                         (--write → specs/logs/agenda.md)
+  sdd.cjs metrics                        Per-stage metrics from specs/logs/transitions.jsonl (questions, versions,
+                                         rounds, gaps, outcomes, cases), one row per transition
+  sdd.cjs spec-outline                   Size of every SPEC section (and module) in KB, to plan a module split
+  sdd.cjs upgrade --from <template-root> Replace specs/.sdd with that template's copy (state file kept and mapped
+                                         from older stage names, legacy logs renamed, entry files regenerated) and
+                                         write specs/logs/upgrade-<version>.md
+  sdd.cjs dashboard [--out F] [--json] [--open]
+                                         One self-contained HTML page with the pipeline and its state (stages, next
+                                         action, gates, budgets, gaps, agenda, oracle, lock, history); default
+                                         specs/logs/dashboard.html, also rewritten by every transition. --json: the
+                                         same data as JSON (stdout, or F with --out)
 Stages: 00 01 01b 02 03 04 05 06 07`;
 
 // ========== Reporting ==========
@@ -455,6 +469,7 @@ function checkFixtures(p, ctx, r) {
 
   const ids = new Set();
   const asserted = [];
+  const citedInv = new Set();
   let httpSteps = 0;
   let runSteps = 0;
   for (const c of cases) {
@@ -555,7 +570,17 @@ function checkFixtures(p, ctx, r) {
       if (!ok) r.error(`${where}: covers "${ref}", which does not exist in the spec/contracts`);
       else if (!probe) cover(ref);
     }
+    // A case whose expectations derive from an invariant exercises it: credit `inv:Vn` from derivedFrom citations
+    // (SPEC §8 V12, "V12"), not only from an explicit covers entry. Recorded citations never count.
+    if (!probe) {
+      for (const d of L.specCitations(c)) {
+        for (const v of String(d).match(/\bV\d+\b/g) || []) {
+          if (invariants.includes(v) && !items.get(`inv:${v}`)) { cover(`inv:${v}`); citedInv.add(v); }
+        }
+      }
+    }
   }
+  if (citedInv.size) r.note(`invariants credited from derivedFrom citations: ${citedInv.size} (an explicit covers entry is still the stronger claim)`);
   const resolves = ref => items.has(ref) || (ref.startsWith('op:') && ctx.ops.some(o => o.operationId === ref.slice(3)));
 
   if (interfaces.includes('http') && !httpSteps) r.error('interface "http" declared but no case has an http step');
@@ -734,6 +759,7 @@ function outcomeTableGate(p, ctx) {
 
 function runCheck(p, { contractsOnly, specOnly, info }) {
   const r = new Report();
+  decisionDriftReport(p, r);
   if (specOnly) {
     // Draft mode: no contracts yet (Stages 01–02). The project type comes from the state file, not a manifest.
     const ctx = { ops: [], errorCodes: new Map(), machines: [], transitions: new Map(), commands: [], manifest: null, typeDef: (info && info.typeDef) || null, matrix: null, draft: true };
@@ -876,6 +902,45 @@ function reconGate(p, freshAfter) {
   if (odd.length) return [false, `${f}: Drift cells must be ✅ or ❌ (found ${odd.slice(0, 3).join(', ')})`];
   if (drift) return [false, `${f}: ${drift} ❌ drift entr${drift === 1 ? 'y' : 'ies'}`];
   return [true, `reconciliation: ${rows} row(s), zero ❌ drift`];
+}
+
+// ========== Decision log: append-only ==========
+
+const DECISIONS_FP = 'specs/logs/decisions.fingerprint.json';
+
+/** Every `| DECnnn |` row of specs/DECISION_LOG.md → a short hash of the row (whitespace-normalized). */
+function decisionRows(p) {
+  const out = {};
+  for (const line of readText(p.decisionLog).split(/\r?\n/)) {
+    const m = line.match(/^\|\s*(DEC\d{3})\s*\|/);
+    if (m) out[m[1]] = require('crypto').createHash('sha256').update(line.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 12);
+  }
+  return out;
+}
+
+/** Written at every transition: the rows as they were. The log is append-only; a later edit of an earlier row is drift. */
+function writeDecisionFingerprint(p, ts) {
+  if (!exists(p.decisionLog)) return;
+  fs.mkdirSync(p.logs, { recursive: true });
+  L.writeJson(path.join(p.root, DECISIONS_FP), { ts, rows: decisionRows(p) });
+}
+
+function decisionDrift(p) {
+  const fp = path.join(p.root, DECISIONS_FP);
+  if (!exists(fp) || !exists(p.decisionLog)) return null;
+  let base;
+  try { base = L.readJson(fp); } catch { return null; }
+  const now = decisionRows(p);
+  const changed = Object.keys(base.rows || {}).filter(k => now[k] && now[k] !== base.rows[k]);
+  const removed = Object.keys(base.rows || {}).filter(k => !now[k]);
+  return { ts: base.ts, changed, removed };
+}
+
+function decisionDriftReport(p, r) {
+  const d = decisionDrift(p);
+  if (!d) return;
+  if (d.changed.length) r.warn(`DECISION_LOG.md is append-only, but ${d.changed.length} row(s) recorded at ${d.ts} were rewritten since: ${d.changed.slice(0, 8).join(', ')}${d.changed.length > 8 ? ', …' : ''} — a changed decision is a new entry that cites the old one; derived artifacts (traceability, design packages) cite rows by id`);
+  if (d.removed.length) r.warn(`DECISION_LOG.md: ${d.removed.length} row(s) recorded at ${d.ts} are gone: ${d.removed.slice(0, 8).join(', ')} — never delete an entry; supersede it`);
 }
 
 // ========== Gap register, rulings ledger, slice cap (prototype-first pipeline) ==========
@@ -1234,6 +1299,11 @@ function orderCheck(stage, state, info) {
   const n = L.STAGES[stage].num;
   const name = state.stepName;
   if (stage === '00') return [true, 'Stage 00 may run at any time'];
+  // manifest.prototypeCadence "rolling": several slices are prototyped (01 → 02 each) before one hardening pass;
+  // the next slice's brief may follow an accepted prototype. The slice cap still applies at Stage 03.
+  if (stage === '01' && last === 2 && info.manifest && info.manifest.prototypeCadence === 'rolling') return [true, 'rolling prototypes (manifest.prototypeCadence): the next slice\'s brief follows the accepted prototype; hardening is deferred and the slice cap applies at Stage 03'];
+  // Before Stage 03 there is no manifest to declare a cadence: the user chooses at acceptance (harden now, or another slice first; recorded as a DECnnn that Stage 03 writes into the manifest).
+  if (stage === '01' && last === 2 && !info.manifest) return [true, 'next slice before hardening (no contracts yet: the cadence is the user\'s choice at acceptance, recorded as a DECnnn; Stage 03 declares it in manifest.prototypeCadence)'];
   if (stage === '06' && !info.ui) return [false, `${L.STAGES[stage].name} applies only to UI projects`];
   if (completedValue(stage, info.ui) === last) return [true, `re-running ${L.STAGES[stage].name}`];
   if (stage === '01b' && last <= 0) return [true, 'adoption of an existing codebase'];
@@ -1310,12 +1380,16 @@ function cmdStatus(p) {
     const deferred = gaps.filter(g => g.status === 'deferred').length;
     console.log(`  gaps:   ${open.length} open in ${GAPS_FILE} (${open.filter(g => g.kind === 'policy').length} policy, need the user)${deferred ? `, ${deferred} deferred (next-slice candidates)` : ''} — \`sdd.cjs readiness\` for detail`);
   }
+  const drift = decisionDrift(p);
+  if (drift && (drift.changed.length || drift.removed.length)) console.log(`  log:    ⚠ DECISION_LOG.md rows rewritten or removed since ${drift.ts}: ${[...drift.changed, ...drift.removed.map(x => '-' + x)].slice(0, 6).join(', ')} (append-only: supersede, never edit) — \`sdd.cjs check\` for detail`);
   const next = nextStage(state, info);
   if (!next) {
     console.log('\nPipeline complete. Next change: Class 0 (non-observable) → 05; Class 1 (observable) → 01; Class 2 (defect) → 00.');
     return 0;
   }
   console.log(`\nNext stage: ${L.STAGES[next].name} → read specs/.sdd/${L.STAGES[next].name}/CONTEXT.md`);
+  if (next === '03' && info.manifest && info.manifest.prototypeCadence === 'rolling') console.log('        (rolling cadence: `transition --completed 01` for the next slice is also in order; hardening when the user says so)');
+  else if (next === '03' && !info.manifest) console.log('        (no contracts yet: `transition --completed 01` for another slice is also in order — the user chooses at acceptance; Stage 03 writes the choice into manifest.prototypeCadence)');
   printGates(`Exit gates for ${next} (all must pass before \`sdd.cjs transition --completed ${next}\`):`, exitGates(next, p, state, info));
   return 0;
 }
@@ -1326,6 +1400,16 @@ function cmdCheck(p, args) {
   const { r } = runCheck(p, { contractsOnly, specOnly, info: specOnly ? projectInfo(p, readState(p)) : null });
   r.print(specOnly ? 'sdd check --spec (draft)' : contractsOnly ? 'sdd check --contracts' : 'sdd check');
   return r.errors.length ? 1 : 0;
+}
+
+/** The stages left before the freeze, in plain words, with the next action that is the user's. */
+function specPath(info) {
+  return [
+    ['01', 'interview → slice brief: spec draft, decisions, gap register', 'answer the interview, one question per message, then OK the slice brief'],
+    ['02', 'prototype demos (numbered versions), your policy answers with the product on screen, your acceptance', 'try the prototype, answer the open policy questions, accept with `sdd.cjs transition --completed 02 --approved-by "<you>"`'],
+    ['03', `contracts compiled against the prototype, spec completed, Red Team rounds, sampled interpretation diff${info.ui ? ', wireframes captured from the prototype' : ''} (agent, prototype running)`, `answer the batched policy questions a round raises${info.ui ? '; review each captured screen' : ''}`],
+    ['04', 'oracle recorded from the prototype and predicted from the spec, phases, freeze', 'approve the freeze'],
+  ];
 }
 
 /** Report-only. Counts known gaps; it never scores, and later stages can still find more. */
@@ -1367,17 +1451,14 @@ function cmdReadiness(p) {
     console.log(`  your questions (${policy.length} open policy gap(s); the prototype builds the provisional answer until you decide):`);
     for (const g of policy) console.log(`    ${g.id}: ${g.gap || '(no text)'} — provisional: ${g['draft assumption'] || '(none)'}`);
   }
+  const pendingTags = (readText(p.decisionLog).match(/\[PENDING-[A-Z][A-Z0-9-]*\]/g) || []).length;
+  if (pendingTags) console.log(`  pending:  ${pendingTags} [PENDING-<ROLE>] tag(s) in DECISION_LOG.md — \`sdd.cjs agenda\` lists them with the open policy gaps`);
   const otherOpen = (rows || []).filter(g => g.status === 'open' && g.kind !== 'policy').length;
   if (otherOpen) console.log(`  agent questions: ${otherOpen} open technical/builder/ui/oracle gap(s) — resolved by the swarm via the profile, no user time`);
 
   // Path to a full spec: the stages left before the freeze, in plain words, with the next action that is the user's.
   const next = nextStage(state, info);
-  const SPEC_PATH = [
-    ['01', 'interview → slice brief: spec draft, decisions, gap register', 'answer the interview, one question per message, then OK the slice brief'],
-    ['02', 'prototype demos (numbered versions), your policy answers with the product on screen, your acceptance', 'try the prototype, answer the open policy questions, accept with `sdd.cjs transition --completed 02 --approved-by "<you>"`'],
-    ['03', `contracts compiled against the prototype, spec completed, Red Team rounds, sampled interpretation diff${info.ui ? ', wireframes captured from the prototype' : ''} (agent, prototype running)`, `answer the batched policy questions a round raises${info.ui ? '; review each captured screen' : ''}`],
-    ['04', 'oracle recorded from the prototype and predicted from the spec, phases, freeze', 'approve the freeze'],
-  ];
+  const SPEC_PATH = specPath(info);
   const idx = next ? SPEC_PATH.findIndex(([s]) => s === next) : -1;
   if (idx >= 0) {
     console.log('  path to a full (frozen) spec:');
@@ -1394,6 +1475,422 @@ function cmdReadiness(p) {
     const failing = gates.filter(([ok]) => !ok);
     console.log(`    ${failing.length ? '✗' : '✓'} ${s} ${gates.length - failing.length}/${gates.length}`);
     for (const [, label] of failing) console.log(`        ✗ ${label}`);
+  }
+  return 0;
+}
+
+// ========== agenda, metrics, spec-outline, upgrade ==========
+
+const PENDING_TAG = /\[PENDING-([A-Z][A-Z0-9-]*)\]/g;
+
+/** The questions only people outside the agent can answer: open policy gaps, and every decision tagged [PENDING-<ROLE>]. */
+function agendaData(p) {
+  const gaps = (readGaps(p).rows || []).filter(g => g.status === 'open' && g.kind === 'policy');
+  const byRole = new Map();
+  for (const line of readText(p.decisionLog).split(/\r?\n/)) {
+    const m = line.match(/^\|\s*(DEC\d{3})\s*\|\s*((?:[^|\\]|\\.)*?)\s*\|/);
+    if (!m) continue;
+    const roles = [...line.matchAll(PENDING_TAG)].map(x => x[1]);
+    for (const role of new Set(roles)) {
+      if (!byRole.has(role)) byRole.set(role, []);
+      byRole.get(role).push({ id: m[1], title: m[2].replace(/\s+/g, ' ').slice(0, 160) });
+    }
+  }
+  return { gaps, byRole };
+}
+
+function cmdAgenda(p, args) {
+  const { gaps, byRole } = agendaData(p);
+  const L_ = [];
+  L_.push('# Agenda — questions for people outside the pipeline');
+  L_.push('');
+  L_.push(`Derived by \`sdd.cjs agenda\` on ${new Date().toISOString().slice(0, 10)} from ${GAPS_FILE} (open policy rows) and specs/DECISION_LOG.md (\`[PENDING-<ROLE>]\` tags). Regenerate, do not edit; an answer becomes a DECISION_LOG entry (a new row citing the pending one) and a spec edit, which removes the item from the next run.`);
+  L_.push('');
+  L_.push(`## Open policy questions for the product owner (${gaps.length})`);
+  L_.push('');
+  if (gaps.length) {
+    L_.push('| Gap | Question | Provisional answer (what the prototype does) |');
+    L_.push('|---|---|---|');
+    for (const g of gaps) L_.push(`| ${g.id} | ${g.gap} | ${g['draft assumption'] || ''} |`);
+  } else L_.push('none');
+  for (const [role, rows] of [...byRole.entries()].sort()) {
+    L_.push('');
+    L_.push(`## Working assumptions pending ${role} (${rows.length})`);
+    L_.push('');
+    L_.push('| Decision | Working assumption (tagged row) |');
+    L_.push('|---|---|');
+    for (const r of rows) L_.push(`| ${r.id} | ${r.title.replace(/\|/g, '\\|')} |`);
+  }
+  if (!byRole.size) { L_.push(''); L_.push('No decision carries a `[PENDING-<ROLE>]` tag.'); }
+  const text = L_.join('\n') + '\n';
+  if (args.flags.write) {
+    const f = path.join(p.logs, 'agenda.md');
+    fs.mkdirSync(p.logs, { recursive: true });
+    fs.writeFileSync(f, text);
+    console.log(`Wrote ${L.rel(p.root, f)}: ${gaps.length} open policy gap(s), ${[...byRole.values()].reduce((a, b) => a + b.length, 0)} pending decision(s) across ${byRole.size} role(s)`);
+  } else process.stdout.write(text);
+  return 0;
+}
+
+/** One row per transition with its recorded metrics: where the time went, comparable across slices and projects. */
+function cmdMetrics(p) {
+  const ts = readTransitions(p);
+  if (!ts.length) { console.log('No transitions yet (specs/logs/transitions.jsonl).'); return 0; }
+  const cols = ['interviewQuestions', 'prototypeVersions', 'swarmRounds', 'gapsOpen', 'gapsDeferred', 'rulings', 'declaredOutcomes', 'cases', 'probes'];
+  const short = { interviewQuestions: 'quest', prototypeVersions: 'vers', swarmRounds: 'rounds', gapsOpen: 'open', gapsDeferred: 'defer', rulings: 'rulings', declaredOutcomes: 'outcomes', cases: 'cases', probes: 'probes' };
+  const rows = ts.map(t => [String(t.ts || '').slice(0, 10), String(t.completed || '').slice(0, 24), t.approvedBy ? 'yes' : '', ...cols.map(c => (t.metrics && t.metrics[c] !== undefined ? String(t.metrics[c]) : '·'))]);
+  const head = ['date', 'stage completed', 'accepted', ...cols.map(c => short[c])];
+  const widths = head.map((h, i) => Math.max(h.length, ...rows.map(r => r[i].length)));
+  const fmt = r => r.map((c, i) => c.padEnd(widths[i])).join('  ');
+  console.log(fmt(head));
+  console.log(widths.map(w => '-'.repeat(w)).join('  '));
+  rows.forEach(r => console.log(fmt(r)));
+  console.log('\nquest = interview questions · vers = prototype versions · rounds = Red Team rounds this iteration · open/defer = GAPS.md rows · outcomes = declared operation outcomes · cases/probes = oracle cases');
+  return 0;
+}
+
+/** Section sizes of SPEC.md and its modules, to plan a split into specs/spec/<module>.md (check warns above the limit per file). */
+function cmdSpecOutline(p) {
+  const files = L.specFiles(p.root);
+  if (!files.length) { console.log('No specs/SPEC.md yet.'); return 0; }
+  let total = 0;
+  for (const f of files) {
+    const text = readText(path.join(p.root, f));
+    const kb = Buffer.byteLength(text) / 1024;
+    total += kb;
+    console.log(`${f} — ${kb.toFixed(0)} KB${kb > SPEC_SIZE_WARN_KB ? `  ⚠ over ${SPEC_SIZE_WARN_KB} KB: split` : ''}`);
+    const lines = text.split(/\r?\n/);
+    const heads = [];
+    lines.forEach((l, i) => { const m = l.match(/^(##|###) (.+)$/); if (m) heads.push([i, m[1].length, m[2]]); });
+    heads.forEach(([i, lvl, title], k) => {
+      let end = lines.length;
+      for (let j = k + 1; j < heads.length; j++) if (heads[j][1] <= lvl) { end = heads[j][0]; break; }
+      const size = Buffer.byteLength(lines.slice(i, end).join('\n')) / 1024;
+      if (size >= 1 || lvl === 2) console.log(`  ${lvl === 2 ? '' : '  '}${title.slice(0, 70).padEnd(lvl === 2 ? 72 : 70)} ${size.toFixed(0).padStart(5)} KB ${'█'.repeat(Math.min(40, Math.round(size / 4)))}`);
+    });
+  }
+  console.log(`\nTotal ${total.toFixed(0)} KB across ${files.length} file(s). Rule of thumb: one module per surface or area (its §4 entities, §5 operations, §7 errors, §14 screens together), SPEC.md as the index; keep every file under ${SPEC_SIZE_WARN_KB} KB so an agent reads it whole.`);
+  return 0;
+}
+
+// Older pipelines numbered the stages differently; the state keeps its meaning, not its number (03p = the accepted prototype = Stage 02 complete).
+const LEGACY_STATES = {
+  '03p_prototype': ['02', 'the accepted prototype (03p in the older pipeline) is Stage 02 complete; hardening (03) is next'],
+  '02_adversarial_swarm_analysis': ['01', 'contracts were written before a prototype ran (older pipeline): the brief is done, the prototype (02) is next; Stage 03 re-hardens against it'],
+  '03_interactive_wireframing': ['01', 'wireframes were approved before a prototype ran (older pipeline): the prototype (02) is next and supersedes them; Stage 03 captures wireframes from it'],
+};
+const LEGACY_LOGS = [['specs/logs/03p-prototype.md', PROTOTYPE_FILE], ['specs/logs/02-swarm.md', SWARM_FILE], ['specs/logs/02-rulings.md', RULINGS_FILE], ['specs/logs/03p-decisions.md', DECISIONS_FILE]];
+
+function templateVersion(dir) {
+  const m = readText(path.join(dir, 'WORKSPACE_ROUTING.md')).match(/<!--\s*version:\s*(.+?)\s*-->/);
+  return m ? m[1] : 'unknown';
+}
+
+/** Replace specs/.sdd with the template's copy: state file kept, legacy logs renamed, entry files regenerated, upgrade log written. */
+function cmdUpgrade(p, args) {
+  const from = typeof args.flags.from === 'string' ? path.resolve(args.flags.from) : null;
+  if (!from) fail('upgrade requires --from <template-root> (the folder holding specs/.sdd of the new template)');
+  const srcSdd = exists(path.join(from, 'specs/.sdd/WORKSPACE_ROUTING.md')) ? path.join(from, 'specs/.sdd') : (exists(path.join(from, 'WORKSPACE_ROUTING.md')) ? from : null);
+  if (!srcSdd) fail(`${from}: no specs/.sdd/WORKSPACE_ROUTING.md (point --from at the template's root)`);
+  const dstSdd = path.join(p.root, 'specs/.sdd');
+  const oldVersion = exists(dstSdd) ? templateVersion(dstSdd) : 'none';
+  const newVersion = templateVersion(srcSdd);
+  const state = exists(p.state) ? readText(p.state) : null;
+  const oldEntry = exists(p.entrypoint) ? readText(p.entrypoint) : null;
+  const oldFiles = exists(dstSdd) ? Object.fromEntries(L.listFiles(dstSdd).map(f => [path.relative(dstSdd, f), L.hashFile(f)])) : {};
+  // replace the pipeline files
+  if (exists(dstSdd)) fs.rmSync(dstSdd, { recursive: true, force: true });
+  fs.cpSync(srcSdd, dstSdd, { recursive: true, filter: s => !/sdd-state\.json$|__pycache__|\.DS_Store$/.test(s) });
+  fs.mkdirSync(path.dirname(p.state), { recursive: true });
+  if (state !== null) fs.writeFileSync(p.state, state);
+  // legacy stage names → today's numbering (the only time the tool rewrites the state outside a transition)
+  let mapped = null;
+  if (state !== null) {
+    try {
+      const s = JSON.parse(state);
+      const m = LEGACY_STATES[s.stepName];
+      if (m) {
+        const [target, why] = m;
+        mapped = `${s.stepName} (lastCompletedStep=${s.lastCompletedStep}) → ${L.STAGES[target].name} (${L.STAGES[target].num}): ${why}`;
+        L.writeJson(p.state, { ...s, lastCompletedStep: L.STAGES[target].num, stepName: L.STAGES[target].name, notes: `${s.notes ? s.notes + '; ' : ''}upgrade ${newVersion}: mapped legacy stage ${s.stepName} → ${L.STAGES[target].name}` });
+      }
+    } catch { /* unreadable state: left as is */ }
+  }
+  const newFiles = Object.fromEntries(L.listFiles(dstSdd).map(f => [path.relative(dstSdd, f), L.hashFile(f)]));
+  const added = Object.keys(newFiles).filter(f => !(f in oldFiles));
+  const removed = Object.keys(oldFiles).filter(f => !(f in newFiles) && !/sdd-state\.json$/.test(f));
+  const changed = Object.keys(newFiles).filter(f => f in oldFiles && oldFiles[f] !== newFiles[f]);
+  // legacy log names
+  const renamed = [];
+  for (const [oldRel, newRel] of LEGACY_LOGS) {
+    const o = path.join(p.root, oldRel), n = path.join(p.root, newRel);
+    if (exists(o) && !exists(n)) { fs.renameSync(o, n); renamed.push(`${oldRel} → ${newRel}`); }
+  }
+  // entry files: regenerated when they still equal the old entrypoint (or are missing); a customized one is left alone
+  const newEntry = readText(p.entrypoint);
+  const entries = [];
+  for (const f of ['CLAUDE.md', 'AGENTS.md', '.cursorrules']) {
+    const fp = path.join(p.root, f);
+    const cur = exists(fp) ? readText(fp) : null;
+    if (cur === null || cur === oldEntry || cur === newEntry) { fs.writeFileSync(fp, newEntry); entries.push(`${f}: regenerated`); }
+    else entries.push(`${f}: left as is (customized; append the new entrypoint by hand — specs/.sdd/_config/entrypoint.md)`);
+  }
+  // upgrade log
+  const tag = newVersion.replace(/[^0-9A-Za-z.-]+/g, '-');
+  let logFile = path.join(p.logs, `upgrade-${tag}.md`);
+  fs.mkdirSync(p.logs, { recursive: true });
+  for (let n = 2; exists(logFile); n++) logFile = path.join(p.logs, `upgrade-${tag}-${n}.md`); // an earlier, filled-in log is never overwritten
+  const cp = require('child_process');
+  const run = cmd => { const r = cp.spawnSync(process.execPath, [__filename, cmd, '--root', p.root], { encoding: 'utf8' }); return (r.stdout + r.stderr).trim(); };
+  const body = `# Upgrade to pipeline ${newVersion} (${new Date().toISOString().slice(0, 10)})
+
+Resume with: "Read ${L.rel(p.root, logFile)}, run \`node specs/.sdd/scripts/sdd.cjs status\` and \`readiness\`, continue from Next actions."
+
+## What changed in this workspace
+- \`specs/.sdd/\` → template \`${newVersion}\` (was \`${oldVersion}\`): ${added.length} file(s) added, ${changed.length} changed, ${removed.length} removed. State file ${mapped ? `mapped: ${mapped}` : `untouched${state === null ? ' (none existed)' : ''}`}.
+- Logs renamed: ${renamed.length ? renamed.join('; ') : 'none needed'}.
+- Entry files: ${entries.join('; ')}.
+- Written by \`sdd.cjs upgrade --from ${from}\`. Pipeline files are part of the frozen set: a lock, if one exists, is now modified and is re-frozen with the user's approval at the next Stage 04.
+
+### Files added
+${added.map(f => `- ${f}`).join('\n') || '- none'}
+
+### Files removed
+${removed.map(f => `- ${f}`).join('\n') || '- none'}
+
+## What the tooling says (right after the upgrade)
+
+\`\`\`
+${run('status')}
+\`\`\`
+
+\`\`\`
+${run('readiness')}
+\`\`\`
+
+## Where the project really is
+_(agent: one paragraph per slice — what is built, accepted, hardened, frozen; what the gates above mean here)_
+
+## Next actions
+_(agent: numbered, each the user's or the agent's; the first is usually "read the new stage contracts the status points to")_
+
+## Standing constraints
+No \`transition\` or \`freeze\` without the user's explicit word; never hand-edit \`sdd-state.json\`; frozen files change only through the pipeline's own stages or a user-approved SCR; only the oracle grades.
+`;
+  fs.writeFileSync(logFile, body);
+  console.log(`Upgraded specs/.sdd: ${oldVersion} → ${newVersion} (${added.length} added, ${changed.length} changed, ${removed.length} removed)`);
+  if (mapped) console.log(`  state mapped: ${mapped}`);
+  renamed.forEach(x => console.log(`  renamed ${x}`));
+  entries.forEach(x => console.log(`  ${x}`));
+  console.log(`Wrote ${L.rel(p.root, logFile)} — fill in "Where the project really is" and "Next actions", then show it to the user.`);
+  return 0;
+}
+
+// ========== dashboard ==========
+
+const DASHBOARD_FILE = 'dashboard.html';
+const STAGE_LABELS = { '01': 'Brainstorm', '01b': 'Adopt', '02': 'Prototype', '03': 'Hardening', '04': 'Oracle + freeze', '05': 'Build', '06': 'Visual acceptance', '07': 'Certification' };
+
+/** Everything the dashboard shows, from the same functions status/readiness/agenda/metrics print. Never a score. */
+function dashboardData(p) {
+  const state = readState(p);
+  const info = projectInfo(p, state);
+  const last = typeof state.lastCompletedStep === 'number' ? state.lastCompletedStep : 0;
+  const next = nextStage(state, info);
+  const v = exists(p.lock) ? L.verifyLock(p.root) : null;
+  const { r, ctx } = runCheck(p, { contractsOnly: false });
+  const { rows, errors: gapErrors } = readGaps(p);
+  const transitions = readTransitions(p);
+  const b = budgets(info);
+  const q = interviewRows(p);
+  const versions = prototypeVersions(p);
+  const rounds = swarmRounds(p);
+  const adopted = state.stepName === STAGES_01B || transitions.some(t => t.completed === STAGES_01B);
+  const stages = ['01', '02', '03', '04', '05', ...(info.ui ? ['06'] : []), '07'].map(s => {
+    const id = s === '01' && adopted ? '01b' : s;
+    const done = s === '05' && !info.ui ? last >= 6 : last >= L.STAGES[s].num;
+    return { id, name: L.STAGES[id].name, label: STAGE_LABELS[id], done, next: next === s };
+  });
+  const open = (rows || []).filter(g => g.status === 'open');
+  const by = k => open.filter(g => g.kind === k).length;
+  const agenda = agendaData(p);
+  const pendingTags = (readText(p.decisionLog).match(/\[PENDING-[A-Z][A-Z0-9-]*\]/g) || []).length;
+  const drift = decisionDrift(p);
+  const run = latestReport(p, 'run-', () => true);
+  const diff = latestReport(p, 'diff-', () => true);
+  const ed = latestReport(p, 'expectdiff-', () => true);
+  const sp = specPath(info);
+  const idx = next ? sp.findIndex(([s]) => s === next) : -1;
+  let slice = null;
+  if (ctx.manifest) { const so = sliceOutcomes(p, ctx); slice = { declared: so.slice, total: so.total, cap: ctx.manifest.sliceCap || DEFAULT_SLICE_CAP, operations: ctx.ops.length + ctx.commands.length }; }
+  const m = info.manifest || {};
+  return {
+    generatedAt: new Date().toISOString(),
+    tool: L.TOOL_VERSION,
+    pipeline: templateVersion(p.sdd),
+    project: { title: (readText(p.spec).match(/^#\s+(.+?)\s*$/m) || [])[1] || path.basename(p.root), root: p.root, type: info.projectType || 'unset', ui: info.ui, interfaces: info.interfaces || [] },
+    state: { lastCompletedStep: last, stepName: state.stepName || '', notes: state.notes || '', timestamp: state.timestamp || null, stage00: state.stepName === STAGES_00 },
+    settings: {
+      prototypeCadence: m.prototypeCadence || (info.manifest ? 'slice (default)' : 'not declared yet (the user chooses at each acceptance; Stage 03 writes it into manifest.json)'),
+      equivalenceCadence: m.equivalenceCadence || (info.manifest ? 'slice (default)' : '—'),
+      equivalenceTarget: m.equivalenceTarget ? `L${m.equivalenceTarget}` : (info.manifest ? '—' : 'L2 (default)'),
+      sliceCap: m.sliceCap || DEFAULT_SLICE_CAP,
+      budgets: b,
+    },
+    stages,
+    next: next ? { id: next, name: L.STAGES[next].name, label: STAGE_LABELS[next], rollingHint: next === '03' && (m.prototypeCadence === 'rolling' || !info.manifest) } : null,
+    path: idx >= 0 ? { stages: sp.slice(idx).map(([s, what]) => ({ id: s, what })), yours: sp[idx][2], after: `05 build (agent only) → ${info.ui ? '06 visual acceptance → ' : ''}07 certification report` } : null,
+    gates: next ? exitGates(next, p, state, info).map(([ok, label]) => ({ ok, label })) : [],
+    specGates: ['01', '02', '03', '04'].map(s => { const g = exitGates(s, p, { ...state, timestamp: null }, info, { report: true }); return { id: s, label: STAGE_LABELS[s], passed: g.filter(([ok]) => ok).length, total: g.length, failing: g.filter(([ok]) => !ok).map(([, l]) => l) }; }),
+    budgets: { interview: { used: q ? q.length : 0, budget: b.interviewQuestions }, prototype: { used: versions ? versions.length : 0, budget: b.prototypeVersions }, redTeam: { used: rounds, budget: b.swarmRounds } },
+    gaps: rows === null ? null : { open: open.length, policy: by('policy'), technical: by('technical'), builder: by('builder'), ui: by('ui'), oracle: by('oracle'), closed: rows.filter(g => g.status === 'resolved' || g.status === 'confirmed').length, deferred: rows.filter(g => g.status === 'deferred').length, malformed: gapErrors.length, questions: agenda.gaps.map(g => ({ id: g.id, question: g.gap || '', provisional: g['draft assumption'] || '' })) },
+    pending: { tags: pendingTags, byRole: [...agenda.byRole.entries()].sort().map(([role, items]) => ({ role, items })) },
+    decisions: { count: Object.keys(decisionRows(p)).length, drift: drift && (drift.changed.length || drift.removed.length) ? { since: drift.ts, changed: drift.changed, removed: drift.removed } : null },
+    check: { errors: r.errors.length, warnings: r.warnings.length, firstErrors: r.errors.slice(0, 8), coverage: r.notes.find(n => n.startsWith('coverage:')) || null },
+    oracle: { run: run ? { passed: run.passed, total: run.total, target: run.target, at: run.finishedAt, stale: !(v && run.lockHash === v.lock.hash), filtered: !!run.filtered } : null, diff: diff ? { a: diff.a, b: diff.b, divergent: diff.divergentCases, at: diff.finishedAt } : null, expectDiff: ed ? { label: ed.label, compared: ed.totalCases, divergent: ed.divergentCases, at: ed.finishedAt } : null },
+    lock: v ? { version: v.lock.lockVersion, hash: v.lock.hash, intact: v.valid, modified: v.modified, added: v.added, removed: v.removed, frozenAt: v.lock.frozenAt || v.lock.createdAt || null } : null,
+    slice,
+    versions: versions || [],
+    transitions: transitions.map(t => ({ ts: t.ts, completed: t.completed, resume: t.resume || null, approvedBy: t.approvedBy || null, release: !!t.release, note: t.note || '', metrics: t.metrics || {} })),
+  };
+}
+
+function renderDashboard(d) {
+  const esc = s => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Tool output and spec rows carry a little markdown (`code`, **bold**); render those two, nothing else.
+  const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  const when = s => (s ? esc(String(s).replace('T', ' ').slice(0, 16)) : '—');
+  const n = x => (typeof x === 'number' ? x.toLocaleString('en-US') : esc(x));
+  const details = (summary, body, openIt) => `<details${openIt ? ' open' : ''}><summary>${summary}</summary><div class="dbody">${body}</div></details>`;
+  const pill = (kind, text) => `<span class="pill ${kind}">${{ ok: '✓', warn: '!', bad: '✗', neutral: '·' }[kind]} ${esc(text)}</span>`;
+  // A long message folds: its first clause stays on the line; a comma list of paths becomes columns.
+  const fold = label => {
+    const cut = label.indexOf(': ');
+    if (label.length <= 140 || cut <= 0 || cut > 120) return md(label);
+    const rest = label.slice(cut + 2);
+    const items = rest.split(/,\s+/);
+    const body = items.length > 4 ? `<ul class="cols mono">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : `<p class="small">${md(rest)}</p>`;
+    return md(label.slice(0, cut)) + details(items.length > 4 ? `${items.length} items` : 'detail', body);
+  };
+  const gate = g => `<li class="${g.ok ? 'ok' : 'bad'}"><span class="mark">${g.ok ? '✓' : '✗'}</span><div>${fold(g.label)}</div></li>`;
+  const meter = (used, limit, kind) => `<div class="track" role="img" aria-label="${used} of ${limit}"><div class="fill ${kind || ''}" style="width:${Math.min(100, Math.round((used / Math.max(1, limit)) * 100))}%"></div></div>`;
+  const budget = (label, used, limit) => `<div class="budget"><div class="row"><span>${esc(label)}</span><span class="num">${used}<span class="muted">/${limit}</span>${used > limit ? ` ${pill('warn', 'over budget')}` : ''}</span></div>${meter(used, limit, used > limit ? 'warn' : '')}</div>`;
+  const table = (cols, rows, opts = {}) => {
+    const foldAbove = opts.foldAbove === undefined ? 8 : opts.foldAbove;
+    if (!rows.length) return '<p class="muted">none</p>';
+    const widths = opts.widths || cols.map(() => `${Math.floor(100 / cols.length)}%`);
+    const html = `<table><colgroup>${widths.map(w => `<col style="width:${w}">`).join('')}</colgroup><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    return rows.length > foldAbove ? details(`${rows.length} rows`, html) : html;
+  };
+  const tile = (label, value, sub, kind) => `<div class="tile t-${kind || 'neutral'}"><div class="tlabel">${esc(label)}</div><div class="tvalue">${value}</div>${sub ? `<div class="tsub">${sub}</div>` : ''}</div>`;
+
+  const s = d.settings;
+  const failing = d.gates.filter(g => !g.ok).length;
+  const strip = d.stages.map(st => `<div class="stage ${st.done ? 'done' : st.next ? 'next' : 'todo'}"><div class="num">${esc(st.id)}</div><div class="lbl">${esc(st.label)}</div><div class="st">${st.done ? 'done' : st.next ? 'next' : 'later'}</div></div>`).join('<div class="arrow">→</div>');
+  const now = d.next
+    ? `<div class="callout"><div><b>Next stage: ${esc(d.next.id)} ${esc(d.next.label)}</b> <span class="muted">· specs/.sdd/${esc(d.next.name)}/CONTEXT.md</span>${d.next.rollingHint ? `<div class="small muted">or another slice's brief first (<code>transition --completed 01</code>): the cadence is the user's call</div>` : ''}</div>${d.path ? `<div><b>Next action (yours):</b> ${md(d.path.yours)}</div>` : ''}</div>`
+    : '<div class="callout">Pipeline complete. Next change: Class 0 (non-observable) → 05; Class 1 (observable) → 01; Class 2 (defect) → 00.</div>';
+  const pathList = d.path ? `<ol class="path">${d.path.stages.map(p => `<li><b>${esc(p.id)}</b> ${esc(p.what)}</li>`).join('')}</ol><p class="note" style="margin-top:2px">then ${esc(d.path.after)}</p>` : '';
+
+  const tiles = [
+    d.next ? tile(`Gates for ${d.next.id}`, `${d.gates.length - failing}<span class="muted">/${d.gates.length}</span>`, failing ? pill('bad', `${failing} failing`) : pill('ok', 'all pass'), failing ? 'bad' : 'ok') : tile('Gates', '—', pill('ok', 'pipeline complete'), 'ok'),
+    d.gaps ? tile('Open gaps', `${d.gaps.open}`, d.gaps.policy ? pill('warn', `${d.gaps.policy} need you`) : pill('ok', 'none need you'), d.gaps.policy ? 'warn' : 'ok') : tile('Open gaps', '—', '<span class="muted">no GAPS.md yet</span>'),
+    tile('Pending decisions', `${d.pending.tags}`, d.pending.byRole.length ? `<span class="muted">${esc(d.pending.byRole.map(r => `${r.items.length} ${r.role}`).join(', '))}</span>` : '<span class="muted">no [PENDING-ROLE] tags</span>', d.pending.tags ? 'warn' : 'ok'),
+    d.oracle.run ? tile('Oracle', `${n(d.oracle.run.passed)}<span class="muted">/${n(d.oracle.run.total)}</span>`, d.oracle.run.stale ? pill('warn', 'stale lock') : pill(d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad', d.oracle.run.passed === d.oracle.run.total ? 'green' : `${d.oracle.run.total - d.oracle.run.passed} failing`), d.oracle.run.stale ? 'warn' : d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad') : tile('Oracle', '—', '<span class="muted">no run yet</span>'),
+    d.lock ? tile('Lock', `v${esc(d.lock.version)}`, d.lock.intact ? pill('ok', 'intact') : pill('bad', `${d.lock.modified.length + d.lock.added.length + d.lock.removed.length} files changed`), d.lock.intact ? 'ok' : 'bad') : tile('Lock', '—', '<span class="muted">not frozen yet</span>'),
+    tile('Check', `${d.check.errors}<span class="muted"> err</span>`, d.check.warnings ? pill('warn', `${d.check.warnings} warnings`) : pill('ok', 'no warnings'), d.check.errors ? 'bad' : d.check.warnings ? 'warn' : 'ok'),
+  ].join('');
+
+  const specGates = d.specGates.map(g => `<li class="${g.failing.length ? 'bad' : 'ok'}"><span class="mark">${g.failing.length ? '✗' : '✓'}</span><div class="sg"><div class="row"><span>${esc(g.id)} ${esc(g.label)}</span><span class="num">${g.passed}<span class="muted">/${g.total}</span></span></div>${meter(g.passed, g.total, g.failing.length ? 'bad' : 'ok')}${g.failing.length ? details(`${g.failing.length} missing`, `<ul class="gates small">${g.failing.map(f => `<li class="bad"><span class="mark">✗</span><div>${fold(f)}</div></li>`).join('')}</ul>`) : ''}</div></li>`).join('');
+
+  let gapsBlock = '<p class="muted">no specs/GAPS.md yet (Stage 01 opens it)</p>';
+  if (d.gaps) {
+    const segs = [['Open, need you', d.gaps.policy, 'warn'], ['Open, agent', d.gaps.open - d.gaps.policy, 'accent'], ['Deferred', d.gaps.deferred, 'neutral'], ['Closed', d.gaps.closed, 'ok']];
+    const total = segs.reduce((a, x) => a + x[1], 0) || 1;
+    gapsBlock = `<div class="stack">${segs.filter(x => x[1]).map(x => `<div class="seg ${x[2]}" style="width:${(x[1] / total) * 100}%" title="${esc(x[0])}: ${x[1]}"></div>`).join('')}</div><div class="legend">${segs.map(x => `<span><i class="sw ${x[2]}"></i>${esc(x[0])} <b>${x[1]}</b></span>`).join('')}${d.gaps.malformed ? `<span class="bad">${d.gaps.malformed} malformed row(s)</span>` : ''}</div>`
+      + (d.gaps.questions.length ? `<h3>Your questions (${d.gaps.questions.length}) <span class="muted">— the prototype builds the provisional answer until you decide</span></h3>${table(['Gap', 'Question', 'Provisional answer (what the prototype does)'], d.gaps.questions.map(g => [`<code>${esc(g.id)}</code>`, md(g.question), md(g.provisional)]), { widths: ['9%', '31%', '60%'] })}` : '');
+  }
+  const pendingBlock = d.pending.byRole.map(r => `<h3>Working assumptions pending ${esc(r.role)} (${r.items.length})</h3>${table(['Decision', 'Working assumption'], r.items.map(i => [`<code>${esc(i.id)}</code>`, md(i.title)]), { widths: ['12%', '88%'] })}`).join('');
+
+  const lockRow = !d.lock ? '<span class="muted">none yet — the frozen set is not locked; a defect found now is a gap row in the current stage, not a Stage 00 change</span>'
+    : d.lock.intact ? `${pill('ok', `v${d.lock.version} intact`)} <code>${esc(String(d.lock.hash).slice(0, 12))}</code>${d.lock.frozenAt ? ` <span class="muted">frozen ${when(d.lock.frozenAt)}</span>` : ''}`
+      : `${pill('bad', `v${d.lock.version} modified`)} ${d.lock.modified.length} changed, ${d.lock.added.length} added, ${d.lock.removed.length} removed — re-frozen only with the user's approval at the next Stage 04 or through an SCR${details('files', `<ul class="cols mono">${[...d.lock.modified.map(f => `~ ${f}`), ...d.lock.added.map(f => `+ ${f}`), ...d.lock.removed.map(f => `− ${f}`)].map(f => `<li>${esc(f)}</li>`).join('')}</ul>`)}`;
+  const checkRow = `${pill(d.check.errors ? 'bad' : 'ok', `${d.check.errors} error(s)`)} ${pill(d.check.warnings ? 'warn' : 'neutral', `${d.check.warnings} warning(s)`)}${d.check.coverage ? `<div class="small muted">${esc(d.check.coverage)}</div>` : ''}${d.check.firstErrors.length ? details('first errors', `<ul class="gates small">${d.check.firstErrors.map(e => `<li class="bad"><span class="mark">✗</span><div>${md(e)}</div></li>`).join('')}</ul>`) : ''}`;
+  const oracleRow = d.oracle.run ? `${pill(d.oracle.run.passed === d.oracle.run.total ? 'ok' : 'bad', `${d.oracle.run.passed}/${d.oracle.run.total} passed`)} on "${esc(d.oracle.run.target)}" at ${when(d.oracle.run.at)}${d.oracle.run.stale ? ` ${pill('warn', 'stale: different lock')}` : ''}${d.oracle.run.filtered ? ' <span class="muted">(filtered)</span>' : ''}` : '<span class="muted">no run yet — Stage 04 derives the cases, Stage 05 runs them</span>';
+  const evidence = `<dl class="kv"><dt>Lock</dt><dd>${lockRow}</dd><dt>Check</dt><dd>${checkRow}</dd><dt>Oracle</dt><dd>${oracleRow}</dd>${d.oracle.diff ? `<dt>Diff</dt><dd>${esc(d.oracle.diff.a)} vs ${esc(d.oracle.diff.b)}: ${pill(d.oracle.diff.divergent ? 'bad' : 'ok', `${d.oracle.diff.divergent} divergent`)} at ${when(d.oracle.diff.at)}</dd>` : ''}${d.oracle.expectDiff ? `<dt>Diff-expect</dt><dd>"${esc(d.oracle.expectDiff.label)}": ${d.oracle.expectDiff.compared} compared, ${d.oracle.expectDiff.divergent} with gaps at ${when(d.oracle.expectDiff.at)}</dd>` : ''}<dt>Decisions</dt><dd>${d.decisions.count} row(s)${d.pending.tags ? `, ${d.pending.tags} pending tag(s)` : ''}${d.decisions.drift ? ` ${pill('bad', 'append-only violated')} rows rewritten or removed since ${when(d.decisions.drift.since)}: <code>${esc([...d.decisions.drift.changed, ...d.decisions.drift.removed.map(x => '-' + x)].join(', '))}</code>` : ''}</dd></dl>`;
+
+  const vkeys = d.versions.length ? Object.keys(d.versions[0]) : [];
+  const vwidths = vkeys.map(k => (k === 'version' ? '8%' : k === 'date' ? '11%' : /changed|what|summary|description/.test(k) ? null : '14%'));
+  const flex = vwidths.filter(w => w === null).length;
+  const fixed = vwidths.reduce((a, w) => a + (w ? parseInt(w, 10) : 0), 0);
+  const versions = table(vkeys, d.versions.map(v => vkeys.map(k => md(v[k]))), { widths: vwidths.map(w => w || `${Math.max(20, Math.floor((100 - fixed) / Math.max(1, flex)))}%`) });
+
+  const mcols = [['interviewQuestions', 'quest'], ['prototypeVersions', 'vers'], ['swarmRounds', 'rounds'], ['gapsOpen', 'open'], ['gapsDeferred', 'defer'], ['rulings', 'rulings'], ['declaredOutcomes', 'outcomes'], ['cases', 'cases'], ['probes', 'probes']];
+  const history = table(['When', 'Completed', 'Accepted by', 'Note', ...mcols.map(([, h]) => h)],
+    [...d.transitions].reverse().map(t => [when(t.ts), `<code>${esc(t.completed)}</code>${t.resume ? `<div class="small muted">→ ${esc(t.resume)}</div>` : ''}`, esc(t.approvedBy || (t.release ? 'release (L2)' : '')), md(t.note), ...mcols.map(([c]) => (t.metrics[c] === undefined ? '<span class="muted">·</span>' : `<span class="num">${n(t.metrics[c])}</span>`))]),
+    { widths: ['8%', '13%', '8%', '17%', ...mcols.map(() => '6%')], foldAbove: 25 });
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDD dashboard — ${esc(d.project.title)}</title>
+<style>
+:root{color-scheme:light;--bg:#f3f3f0;--card:#fcfcfb;--text:#0b0b0b;--text2:#52514e;--muted:#7b7a75;--line:#e2e1dc;--line2:#edece8;--accent:#2a78d6;--accent-soft:#d8e5f7;--good:#0ca30c;--good-text:#006300;--good-soft:#dff3df;--warn:#fab219;--warn-text:#7a4f00;--warn-soft:#fdf0cc;--bad:#d03b3b;--bad-text:#a52b2b;--bad-soft:#f8dcdc;--neutral:#b9b8b2}
+@media (prefers-color-scheme: dark){:root:where(:not([data-theme="light"])){color-scheme:dark;--bg:#121211;--card:#1a1a19;--text:#f0efec;--text2:#c3c2b7;--muted:#8f8e87;--line:#2e2e2b;--line2:#262624;--accent:#3987e5;--accent-soft:#1f3b5e;--good:#0ca30c;--good-text:#7ddc7d;--good-soft:#17331a;--warn:#fab219;--warn-text:#f2c35a;--warn-soft:#3d2f0f;--bad:#e66767;--bad-text:#f08c8c;--bad-soft:#3f1c1c;--neutral:#5c5b56}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#121211;--card:#1a1a19;--text:#f0efec;--text2:#c3c2b7;--muted:#8f8e87;--line:#2e2e2b;--line2:#262624;--accent:#3987e5;--accent-soft:#1f3b5e;--good:#0ca30c;--good-text:#7ddc7d;--good-soft:#17331a;--warn:#fab219;--warn-text:#f2c35a;--warn-soft:#3d2f0f;--bad:#e66767;--bad-text:#f08c8c;--bad-soft:#3f1c1c;--neutral:#5c5b56}
+*{box-sizing:border-box;min-width:0}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:anywhere}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px}header{margin-bottom:16px}h1{font-size:1.45rem;margin:0 0 2px}.meta{color:var(--muted);font-size:.88rem}
+h2{font-size:.78rem;margin:0 0 12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}h3{font-size:.95rem;margin:18px 0 8px;font-weight:600}h3 .muted{font-weight:400}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--line2);padding:0 4px;border-radius:4px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem}.num{font-variant-numeric:tabular-nums;font-weight:600}.small{font-size:.86rem}.muted{color:var(--muted)}span.bad{color:var(--bad-text)}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;grid-column:span 12}.c6{grid-column:span 6}@media (max-width:860px){.c6{grid-column:span 12}}
+.strip{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}.stage{flex:1 1 110px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center;background:var(--bg)}.stage .num{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--muted);font-weight:500}.stage .lbl{font-weight:600;font-size:.95rem}.stage .st{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stage.done{border-color:var(--good);background:var(--good-soft)}.stage.done .st{color:var(--good-text)}.stage.next{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--card)}.stage.next .st{color:var(--accent)}.stage.todo{opacity:.65}.arrow{color:var(--muted);flex:0 0 auto}@media (max-width:600px){.arrow{display:none}}
+.callout{display:grid;gap:6px;border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0}.callout code{background:rgba(127,127,127,.15)}
+ol.path{margin:8px 0 0;padding-left:20px;font-size:.9rem}ol.path li{margin:2px 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.tile{border:1px solid var(--line);border-radius:8px;padding:12px 14px;border-top:3px solid var(--neutral)}.tile.t-ok{border-top-color:var(--good)}.tile.t-warn{border-top-color:var(--warn)}.tile.t-bad{border-top-color:var(--bad)}.tlabel{font-size:.8rem;color:var(--muted)}.tvalue{font-size:1.6rem;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;margin:2px 0 6px}.tsub{font-size:.82rem;color:var(--text2)}
+.pill{display:inline-block;border-radius:999px;padding:0 9px;font-size:.78rem;font-weight:600;line-height:1.6;white-space:nowrap}.pill.ok{background:var(--good-soft);color:var(--good-text)}.pill.bad{background:var(--bad-soft);color:var(--bad-text)}.pill.warn{background:var(--warn-soft);color:var(--warn-text)}.pill.neutral{background:var(--line2);color:var(--muted)}
+ul.gates{list-style:none;padding:0;margin:0}ul.gates li{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line2);font-size:.92rem}ul.gates li:last-child{border:0}ul.gates li>div{flex:1}ul.gates li.ok .mark{color:var(--good-text)}ul.gates li.bad .mark{color:var(--bad-text)}.mark{flex:0 0 1.1em;font-weight:700}ul.gates.small li{font-size:.84rem;padding:3px 0}
+.sg{flex:1}.sg .row{display:flex;justify-content:space-between;gap:8px}
+.budget{margin:8px 0 12px}.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.92rem}.track{height:6px;background:var(--accent-soft);border-radius:3px;overflow:hidden;margin-top:5px}.fill{height:100%;background:var(--accent);border-radius:3px}.fill.warn{background:var(--warn)}.fill.bad{background:var(--bad)}.fill.ok{background:var(--good)}.sg .track{background:var(--line2)}
+.stack{display:flex;gap:2px;height:14px;border-radius:4px;overflow:hidden;margin:4px 0 8px}.seg.warn{background:var(--warn)}.seg.accent{background:var(--accent)}.seg.neutral{background:var(--neutral)}.seg.ok{background:var(--good)}.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.88rem;color:var(--text2)}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}.sw.warn{background:var(--warn)}.sw.accent{background:var(--accent)}.sw.neutral{background:var(--neutral)}.sw.ok{background:var(--good)}
+table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.88rem}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:top}th{color:var(--muted);font-weight:600;font-size:.75rem;overflow-wrap:normal}td .num{font-weight:500}
+dl.kv{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:8px 14px;margin:0;font-size:.92rem}dl.kv dt{color:var(--muted)}dl.kv dd{margin:0}
+details{margin-top:4px}summary{cursor:pointer;color:var(--accent);font-size:.86rem;font-weight:500;user-select:none}.dbody{margin-top:6px}ul.cols{list-style:none;margin:0;padding:0;columns:3 220px;column-gap:18px;font-size:.78rem;line-height:1.5}ul.cols li{break-inside:avoid}
+.note{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+</style></head><body><div class="wrap">
+<header><h1>${esc(d.project.title)}</h1><div class="meta">SDD dashboard · ${esc(d.project.type)}${d.project.ui ? ' · UI' : ''} · pipeline ${esc(d.pipeline)} · generated ${when(d.generatedAt)} · regenerate with <code>node specs/.sdd/scripts/sdd.cjs dashboard</code></div></header>
+<div class="grid">
+<section class="card"><h2>Pipeline</h2><div class="strip">${strip}</div>
+<div class="meta">lastCompletedStep=${esc(d.state.lastCompletedStep)} (${esc(d.state.stepName || '—')})${d.state.timestamp ? ` at ${when(d.state.timestamp)}` : ''}${d.state.notes ? ` — ${esc(d.state.notes)}` : ''}</div>
+${d.state.stage00 ? '<div class="callout">Stage 00 is in progress: a Spec Change Request is open and the pipeline resumes where the transition said.</div>' : ''}
+${now}${pathList}
+</section>
+<section class="card"><h2>At a glance</h2><div class="tiles">${tiles}</div></section>
+<section class="card c6"><h2>Exit gates for ${d.next ? esc(d.next.id) + ' ' + esc(d.next.label) : '—'}</h2>${d.gates.length ? `<ul class="gates">${d.gates.map(gate).join('')}</ul>` : '<p class="muted">none</p>'}
+<h3>All spec stages <span class="muted">(freshness ignored: what is still missing, not what was done this stage)</span></h3><ul class="gates">${specGates}</ul></section>
+<section class="card c6"><h2>Budgets</h2>${budget('Interview questions', d.budgets.interview.used, d.budgets.interview.budget)}${budget('Prototype versions', d.budgets.prototype.used, d.budgets.prototype.budget)}${budget('Red Team rounds, this iteration', d.budgets.redTeam.used, d.budgets.redTeam.budget)}
+<p class="note">Counts the user can read: never a score, never a block.</p>
+<h2 style="margin-top:20px">Settings</h2><dl class="kv"><dt>Cadence</dt><dd>prototype <b>${esc(s.prototypeCadence)}</b> · equivalence ${esc(s.equivalenceCadence)}</dd><dt>Equivalence</dt><dd>${esc(s.equivalenceTarget)}</dd><dt>Slice cap</dt><dd>${esc(s.sliceCap)} declared outcomes${d.slice ? `<div class="small muted">this slice: ${d.slice.declared === null ? 'unknown' : n(d.slice.declared)} new · ${n(d.slice.total)} in total across ${d.slice.operations} operation(s)</div>` : '<div class="small muted">no contracts yet (Stage 03)</div>'}</dd><dt>Budgets</dt><dd>${s.budgets.interviewQuestions} questions · ${s.budgets.prototypeVersions} versions · ${s.budgets.swarmRounds} rounds</dd><dt>Interfaces</dt><dd>${esc(d.project.interfaces.join(', ') || '—')}</dd></dl></section>
+<section class="card"><h2>Gaps and questions</h2>${gapsBlock}${pendingBlock}</section>
+<section class="card"><h2>Evidence</h2>${evidence}</section>
+<section class="card"><h2>Prototype versions</h2>${versions}</section>
+<section class="card"><h2>History</h2>${history}<p class="note">quest = interview questions · vers = prototype versions · rounds = Red Team rounds · open/defer = GAPS.md rows · outcomes = declared operation outcomes · cases/probes = oracle cases</p></section>
+</div></div></body></html>
+`;
+}
+
+function cmdDashboard(p, args) {
+  const d = dashboardData(p);
+  const json = !!args.flags.json;
+  if (json && typeof args.flags.out !== 'string') { process.stdout.write(JSON.stringify(d, null, 2) + '\n'); return 0; }
+  const out = typeof args.flags.out === 'string' ? path.resolve(args.flags.out) : path.join(p.logs, DASHBOARD_FILE);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, json ? JSON.stringify(d, null, 2) + '\n' : renderDashboard(d));
+  const shown = path.relative(p.root, out).startsWith('..') ? out : L.rel(p.root, out);
+  console.log(`Wrote ${shown}: ${d.next ? `next ${d.next.id} ${d.next.label}, ${d.gates.filter(g => !g.ok).length} gate(s) failing` : 'pipeline complete'}${d.gaps ? `, ${d.gaps.open} open gap(s)` : ''}${d.lock ? `, lock ${d.lock.intact ? 'intact' : 'modified'}` : ''}`);
+  if (args.flags.open) {
+    const cp = require('child_process');
+    const opener = process.platform === 'darwin' ? ['open', [out]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', out]] : ['xdg-open', [out]];
+    try { cp.spawn(opener[0], opener[1], { detached: true, stdio: 'ignore' }).unref(); } catch (e) { console.log(`  could not open a browser: ${e.message}`); }
   }
   return 0;
 }
@@ -1500,7 +1997,9 @@ function cmdTransition(p, args) {
   // These open a new iteration: Stage 03's round cap counts swarm-log headings from here (swarmRounds).
   if (['00', '01', '01b'].includes(stage)) record.swarmHeadings = swarmHeadings(p);
   fs.appendFileSync(p.transitions, JSON.stringify(record) + '\n');
+  writeDecisionFingerprint(p, now); // the log is append-only from here: `check` warns when an earlier row changes
   console.log(`\n✓ ${L.STAGES[stage].name} complete → lastCompletedStep=${last}. ${note}`);
+  try { fs.writeFileSync(path.join(p.logs, DASHBOARD_FILE), renderDashboard(dashboardData(p))); console.log(`  dashboard: specs/logs/${DASHBOARD_FILE} (open it in a browser; \`sdd.cjs dashboard\` regenerates it any time)`); } catch { /* a derived page never blocks a transition */ }
   return 0;
 }
 
@@ -1562,7 +2061,7 @@ function main() {
   const args = L.parseArgs(process.argv.slice(2));
   const root = typeof args.flags.root === 'string' ? path.resolve(args.flags.root) : L.defaultRoot();
   const p = L.projectPaths(root);
-  const commands = { status: cmdStatus, check: cmdCheck, freeze: cmdFreeze, verify: cmdVerify, transition: cmdTransition, export: cmdExport, readiness: cmdReadiness };
+  const commands = { status: cmdStatus, check: cmdCheck, freeze: cmdFreeze, verify: cmdVerify, transition: cmdTransition, export: cmdExport, readiness: cmdReadiness, agenda: cmdAgenda, metrics: cmdMetrics, 'spec-outline': cmdSpecOutline, upgrade: cmdUpgrade, dashboard: cmdDashboard };
   const cmd = commands[args._[0]];
   if (!cmd) { console.log(USAGE); return args._[0] ? 2 : 0; }
   return cmd(p, args);

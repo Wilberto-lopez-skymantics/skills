@@ -823,7 +823,7 @@
         <a href="#invariants" class="nav-link">Requirements vs Invariants</a>
         <a href="#token-efficiency" class="nav-link">Token Efficiency</a>
         <a href="#quickstart" class="nav-link">Quick Start</a>
-        <span class="badge-personal" style="background: rgba(0, 162, 253, 0.15); border-color: rgba(0, 162, 253, 0.4); color: var(--skymantics-blue); font-weight: 700;">v2026.09.28-v2</span>
+        <span class="badge-personal" style="background: rgba(0, 162, 253, 0.15); border-color: rgba(0, 162, 253, 0.4); color: var(--skymantics-blue); font-weight: 700;">v2026.10.21-v3.5</span>
         <span class="badge-personal">Wilberto Lopez Implementation</span>
       </div>
     </div>
@@ -833,7 +833,7 @@
   <section class="hero" id="intent">
     <div class="container">
       <div class="hero-tag">
-        <span>⚡ Portable Repository-Native Orchestration • Release v2026.09.28-v2</span>
+        <span>⚡ Portable Repository-Native Orchestration • Release v2026.10.21-v3.5 “see it, then harden it”</span>
       </div>
       <h1>
         Code is a byproduct of the spec — <br>
@@ -869,7 +869,7 @@
         <span class="section-subtitle">Interactive Process Map</span>
         <h2 class="section-title">The 8-Stage Gated SDD Pipeline</h2>
         <p class="section-description">
-          Click any stage node in the flowchart below to inspect its execution contract, input/output artifacts, and gated requirements.
+          See it, then harden it: a short interview and a running prototype come first; contracts, the Red Team, the oracle and the freeze follow against the prototype. Every transition is gated by <code>sdd.cjs transition</code>, which refuses until the stage's exit checks pass. Click any stage node to inspect its contract, artifacts and gate.
         </p>
       </div>
 
@@ -906,62 +906,62 @@
 
             <!-- Backprop Loop Line (Return Path) -->
             <path d="M 1040 120 C 1040 40, 70 40, 70 120" stroke="#EF4444" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-rose)"/>
-            <text x="540" y="32" fill="#EF4444" font-family="'JetBrains Mono', monospace" font-size="11" text-anchor="middle" font-weight="600">Stage 00: Defect Backpropagation Loop (Bug Escape Invariants)</text>
+            <text x="540" y="32" fill="#EF4444" font-family="'JetBrains Mono', monospace" font-size="11" text-anchor="middle" font-weight="600">Stage 00: Backprop — defect or divergence → Spec Change Request → user-approved re-freeze (never a code patch)</text>
 
             <!-- Node 00: Backprop -->
             <g class="node-group backprop-node" onclick="selectStage('00')" id="node-00">
               <rect class="node-rect" x="15" y="120" width="110" height="70"/>
               <text x="70" y="142" class="node-badge" text-anchor="middle" fill="#EF4444">00</text>
               <text x="70" y="160" class="node-title" text-anchor="middle">backprop</text>
-              <text x="70" y="176" class="node-sub" text-anchor="middle">Defect → Spec</text>
+              <text x="70" y="176" class="node-sub" text-anchor="middle">SCR → re-freeze</text>
             </g>
 
             <!-- Node 01: Brainstorming -->
             <g class="node-group active" onclick="selectStage('01')" id="node-01">
               <rect class="node-rect" x="175" y="120" width="120" height="70"/>
               <text x="235" y="142" class="node-badge" text-anchor="middle">01</text>
-              <text x="235" y="160" class="node-title" text-anchor="middle">brainstorming</text>
-              <text x="235" y="176" class="node-sub" text-anchor="middle">Socratic + Shadow</text>
+              <text x="235" y="160" class="node-title" text-anchor="middle">brainstorm / adopt</text>
+              <text x="235" y="176" class="node-sub" text-anchor="middle">≤12 Qs · slice brief</text>
             </g>
 
             <!-- Node 02: Adversarial -->
             <g class="node-group" onclick="selectStage('02')" id="node-02">
               <rect class="node-rect" x="345" y="120" width="120" height="70"/>
               <text x="405" y="142" class="node-badge" text-anchor="middle">02</text>
-              <text x="405" y="160" class="node-title" text-anchor="middle">contracts</text>
-              <text x="405" y="176" class="node-sub" text-anchor="middle">Machine Synthesis</text>
+              <text x="405" y="160" class="node-title" text-anchor="middle">prototype</text>
+              <text x="405" y="176" class="node-sub" text-anchor="middle">running · you accept</text>
             </g>
 
             <!-- Node 03: Wireframing -->
             <g class="node-group" onclick="selectStage('03')" id="node-03">
               <rect class="node-rect" x="515" y="120" width="120" height="70"/>
               <text x="575" y="142" class="node-badge" text-anchor="middle">03</text>
-              <text x="575" y="160" class="node-title" text-anchor="middle">wireframing</text>
-              <text x="575" y="176" class="node-sub" text-anchor="middle">WYSIWYG HTML</text>
+              <text x="575" y="160" class="node-title" text-anchor="middle">hardening</text>
+              <text x="575" y="176" class="node-sub" text-anchor="middle">contracts · Red Team</text>
             </g>
 
             <!-- Node 04: Implementation Phases -->
             <g class="node-group" onclick="selectStage('04')" id="node-04">
               <rect class="node-rect" x="685" y="120" width="120" height="70"/>
               <text x="745" y="142" class="node-badge" text-anchor="middle">04</text>
-              <text x="745" y="160" class="node-title" text-anchor="middle">test_oracle</text>
-              <text x="745" y="176" class="node-sub" text-anchor="middle">specs/fixtures/</text>
+              <text x="745" y="160" class="node-title" text-anchor="middle">oracle + freeze</text>
+              <text x="745" y="176" class="node-sub" text-anchor="middle">spec.lock.json</text>
             </g>
 
             <!-- Node 05: Dev Swarm -->
             <g class="node-group" onclick="selectStage('05')" id="node-05">
               <rect class="node-rect" x="855" y="120" width="120" height="70"/>
               <text x="915" y="142" class="node-badge" text-anchor="middle">05</text>
-              <text x="915" y="160" class="node-title" text-anchor="middle">dev_swarm</text>
-              <text x="915" y="176" class="node-sub" text-anchor="middle">Test-Consumer</text>
+              <text x="915" y="160" class="node-title" text-anchor="middle">build</text>
+              <text x="915" y="176" class="node-sub" text-anchor="middle">spec-only · oracle</text>
             </g>
 
             <!-- Node 06/07: Verification -->
             <g class="node-group" onclick="selectStage('07')" id="node-07">
               <rect class="node-rect" x="1025" y="120" width="70" height="70"/>
               <text x="1060" y="142" class="node-badge" text-anchor="middle">06/07</text>
-              <text x="1060" y="160" class="node-title" text-anchor="middle">verify</text>
-              <text x="1060" y="176" class="node-sub" text-anchor="middle">Equivalence</text>
+              <text x="1060" y="160" class="node-title" text-anchor="middle">certify</text>
+              <text x="1060" y="176" class="node-sub" text-anchor="middle">VAT · L1/L2</text>
             </g>
           </svg>
         </div>
@@ -1012,7 +1012,7 @@
           <span class="layer-card-num">Layer 3</span>
           <h3>Reference Materials</h3>
           <p>Detailed checklists, rubrics, persona prompts, and templates loaded strictly on-demand to save context tokens.</p>
-          <span class="file-path">specs/.sdd/_config/</span>
+          <span class="file-path">specs/.sdd/_config/ + scripts/ (sdd.cjs, oracle.cjs, ui-capture.cjs, ui-specgen.cjs)</span>
         </div>
 
         <div class="layer-card" style="grid-column: 1 / -1;">
@@ -1024,7 +1024,12 @@
             <span class="file-path">specs/DESIGN.md</span>
             <span class="file-path">specs/DECISION_LOG.md</span>
             <span class="file-path">specs/IMPLEMENTATION_PHASES.md</span>
-            <span class="file-path">specs/wireframes/*.html</span>
+            <span class="file-path">specs/contracts/</span>
+            <span class="file-path">specs/fixtures/</span>
+            <span class="file-path">specs/wireframes/</span>
+            <span class="file-path">specs/GAPS.md</span>
+            <span class="file-path">specs/spec.lock.json</span>
+            <span class="file-path">specs/changes/SCR-*.md</span>
             <span class="file-path">specs/backprop-log.md</span>
           </div>
         </div>
@@ -1099,7 +1104,7 @@
               Brainstorming &amp; Extraction (Stage 01)
             </h4>
             <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
-              Gather informal requirements from the user. Run Confidence Self-Assessment (&ge; 85%) to clarify ambiguities and identify core system inputs and state targets.
+              Gather intent in a short interview (at most 12 questions) until the first slice's core flow closes. Open questions get a provisional answer in <code>GAPS.md</code>; a running prototype (Stage 02) shows the user the answers before anything is formalised.
             </p>
           </div>
 
@@ -1107,10 +1112,10 @@
           <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative; border-color: rgba(0, 162, 253, 0.4);">
             <div style="background: var(--skymantics-blue); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">2</div>
             <h4 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); font-size: 1.1rem; margin-bottom: 8px;">
-              Adversarial Red Team Attack (Stage 02)
+              Hardening &amp; Red Team (Stage 03)
             </h4>
             <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
-              The Critic Council attacks the requirement with boundary probes, malicious inputs, concurrency races, and null states. Every discovered flaw is converted into a formal invariant rule ($V_n$).
+              With the prototype running, the contracts are compiled and bounded Red Team rounds attack them with boundary probes, concurrency races and null states. Every finding ends in a ruling; accepted ones become invariants ($V_n$) that the Stage 04 oracle cites.
             </p>
           </div>
 
@@ -1121,7 +1126,7 @@
               Defect Backpropagation (Stage 00)
             </h4>
             <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
-              If a defect ever escapes in testing or production, Stage 00 traces which invariant was missing, logs it in <code>backprop-log.md</code>, and appends a new mandatory invariant ($V_{n+1}$) to <code>SPEC.md</code>.
+              If a defect escapes the oracle, Stage 00 traces which invariant or oracle case was missing, writes a Spec Change Request, and after approval re-freezes the spec with the new invariant ($V_{n+1}$) and the oracle case that reproduces it in <code>SPEC.md</code>.
             </p>
           </div>
         </div>
@@ -1177,14 +1182,14 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
           <h3>Global Skills Setup</h3>
           <p>Skills loaded from local user config folders when activated by agent heuristics.</p>
           <div class="stat-badge">~4,500 Tokens</div>
-          <p style="font-size: 0.85rem; color: var(--text-dim);">Not portable, invisible in git code review, platform dependent.</p>
+          <p style="font-size: 0.85rem; color: var(--text-dim);">Not portable, invisible in git code review, platform dependent. This is how the legacy v2 pipeline shipped.</p>
         </div>
 
         <div class="comp-card recommended">
           <h3>ICM Workspace Template</h3>
           <p>Progressive stage loading + compressed Caveman notation contract encoding.</p>
           <div class="stat-badge">~1,100 Tokens</div>
-          <p style="font-size: 0.85rem; color: var(--text-muted);"><strong>100% Portable</strong>, zero global config, git-versioned.</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);"><strong>100% Portable</strong>, zero global config, git-versioned and locked: the pipeline files are part of the frozen set, so each project records the version that built it.</p>
         </div>
       </div>
 
@@ -1209,27 +1214,27 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
             <tr>
               <td class="caveman-symbol">!</td>
               <td>MUST / Required</td>
-              <td><code>! reach Confidence Score ≥85 before proposing approaches</code></td>
+              <td><code>! close the core flow before writing the slice brief</code></td>
             </tr>
             <tr>
               <td class="caveman-symbol">⊥</td>
               <td>FORBIDDEN / Never</td>
-              <td><code>⊥ generate code before SPEC.md updated & approved</code></td>
+              <td><code>⊥ edit frozen files to make code pass</code></td>
             </tr>
             <tr>
               <td class="caveman-symbol">→</td>
               <td>Leads to / Yields</td>
-              <td><code>Idea → Draft SPEC.md & DESIGN.md</code></td>
+              <td><code>Accepted prototype → contracts → oracle → lock</code></td>
             </tr>
             <tr>
               <td class="caveman-symbol">∀</td>
               <td>For all / Every</td>
-              <td><code>∀ UI proposal ! present via visual companion</code></td>
+              <td><code>∀ oracle case ! cite its spec line</code></td>
             </tr>
             <tr>
               <td class="caveman-symbol">∃</td>
               <td>Exists / Has</td>
-              <td><code>∃ enabled visual companion → present mockups</code></td>
+              <td><code>∃ [PENDING-*] tag → sdd.cjs agenda lists it</code></td>
             </tr>
             <tr>
               <td class="caveman-symbol">§</td>
@@ -1249,7 +1254,7 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
         <span class="section-subtitle">Multi-Agent Governance</span>
         <h2 class="section-title">The Swarm Persona Matrix</h2>
         <p class="section-description">
-          SDD avoids single-perspective bias by deploying distinct Creator (Blue) and Critic (Red) agent swarms during spec hardening and code generation.
+          SDD avoids single-perspective bias by deploying distinct Creator (Blue) and Critic (Red) personas: the Blue Team compiles contracts from the running prototype in Stage 03, the Red Team attacks them in bounded rounds (at most 3, each finding ending in a ruling), and builders in Stage 05 are graded by the oracle alone.
         </p>
       </div>
 
@@ -1308,7 +1313,7 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
         <span class="section-subtitle">Portability in Action</span>
         <h2 class="section-title">Applying SDD to Any Repository</h2>
         <p class="section-description">
-          Copy Wilberto Lopez's ICM template into any existing or new project in seconds. No global config or IDE extension required.
+          Copy the ICM template into any new or existing project in seconds. No global config or IDE extension required; Node.js ≥ 18 is the only dependency (Playwright for UI projects).
         </p>
       </div>
 
@@ -1316,21 +1321,21 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
         <div>
           <h3 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); margin-bottom: 12px;">Step 1: Copy Template Files</h3>
           <p style="color: var(--text-muted); font-size: 0.95rem;">
-            Copy the <code>.cursorrules</code>, <code>CLAUDE.md</code>, and <code>specs/</code> directory into your project root:
+            Copy the entry files (<code>.cursorrules</code>, <code>CLAUDE.md</code>, <code>AGENTS.md</code> are identical copies of <code>specs/.sdd/_config/entrypoint.md</code>) and the <code>specs/</code> directory into your project root:
           </p>
           <div class="code-snippet-box">
             <button class="copy-btn" onclick="copyCommand('cp-cmd')">Copy</button>
-            <pre id="cp-cmd">cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,specs} ./your-project/</pre>
+            <pre id="cp-cmd">cp -r /path/to/skills/icm-workspace-template/{.cursorrules,CLAUDE.md,AGENTS.md,specs} ./your-project/</pre>
           </div>
         </div>
 
         <div>
           <h3 style="font-family: 'Albert Sans', sans-serif; color: var(--text-bright); margin-bottom: 12px;">Step 2: Prompt Your Agent</h3>
           <p style="color: var(--text-muted); font-size: 0.95rem;">
-            Open your project in Cursor, VS Code, Gemini CLI, or Claude Code, and issue your prompt:
+            Open your project in Cursor, VS Code, Gemini CLI, Codex or Claude Code and ask it to start. It reads its entry file, runs <code>sdd.cjs status</code>, and begins Stage 01 (new product) or 01b (existing code). <code>sdd.cjs readiness</code> tells you what is left at any time and <code>sdd.cjs dashboard</code> renders it as a page (<code>specs/logs/dashboard.html</code>, rewritten at every transition); <code>sdd.cjs upgrade --from &lt;template&gt;</code> moves an older project to this version.
           </p>
           <div class="code-snippet-box">
-            <pre style="color: var(--cyan);">"Agent, please start the project by reading specs/.sdd/WORKSPACE_ROUTING.md and beginning Stage 01."</pre>
+            <pre style="color: var(--cyan);">"Start the project: read specs/.sdd/WORKSPACE_ROUTING.md, run sdd.cjs status, and begin Stage 01 (or 01b for this existing codebase)."</pre>
           </div>
         </div>
       </div>
@@ -1344,7 +1349,7 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
         Spec-Driven Development (SDD) & ICM Framework — Personal Implementation by <strong>Wilberto Lopez</strong> / <strong>Skymantics</strong>
       </p>
       <p style="margin-top: 6px; font-size: 0.85rem; color: var(--skymantics-blue); font-weight: 600;">
-        🏷️ Release Version: 2026.09.28-v2 • September 28, 2026
+        🏷️ Release Version: 2026.10.21-v3.5-prototype-first • October 21, 2026 — full reference: icm-workspace-template/README.md
       </p>
       <p style="margin-top: 6px; font-size: 0.8rem;">
         Code is a byproduct of the spec. Built for maximum portability, auditability, and LLM steerability.
@@ -1357,128 +1362,142 @@ $V_4$: Rate-limit token requests: max 3 requests per IP per hour.</pre>
     const stageData = {
       '00': {
         name: '00_backprop',
-        title: 'Defect Backpropagation Loop',
-        subtitle: 'Bug → Root Cause Analysis → Spec Invariant → Phase Fix',
+        title: 'Backprop: Spec Change Request & Re-freeze',
+        subtitle: 'Defect or build divergence → root cause in the spec → SCR → user-approved re-freeze',
         badgeColor: 'var(--rose)',
-        gate: '<strong>⛔ GATE:</strong> Never fix a bug post-deployment by editing code directly. You MUST trace the defect to the spec layer that failed to prevent it, log the defect in <code>backprop-log.md</code>, append a new invariant <code>V_n</code> to <code>SPEC.md</code>, and append a bugfix phase to <code>IMPLEMENTATION_PHASES.md</code>.',
-        inputs: ['Bug report / Error log', 'specs/SPEC.md', 'specs/IMPLEMENTATION_PHASES.md'],
-        outputs: ['specs/backprop-log.md', 'Updated specs/SPEC.md (Invariants §V)', 'Updated specs/IMPLEMENTATION_PHASES.md (Fix Phase)'],
-        contractCaveman: `! trace defect → root cause in spec
-! write entry in specs/backprop-log.md
-! append invariant V_n to specs/SPEC.md
-! append Phase N (Fix Defect) to specs/IMPLEMENTATION_PHASES.md
-! write regression test FIRST in Stage 05`,
-        contractProse: `1. Trace the defect to its root cause in the specification.
-2. Create a log entry in specs/backprop-log.md detailing root cause and stage failure.
-3. Append a new mandatory invariant rule (V_n) to specs/SPEC.md.
-4. Append a bug-fix phase to specs/IMPLEMENTATION_PHASES.md.
-5. Require Stage 05 to write a failing regression test before writing fix code.`
+        gate: '<strong>⛔ GATE:</strong> A defect found after the freeze is a spec defect first. Never patch code to make it go away: write <code>specs/changes/SCR-&lt;n&gt;.md</code> naming the invariant, oracle case or contract that failed to pin the behaviour, get the user\'s approval, re-freeze (<code>sdd.cjs freeze</code>), then fix in Stage 05 against the new oracle case. Spec gaps found while building come through the same door.',
+        inputs: ['Bug report, failed oracle case or L2 divergence', 'specs/SPEC.md + contracts + fixtures (frozen)', 'specs/spec.lock.json'],
+        outputs: ['specs/changes/SCR-&lt;n&gt;.md', 'specs/backprop-log.md entry (defect trace)', 'Updated SPEC.md / contracts / fixtures (approved)', 'New spec.lock.json', 'DECISION_LOG.md row (append-only)'],
+        contractCaveman: `! trace defect → the spec element that should have caught it
+! write specs/changes/SCR-&lt;n&gt;.md (change class, impact, oracle delta); trace in backprop-log.md
+! user approves → sdd.cjs freeze → new lock
+! add the oracle case first; fix code in Stage 05 after
+⊥ edit frozen files to make code pass
+⊥ patch code without a change request`,
+        contractProse: `1. Trace the defect to the invariant, contract or oracle case that failed to prevent it.
+2. Write a Spec Change Request with its change class and the affected oracle cases.
+3. Obtain user approval and re-freeze; the lock records the new hashes.
+4. Add the oracle case that reproduces the defect, then fix the code in Stage 05.
+5. Never edit frozen files or patch code outside this loop.`
       },
       '01': {
-        name: '01_brainstorming',
-        title: 'Socratic Brainstorming & Shadow Critic',
-        subtitle: 'Idea → Shadow Critic Gap Hunter → Extraction Closure (0 Gaps) → SPEC.md',
+        name: '01_brainstorming / 01b_adoption',
+        title: 'Brainstorm (new product) or Adopt (existing code)',
+        subtitle: 'Short interview within a budget → one slice brief you OK → draft SPEC.md with placeholders',
         badgeColor: 'var(--cyan)',
-        gate: '<strong>⛔ GATE:</strong> FORBIDDEN to propose approaches or present design until domain model passes ALL 4 Extraction Closure dimensions (Entity Lifecycle, Negative Space, Fork Test, Policy vs Mechanics) with ZERO open domain gaps. Subjective confidence scoring = FORBIDDEN.',
-        inputs: ['User brief / raw requirements', 'specs/.sdd/_config/references/extraction-closure.md', 'specs/.sdd/_config/references/systems-standards.md'],
-        outputs: ['specs/SPEC.md', 'specs/DESIGN.md (10 Token Categories)', 'specs/DECISION_LOG.md', 'Extraction Closure Report'],
-        contractCaveman: `! interview via Socratic Shadow-Critic loop
-! Lead Architect asks ONE question per turn
-! Shadow Critic concurrently probes edge cases & negative space
-! audit domain model against 4 Extraction Closure dimensions
-⊥ propose approaches until Extraction Closure Report passes with ZERO gaps
-! merge decisions into specs/SPEC.md`,
-        contractProse: `1. Lead Architect conducts single-question Socratic interview with user.
-2. Background Shadow Critic actively probes entity state lifecycles and negative space.
-3. Pass all 4 empirical Extraction Closure gates (zero unconstrained domain gaps).
-4. Auto-default technical plumbing trivia (pagination, UUIDs, retry backoff) with 1-sentence confirmation.
-5. Merge finalized architectural decisions into specs/SPEC.md.`
+        gate: '<strong>⛔ GATE:</strong> At most 12 interview questions (one per message) and the core flow must close: the first slice\'s inputs, outputs and failure cases are named. Everything else is written as a provisional answer in <code>GAPS.md</code>, not asked. Stage 01b does the same from an inventory of what the code does today, using any existing spec documents as evidence of intent.',
+        inputs: ['Your idea, or an existing codebase (01b)', 'specs/.sdd/_config/references/extraction-closure.md (core-flow gate)', 'Existing spec documents, if any (01b)'],
+        outputs: ['specs/SPEC.md (draft, [PENDING] placeholders allowed)', 'specs/DESIGN.md tokens (UI)', 'specs/DECISION_LOG.md', 'specs/GAPS.md (provisional answers)', 'specs/logs/01-interview.md', 'Slice brief (01b: slicing plan)'],
+        contractCaveman: `! one question per message, ≤ budgets.interviewQuestions (12)
+! close the core flow of the first slice (inputs, outputs, failures)
+! unanswered → GAPS.md with a provisional answer, not a question
+! write the slice brief; user OKs it
+! draft SPEC.md in the 14-section shape, placeholders tagged
+⊥ ask for contracts, oracle cases or wireframes before a prototype runs`,
+        contractProse: `1. Interview the user one question at a time, within the question budget.
+2. Stop when the first slice's core flow closes; record everything else as a provisional answer.
+3. Write the slice brief and get the user's OK.
+4. Draft SPEC.md, DESIGN.md tokens and the decision log; placeholders are allowed and tagged.
+5. For an existing codebase (01b): inventory behaviour, write the draft from it, and propose a slicing plan.`
       },
       '02': {
-        name: '02_adversarial_swarm_analysis',
-        title: 'Machine Contract Synthesis & Technical Hardening',
-        subtitle: 'Autonomous Schema Compiler & Red Team Invariant Verification',
+        name: '02_prototype',
+        title: 'Running Prototype & Acceptance',
+        subtitle: 'Build the slice → demo versions v0…vn → your answers appear on screen → you accept',
         badgeColor: 'var(--skymantics-blue)',
-        gate: '<strong>⛔ GATE:</strong> Blue Team draft missing even ONE required machine contract artifact (openapi.yaml, schema.sql, statecharts.json, errors.json) → auto-reject. Must comply strictly with systems-standards.md (idempotency, OCC versioning, tie-breaker sorting).',
-        inputs: ['specs/SPEC.md', 'specs/contracts/*', 'specs/.sdd/_config/references/completeness-checklist.md', 'specs/.sdd/_config/references/systems-standards.md'],
-        outputs: ['Hardened specs/SPEC.md', 'specs/contracts/openapi.yaml', 'specs/contracts/schema.sql (OCC)', 'specs/contracts/statecharts.json', 'specs/contracts/errors.json'],
-        contractCaveman: `! Blue Team compiles machine contracts in specs/contracts/
-! Red Team attacks schemas, OCC versioning, tie-breakers, idempotency
-! run ≥3 attack iterations (autonomous, human-free)
-! verify zero vague parameters ("approximately", "fast" = FAIL)`,
-        contractProse: `1. Blue Team synthesizes typed machine contracts (openapi.yaml, schema.sql, statecharts.json, errors.json).
-2. Red Team attacks contracts against systems-standards.md (idempotency keys, OCC versioning, tie-breaker sorting).
-3. Execute at least 3 iterative refinement loops autonomously without user interrogation.
-4. Pass machine contract consistency gates before advancing.`
+        gate: '<strong>⛔ GATE:</strong> The stage completes only with <code>sdd.cjs transition --completed 02 --approved-by "&lt;user&gt;"</code> after the user has tried the running prototype. At most 3 demo versions per slice; each demo is a row in <code>specs/logs/02-prototype.md</code> with what changed and why. The prototype is never evidence of equivalence; it is the thing the spec will be hardened against.',
+        inputs: ['Slice brief + draft SPEC.md', 'specs/.sdd/_config/references/prototype-checklist.md', 'Design tokens (UI)'],
+        outputs: ['Working prototype of the slice', 'specs/logs/02-prototype.md (version rows, decisions taken)', 'GAPS.md updated with what the prototype decided', 'Recorded acceptance (--approved-by)'],
+        contractCaveman: `! build the slice end-to-end; demo it
+∀ demo → version row v&lt;n&gt; in specs/logs/02-prototype.md
+! each user answer → visible in the next version
+! ≤ budgets.prototypeVersions (3) per slice
+! decisions taken while building → GAPS.md / DECISION_LOG.md
+! user accepts → transition --approved-by "&lt;user&gt;"
+prototypeCadence: "rolling" → prototype several slices before one hardening pass`,
+        contractProse: `1. Build a working version of the slice; keep the user's attention on what runs, not on documents.
+2. Demo each version; record it with what changed and the decision it answers.
+3. Fold every decision made while building into the gap register and the decision log.
+4. Accept only on the user's word, recorded by the tool.
+5. With a rolling cadence, repeat for the next slice before hardening.`
       },
       '03': {
-        name: '03_interactive_wireframing',
-        title: 'Interactive WYSIWYG Wireframing',
-        subtitle: 'Screen-by-Screen HTML Mockups from DESIGN.md Tokens',
+        name: '03_hardening',
+        title: 'Hardening Against the Running Prototype',
+        subtitle: 'Machine contracts · Decision Inventory · Red Team rounds · wireframe capture · complete spec',
         badgeColor: 'var(--emerald)',
-        gate: '<strong>⛔ GATE:</strong> (UI Projects Only) FORBIDDEN to begin React/Next.js/HTML implementation code until interactive HTML wireframes are built in <code>specs/wireframes/</code> and approved by the user.',
-        inputs: ['specs/DESIGN.md tokens', 'specs/SPEC.md component hierarchy'],
-        outputs: ['specs/wireframes/*.html (Approved screen mockups)'],
-        contractCaveman: `! build screen-by-screen HTML wireframes
-! use exact DESIGN.md tokens & CSS variables
-! enable interactive user feedback loop in browser`,
-        contractProse: `1. Create standalone HTML wireframes for every screen defined in SPEC.md.
-2. Apply exact visual tokens from specs/DESIGN.md.
-3. Present wireframes to user for visual confirmation before code generation.`
+        gate: '<strong>⛔ GATE:</strong> <code>sdd.cjs check --contracts</code> green (openapi, schema, statecharts, errors, manifest consistent with SPEC.md); every placeholder resolved or recorded as a deferred gap; ≤ 3 Red Team rounds with rulings in <code>03-rulings.md</code>; every invariant cited; for UI, wireframes captured from the accepted prototype with <code>ui-capture.cjs</code> and verified. Policy questions for the user are batched into <code>sdd.cjs agenda</code>, not asked one by one.',
+        inputs: ['Accepted prototype (running)', 'Draft SPEC.md, GAPS.md, DECISION_LOG.md', 'specs/.sdd/_config/references/red-team.md, systems-standards.md, completeness-checklist.md'],
+        outputs: ['specs/contracts/* (openapi.yaml, schema.sql, statecharts.json, errors.json, manifest.json)', 'Complete SPEC.md (+ spec/&lt;module&gt;.md when large)', 'specs/logs/03-swarm.md, 03-rulings.md, 03-decisions.md', 'specs/wireframes/ captured from the prototype (UI)', 'specs/logs/agenda.md (batched questions)'],
+        contractCaveman: `! Decision Inventory: every prototype behaviour → decision row or gap
+! compile contracts from the running prototype; sdd.cjs check --contracts green
+! Red Team rounds ≤ budgets.redTeamRounds (3); each finding → ruling
+! sampled diff-expect: contract vs prototype behaviour
+! capture wireframes from the accepted prototype (UI); verify
+! resolve every [PENDING-*] or defer it in GAPS.md
+! batch user questions → sdd.cjs agenda
+⊥ change prototype behaviour silently to fit a contract`,
+        contractProse: `1. Inventory every behaviour the prototype exhibits and bind it to a decision or a gap.
+2. Compile the machine contracts from the running prototype and check them against the spec.
+3. Run bounded Red Team rounds; every finding ends in a ruling that changes the spec or is rejected with a reason.
+4. Capture the wireframes from the accepted prototype (UI projects) and verify them.
+5. Resolve or defer every placeholder; batch the questions the user must answer.`
       },
       '04': {
         name: '04_writing_implementation_phases',
-        title: 'Phase Breakdown & Immutable Test Oracle',
-        subtitle: 'Spec & Contracts → specs/fixtures/ Black-Box Test Suite + Sequenced Phases',
+        title: 'Oracle Derivation, Phases & Freeze',
+        subtitle: 'Spec → oracle cases (two independent derivations, zero disagreements) → phases → spec.lock.json',
         badgeColor: 'var(--skymantics-yellow)',
-        gate: '<strong>⛔ GATE:</strong> Every phase MUST bind to an immutable test fixture in <code>specs/fixtures/</code>. Stage 04 must generate the test oracle BEFORE code generation. Coders are forbidden from writing their own acceptance criteria.',
-        inputs: ['Hardened specs/SPEC.md', 'specs/contracts/*'],
-        outputs: ['specs/IMPLEMENTATION_PHASES.md', 'specs/fixtures/api_cases.json', 'specs/fixtures/db_seed.sql', 'specs/fixtures/state_transitions.json'],
-        contractCaveman: `! compile Immutable Test Oracle in specs/fixtures/
-! generate api_cases.json (happy + error + idempotency)
-! generate db_seed.sql & state_transitions.json
-! decompose system into dependency-ordered phases
-! bind EVERY phase verification command to specs/fixtures/`,
-        contractProse: `1. Generate black-box acceptance test fixtures in specs/fixtures/ prior to any code generation.
-2. Define happy path, error envelope, idempotency, and OCC collision test cases.
-3. Break implementation into dependency-ordered phases bound directly to test fixtures.
-4. Verify phase integrity check tracker before handoff.`
+        gate: '<strong>⛔ GATE:</strong> Every oracle case cites the spec line it derives from; the two derivations (recorded from the prototype, predicted from the spec alone) must agree on every case; every phase binds to oracle cases. The freeze (<code>sdd.cjs freeze</code>) is run only on the user\'s word and hashes the frozen set into <code>specs/spec.lock.json</code>. From here, the spec changes only through Stage 00.',
+        inputs: ['Complete SPEC.md + contracts', 'Accepted prototype (record A)', 'specs/.sdd/_config/references/oracle-standard.md'],
+        outputs: ['specs/fixtures/* (api_cases, state_transitions, db_seed, UI specs)', 'specs/IMPLEMENTATION_PHASES.md', 'specs/spec.lock.json', 'specs/logs/04-oracle-derivation.md'],
+        contractCaveman: `! derive oracle cases from the spec; each cites its source line
+! record A from the prototype, predict B from the spec alone; ⊥ disagreements
+! sdd.cjs check green; invariant coverage credited by citation
+! phases bound to oracle cases; each phase has a verification command
+! user approves → sdd.cjs freeze → spec.lock.json
+⊥ oracle cases derived from the code's behaviour alone`,
+        contractProse: `1. Derive the oracle from the spec, citing the source of every expected value.
+2. Cross-check the prototype's recorded behaviour against the spec's prediction; resolve every disagreement in the spec.
+3. Decompose the build into phases bound to oracle cases.
+4. Freeze on the user's approval; the lock records the hashes of the frozen set.`
       },
       '05': {
         name: '05_development_swarm',
-        title: 'Strict Test-Fulfillment Dev Swarm',
-        subtitle: 'Builder vs Critic Test-Consumer Loop & Anti-Tampering Gate',
+        title: 'Spec-Only Build',
+        subtitle: 'Build A continues the prototype · build B (for L2) starts from the frozen set alone · oracle green per phase',
         badgeColor: 'var(--cyan)',
-        gate: '<strong>⛔ IMMUTABLE GATE:</strong> Builder is strictly forbidden from modifying any file under <code>specs/</code> or <code>specs/fixtures/</code>. If a test fails, the code is defective, NOT the test. Code must strictly follow pinned scaffolding and pass 100% of pre-existing fixtures.',
-        inputs: ['specs/IMPLEMENTATION_PHASES.md', 'specs/contracts/*', 'specs/fixtures/* (Immutable Test Oracle)'],
-        outputs: ['Verified source code', 'Passing test suite', 'specs/dev-swarm-reconciliation.md', 'README.md'],
-        contractCaveman: `! Builder writes code to fulfill specs/fixtures/ & specs/contracts/
-⊥ modify | delete any file in specs/ or specs/fixtures/
-! adhere strictly to pinned directory layout & dependencies
-! run empirical verification commands against fixtures
-! execute full post-implementation reconciliation`,
-        contractProse: `1. Builder Team writes implementation code strictly fulfilling pre-existing fixtures.
-2. Enforce Anti-Tampering Gate: coders cannot modify or relax test fixtures.
-3. Follow pinned project scaffolding and dependency manifests without drift.
-4. Run automated test runner against specs/fixtures/ and verify 100% pass rate.
-5. Reconcile implementation against contracts and reach zero drift entries.`
+        gate: '<strong>⛔ IMMUTABLE GATE:</strong> Builders read only the frozen set (build A may also read its own prototype; build B never sees it). Nothing under <code>specs/</code> is edited to make code pass. A phase is done when <code>oracle.cjs</code> is green for its cases; a missing piece of information is a spec gap raised through Stage 00, never a guess.',
+        inputs: ['Frozen set: SPEC.md, DESIGN.md, CODING_STANDARDS.md, contracts/, fixtures/, wireframes/', 'specs/IMPLEMENTATION_PHASES.md', 'specs/spec.lock.json'],
+        outputs: ['Source code (build A; build B in a separate tree for L2)', 'Oracle run reports per phase (specs/logs/oracle-*.md)', 'README.md'],
+        contractCaveman: `! read the frozen set only; sdd.cjs verify before starting
+! phase by phase; oracle.cjs green before the next
+⊥ modify specs/, fixtures/ or contracts/
+⊥ guess when the spec is silent → Stage 00 spec gap
+! build B: fresh tree, frozen set only, no prototype code`,
+        contractProse: `1. Verify the lock, then build each phase from the frozen set.
+2. Run the oracle after each phase; it is the only grader.
+3. Raise a spec gap through Stage 00 when the spec does not say; never fill the silence with a guess.
+4. For an L2 certification, build B starts from the frozen set in a separate tree.`
       },
       '07': {
-        name: '06_07_verification',
-        title: 'Observational Equivalence Verification',
-        subtitle: '100% Pass on Immutable Fixtures & Schema Validation Proof',
+        name: '06_visual_acceptance / 07_certification',
+        title: 'Visual Acceptance & Equivalence Certification',
+        subtitle: 'UI graded against tokens, wireframes and frozen UI specs · L1 oracle run · L2 dual build + diff',
         badgeColor: 'var(--emerald)',
-        gate: '<strong>⛔ GATE:</strong> FORBIDDEN to claim completion without proving 100% pass on <code>specs/fixtures/</code>, clean compilation, and zero schema drift against <code>specs/contracts/</code>. Evidence before assertions always.',
-        inputs: ['Generated codebase', 'specs/fixtures/*', 'specs/contracts/*'],
-        outputs: ['Verified production-ready repository', 'Execution logs', 'sdd-state.json'],
-        contractCaveman: `! run test suite against specs/fixtures/ (100% pass)
-! run production build & tsc --noEmit (0 errors)
-! verify zero schema drift vs specs/contracts/
-⊥ declare complete without clean empirical execution evidence`,
-        contractProse: `1. Execute full test suite against immutable fixtures and confirm 100% pass.
-2. Verify zero TypeScript errors and successful production build.
-3. Validate runtime API/DB boundaries against specs/contracts/.
-4. Present verified empirical execution log to user before finalizing.`
+        gate: '<strong>⛔ GATE:</strong> Completion is claimed only with <code>EQUIVALENCE_REPORT.md</code>: L1 = the oracle green against the lock\'s hashes; L2 = two independent builds, both green, with zero divergences in the sampled diff. Stage 06 (UI projects) grades the screens against <code>DESIGN.md</code>, the captured wireframes and the frozen UI specs first. Any divergence goes back through Stage 00.',
+        inputs: ['Built system(s)', 'specs/fixtures/* + spec.lock.json', 'specs/wireframes/ + fixtures/ui/ (UI)'],
+        outputs: ['specs/EQUIVALENCE_REPORT.md (L1 or L2)', 'Oracle and diff logs (specs/logs/)', 'VAT screenshots (UI)', 'specs/logs/transitions.jsonl with metrics'],
+        contractCaveman: `! Stage 06 (UI): screens vs tokens, wireframes, frozen UI specs
+! L1: oracle.cjs green on the locked set
+! L2: build A + build B both green; sampled diff → 0 divergences
+! write EQUIVALENCE_REPORT.md with the evidence
+⊥ claim completion without the report
+divergence → Stage 00`,
+        contractProse: `1. For UI projects, grade every screen against the tokens, wireframes and frozen UI specs.
+2. Run the oracle against the locked spec set (L1).
+3. For L2, run it against both builds and diff their observable behaviour.
+4. Write the equivalence report; a divergence is a spec defect and returns to Stage 00.`
       }
     };
 

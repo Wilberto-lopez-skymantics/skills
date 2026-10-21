@@ -26,5 +26,6 @@ This file defines the canonical template for `specs/DECISION_LOG.md`. It is used
 - If a decision was made by the user selecting from options, list all options considered.
 - If a decision was made by the AI recommending and the user approving, note that in the Rationale.
 - If a decision involves a numeric parameter, the Choice column MUST contain the exact value or range — not vague language.
-- Ids are `DEC` + a zero-padded number (`DEC001`), never reused. Append new entries; never rewrite old ones — a reversed decision gets a new entry that references the old id.
+- Ids are `DEC` + a zero-padded number (`DEC001`), never reused. Append new entries; never rewrite old ones — a reversed decision gets a new entry that references the old id. Enforced: every `sdd.cjs transition` fingerprints the rows (`specs/logs/decisions.fingerprint.json`), and `check` and `status` warn when an earlier row is rewritten or removed. Derived artifacts (traceability, design packages, agendas) cite rows by id.
+- A working assumption that someone outside the pipeline must confirm (a domain expert, a customer, legal) carries a `[PENDING-<ROLE>]` tag in its Decision cell (`[PENDING-SME]`); `sdd.cjs agenda` collects them by role with the open policy gaps. The answer is a new entry citing the tagged one.
 - "Reflected in" names the SPEC section, contract or oracle case that makes the decision observable to a builder.

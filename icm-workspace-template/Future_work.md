@@ -71,7 +71,28 @@ Why: v3.3 moved the Red Team and the oracle after the prototype but kept the who
 
 Not changed: the Equivalence Profile, the lock, the single grader, `recorded:` ≠ citation, spec-only predictor B (03 sample, 04 full), L2 by clean-room build B. The prototype anchors nothing the spec does not cite.
 
+## Done in v3.5 (2026-10-21, same branch) — the recommendations after the Zenith catch-up
+
+| Item | What changed | Tests |
+|---|---|---|
+| Metrics readable | `sdd.cjs metrics`: one row per transition with its recorded counts | `metrics: …` |
+| Modules the norm | Stage 03 step 2 splits by surface; `sdd.cjs spec-outline` shows section sizes; README playbook | `spec-outline: …` |
+| Oracle credit from citations | `check` credits `inv:Vn` to a case whose `derivedFrom` cites the invariant (explicit `covers` stays the stronger claim) | `check: invariants credited …` |
+| Rolling prototype cadence | `manifest.prototypeCadence: "rolling"`: Stage 01 is in order right after an accepted prototype; the cap applies at Stage 03 | `order: rolling cadence …` |
+| Append-only decision log | `transition` writes `specs/logs/decisions.fingerprint.json`; `check` and `status` warn on rewritten or removed rows | `decision log: …` |
+| Derived agenda | `sdd.cjs agenda [--write]`: open policy gaps + `[PENDING-<ROLE>]` decisions by role; readiness counts the tags | `agenda: …` |
+| Generated UI specs | `ui-capture.cjs` writes `<name>.capture.json`; `ui-specgen.cjs` emits `generated-wireframes.spec.ts` (one smoke test per captured state) | `ui-specgen: …` |
+| Template upgrade | `sdd.cjs upgrade --from <template-root>`: swaps `specs/.sdd`, keeps the state, renames legacy logs, regenerates entry files, writes the upgrade log with status and readiness | `upgrade: …` |
+| Derived artifacts direction | README playbook names the next derived deliverables (API reference, user manual, test plan) after the `design-package` skill | — |
+| Dashboard | `sdd.cjs dashboard [--out F] [--json] [--open]`: one self-contained HTML page from the same functions status/readiness/agenda/metrics use; rewritten by every transition; `--json` for other tools (the VS Code extension can read it instead of parsing output) | `dashboard: …` |
+| Cadence before contracts | After an accepted prototype with no manifest yet, the next slice's brief is in order (the user chooses at acceptance; Stage 03 writes the choice into `manifest.prototypeCadence`); the brief states the defaults it runs under instead of asking per setting | `order: next slice before contracts …` |
+| Legacy state mapping | `upgrade` maps older stage names in the state file (`03p_prototype` → Stage 02 complete; v2 `02_adversarial_swarm_analysis` / `03_interactive_wireframing` → Stage 01 complete) and never overwrites an earlier upgrade log | `upgrade: legacy state …` |
+
 ## Open
+
+### Derived deliverables beyond the design package
+- An API reference from `openapi.yaml` + `errors.json`; a user manual from SPEC §14 (copy table, screen flow) and the wireframes; a test plan from `specs/fixtures/cases` and `IMPLEMENTATION_PHASES.md`. Each with the `design-package` skill's machinery: a fingerprint of its sources, permanent ids, numbered revisions, `impact` before every update.
+- **Effort:** M each · **Guarantee impact:** none
 
 ### Pilot run v3.4 (measure before trusting)
 - Run one notes-service-sized slice end to end and read `metrics` in `transitions.jsonl` per stage: questions to the brief, versions to acceptance, prototype rework in Stage 03 (the cost of compiling contracts after the code), rounds. The interview budget (12) and the prototype checklist's length are the two numbers most likely to move.

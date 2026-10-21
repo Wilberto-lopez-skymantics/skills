@@ -1,5 +1,5 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.20-v3.4-prototype-first -->
+<!-- version: 2026.10.21-v3.5-prototype-first -->
 <!-- source: github.com/Wilberto-lopez-skymantics/skills -->
 
 # Spec-Driven Development (SDD v3) Workspace
@@ -16,13 +16,13 @@
 | L2 Equivalence-verified (default target) | L1 + `oracle.cjs diff` between two independently built implementations reports zero divergences |
 
 **Tools** (Node.js ≥ 18, zero dependencies):
-- `node specs/.sdd/scripts/sdd.cjs status | check [--contracts | --spec] | readiness | freeze | verify | transition [--approved-by] [--release] | export [--update]`
+- `node specs/.sdd/scripts/sdd.cjs status | check [--contracts | --spec] | readiness | agenda | metrics | spec-outline | dashboard | freeze | verify | transition [--approved-by] [--release] | export [--update] | upgrade --from`
 - `node specs/.sdd/scripts/oracle.cjs run | diff | diff-ui | diff-expect | strip-expect | gen-probes | record | env`
-- `node specs/.sdd/scripts/ui-capture.cjs --url … --name …` (Stage 03: wireframes captured from the prototype; needs Playwright)
+- `node specs/.sdd/scripts/ui-capture.cjs --url … --name …` (Stage 03: wireframes captured from the prototype; needs Playwright) · `ui-specgen.cjs` (Stage 04: one UI smoke spec per captured screen state)
 
 **Reference example:** `specs/.sdd/_config/examples/notes-service/` — a complete, validated frozen spec set. Imitate its precision, not its domain.
 
-**See it, then harden it.** The pipeline has two halves with the running prototype as the boundary. *See it* (Stages 01–02): a short interview within a budget, one slice brief the user OKs, a draft spec with placeholders, and a working prototype shown as numbered versions, where the user answers the open policy questions with the product on screen and accepts (`--approved-by`). *Harden it* (Stages 03–04, agent-heavy): contracts compiled against the prototype, the spec completed, every Red Team round executed against the running prototype, wireframes captured from its screens (UI), the oracle recorded from it and predicted from the spec alone, and a user-approved freeze. `sdd.cjs readiness` is the user's map at every point: budgets vs actuals, their open questions verbatim, the path to a frozen spec, their next action.
+**See it, then harden it.** The pipeline has two halves with the running prototype as the boundary. *See it* (Stages 01–02): a short interview within a budget, one slice brief the user OKs, a draft spec with placeholders, and a working prototype shown as numbered versions, where the user answers the open policy questions with the product on screen and accepts (`--approved-by`). *Harden it* (Stages 03–04, agent-heavy): contracts compiled against the prototype, the spec completed, every Red Team round executed against the running prototype, wireframes captured from its screens (UI), the oracle recorded from it and predicted from the spec alone, and a user-approved freeze. `sdd.cjs readiness` is the user's map at every point: budgets vs actuals, their open questions verbatim, the path to a frozen spec, their next action; `sdd.cjs agenda` is the list of questions only people outside the pipeline can answer (open policy gaps, `[PENDING-<ROLE>]` decisions). `manifest.prototypeCadence: "rolling"` lets several slices be prototyped before one hardening pass (the cap then applies to everything accumulated at Stage 03).
 
 **Diff early, not only at the end.** Divergence is measured at every stage, cheapest first: Stage 02 feedback edits the spec in the same step as the code → Stage 03 Decision Inventory (uncited decisions → `GAPS.md`), Red Team rounds with executed Fork Tests, sampled `diff-expect` by spec-only authors → Stage 04 two-interpretation oracle (A recorded from the prototype, B predicted from the spec alone) + generated probes → Stage 05 builder decision inventory and lockstep build B with per-phase `diff` → Stage 07 full dual-build `diff` (the evidence; per slice, or per release with `manifest.equivalenceCadence: "release"`).
 
@@ -79,5 +79,6 @@ Map the request to a stage and **read its `CONTEXT.md` before doing anything els
 - **Pinned defaults.** `_config/references/systems-standards.md` (Equivalence Profile) applies automatically — to the prototype too (`_config/references/prototype-checklist.md` is its short form for Stage 02). Deviations ! be in `manifest.json#profileOverrides` + `DECISION_LOG.md`.
 - **Single grader.** Only `oracle.cjs` (and frozen UI specs) grades. Builder-written tests are allowed for internal use and never count as evidence.
 - **Evidence is lock-bound and fresh.** Oracle results count only if their `lockHash` equals the current lock; Stage 07 accepts only evidence produced after Stage 07 began.
-- **Machine contracts over prose.** Operations, storage, lifecycles and errors live in `specs/contracts/`; SPEC points to them instead of restating them.
+- **Machine contracts over prose.** Operations, storage, lifecycles and errors live in `specs/contracts/`; SPEC points to them instead of restating them. A spec an agent cannot read whole is a source of divergence: `check` warns above 120 KB per file, `sdd.cjs spec-outline` shows where the bytes are, and Stage 03 splits by surface into `specs/spec/<module>.md`.
+- **The decision log is append-only.** Every transition fingerprints its rows; `check` and `status` warn when an earlier row is rewritten or removed. A changed decision is a new entry citing the old one — derived artifacts cite rows by id.
 - **Code is a byproduct.** ⊥ write implementation code before the frozen set is locked — except the Stage 02 prototype of the declared slice, its Stage 03 hardening fixes, and Class 0 changes against an existing lock. The prototype is never evidence; build B never sees it.

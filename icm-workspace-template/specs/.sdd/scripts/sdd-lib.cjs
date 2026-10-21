@@ -8,7 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { parseYaml } = require('./yaml-lite.cjs');
 
-const TOOL_VERSION = '2026.10.20-v3.4';
+const TOOL_VERSION = '2026.10.21-v3.5';
 
 // ========== Paths ==========
 
@@ -774,6 +774,7 @@ module.exports = {
   getPath,
   listFiles,
   frozenFiles,
+  hashFile,
   specFiles,
   specText,
   currentLockState,

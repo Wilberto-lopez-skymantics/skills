@@ -449,3 +449,180 @@ test('readiness: budgets, the user\'s open questions verbatim, and the path to a
   uiManifest(p);
   assert.match(p.sdd('readiness').out, /03: contracts compiled .*, wireframes captured from the prototype \(agent/);
 });
+
+// ---------- v3.5: citations credit invariants, rolling cadence, append-only log, agenda, metrics, outline, specgen, upgrade ----------
+
+test('check: invariants credited from derivedFrom citations (explicit covers remains the stronger claim)', () => {
+  const p = project({ example: true });
+  let out = p.sdd('check').out;
+  assert.match(out, /coverage: .*inv 4\/4/);
+  // Drop every explicit `covers: inv:` entry: the cases still cite the invariants in derivedFrom, so coverage holds.
+  for (const f of fs.readdirSync(p.at('specs/fixtures/cases'))) {
+    const doc = p.json(`specs/fixtures/cases/${f}`);
+    for (const c of doc.cases) if (c.covers) c.covers = c.covers.filter(x => !x.startsWith('inv:'));
+    p.write(`specs/fixtures/cases/${f}`, JSON.stringify(doc));
+  }
+  out = p.sdd('check').out;
+  assert.match(out, /invariants credited from derivedFrom citations: 3/);
+  assert.match(out, /coverage: .*inv 3\/4/, 'V2–V4 are cited in derivedFrom; V1 was covered only by an explicit covers entry');
+  assert.match(out, /✗ uncovered .*inv:V1/);
+});
+
+test('order: rolling cadence lets the next slice\'s brief follow an accepted prototype; the cap still applies at 03', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  assert.match(p.sdd('transition', '--completed', '01').out, /✗ 01_brainstorming is out of order/);
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, prototypeCadence: 'rolling' }));
+  assert.match(p.sdd('status').out, /rolling cadence: `transition --completed 01` for the next slice is also in order/);
+  assert.match(p.sdd('transition', '--completed', '01').out, /✓ rolling prototypes \(manifest.prototypeCadence\)/);
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, prototypeCadence: 'sometimes' }));
+  assert.match(p.sdd('check', '--contracts').out, /✗ specs\/contracts\/manifest.json: .*prototypeCadence/);
+});
+
+test('decision log: a transition fingerprints the rows; rewriting or removing an earlier row is reported', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  assert.equal(p.sdd('transition', '--completed', '01').code, 0);
+  assert.ok(fs.existsSync(p.at('specs/logs/decisions.fingerprint.json')));
+  assert.doesNotMatch(p.sdd('check', '--contracts').out, /append-only/);
+  const log = p.read('specs/DECISION_LOG.md');
+  p.write('specs/DECISION_LOG.md', log.replace('| DEC002 | Editing published notes', '| DEC002 | Editing published notes (reworded)'));
+  let out = p.sdd('check', '--contracts').out;
+  assert.match(out, /⚠ DECISION_LOG.md is append-only, but 1 row\(s\) recorded at .* were rewritten since: DEC002/);
+  assert.match(p.sdd('status').out, /log:\s+⚠ DECISION_LOG.md rows rewritten or removed since .*: DEC002/);
+  p.write('specs/DECISION_LOG.md', log.split('\n').filter(l => !l.startsWith('| DEC003 ')).join('\n'));
+  out = p.sdd('check', '--contracts').out;
+  assert.match(out, /⚠ DECISION_LOG.md: 1 row\(s\) recorded at .* are gone: DEC003/);
+});
+
+test('agenda: open policy gaps and [PENDING-<ROLE>] decisions, grouped by role; readiness counts the tags', () => {
+  const p = project({ example: true });
+  p.write('specs/GAPS.md', '# Gaps\n| ID | Stage | Kind | Gap | Draft assumption | Status |\n|---|---|---|---|---|---|\n| G-001 | 01 | policy | Who may delete a shared note? | Owner only (DEC001, provisional) | open |\n| G-002 | 03 | builder | Toast text | "Saved" | open |\n');
+  fs.appendFileSync(p.at('specs/DECISION_LOG.md'), '| DEC007 | Ghost timeout [PENDING-SME] | 5, 7 | 7 min | until experts confirm | SPEC §4 |\n| DEC008 | Retention [PENDING-LEGAL] | 1y, 7y | 7y | regulation unknown | SPEC §6 |\n');
+  const out = p.sdd('agenda').out;
+  assert.match(out, /## Open policy questions for the product owner \(1\)/);
+  assert.match(out, /\| G-001 \| Who may delete a shared note\? \| Owner only/);
+  assert.match(out, /## Working assumptions pending LEGAL \(1\)[\s\S]*DEC008/);
+  assert.match(out, /## Working assumptions pending SME \(1\)[\s\S]*DEC007/);
+  assert.match(p.sdd('readiness').out, /pending:\s+2 \[PENDING-<ROLE>\] tag\(s\)/);
+  assert.equal(p.sdd('agenda', '--write').code, 0);
+  assert.match(p.read('specs/logs/agenda.md'), /# Agenda/);
+});
+
+test('metrics: one row per transition; spec-outline: section sizes', () => {
+  const p = project({ example: true });
+  assert.match(p.sdd('metrics').out, /No transitions yet/);
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  assert.equal(p.sdd('transition', '--completed', '01').code, 0);
+  const out = p.sdd('metrics').out;
+  assert.match(out, /date\s+stage completed\s+accepted\s+quest\s+vers\s+rounds/);
+  assert.match(out, /01_brainstorming\s+6\s+3\s+0\s+0\s+1\s+6\s+30\s+155\s+100/);
+  const o = p.sdd('spec-outline').out;
+  assert.match(o, /specs\/SPEC.md — \d+ KB/);
+  assert.match(o, /5\. Operations/);
+  assert.match(o, /Rule of thumb: one module per surface/);
+});
+
+test('ui-specgen: one smoke test per capture record, test ids asserted, observe recorded', () => {
+  const p = project({ example: true });
+  fs.mkdirSync(p.at('specs/wireframes'), { recursive: true });
+  p.write('specs/wireframes/notes-list.capture.json', JSON.stringify({ name: 'notes-list', url: 'http://x/notes', path: '/notes', setup: null, wait: '[data-testid=notes-list]', viewport: { width: 1280, height: 800 }, testids: ['notes-list', 'note-row', 'note-row'], covers: ['inv:V3'] }));
+  p.write('specs/wireframes/notes-empty.capture.json', JSON.stringify({ name: 'notes-empty', url: 'http://x/notes', path: '/notes?empty=1', setup: 'specs/wireframes/setup-empty.cjs', wait: null, viewport: { width: 1280, height: 800 }, testids: ['notes-list-empty'], covers: [] }));
+  const r = spawnSync(process.execPath, [path.join(TEMPLATE, 'specs/.sdd/scripts/ui-specgen.cjs'), '--root', p.root], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /generated-wireframes.spec.ts: 2 screen state\(s\), 3 test-id assertions/);
+  const spec = p.read('specs/fixtures/ui/generated-wireframes.spec.ts');
+  assert.match(spec, /test\("wireframe: notes-list"/);
+  assert.match(spec, /\/\/ covers: inv:V3/);
+  assert.match(spec, /getByTestId\("note-row"\)\.first\(\)\)\.toBeAttached\(\)/);
+  assert.match(spec, /waitForSelector\("\[data-testid=notes-list\]"/);
+  assert.match(spec, /require\(require\('path'\)\.resolve\(__dirname, ROOT, "specs\/wireframes\/setup-empty\.cjs"\)\)/);
+  assert.match(spec, /observe\(page, "notes-empty"\)/);
+  assert.equal((spec.match(/^test\(/gm) || []).length, 2);
+});
+
+test('upgrade: swaps specs/.sdd from a template, keeps the state, renames legacy logs, regenerates entry files, writes the log', () => {
+  const p = project({ example: true });
+  // An "old" template: today's files with an older version header and a stage folder that no longer exists.
+  const old = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-old-'));
+  fs.cpSync(path.join(TEMPLATE, 'specs/.sdd'), path.join(old, 'specs/.sdd'), { recursive: true });
+  fs.writeFileSync(path.join(old, 'specs/.sdd/WORKSPACE_ROUTING.md'), fs.readFileSync(path.join(old, 'specs/.sdd/WORKSPACE_ROUTING.md'), 'utf8').replace(/<!-- version: .*? -->/, '<!-- version: 2026.10.18-v3.3-prototype-first -->'));
+  fs.mkdirSync(path.join(old, 'specs/.sdd/03p_prototype'));
+  fs.writeFileSync(path.join(old, 'specs/.sdd/03p_prototype/CONTEXT.md'), '# old stage\n');
+  fs.rmSync(p.at('specs/.sdd'), { recursive: true, force: true });
+  fs.cpSync(path.join(old, 'specs/.sdd'), p.at('specs/.sdd'), { recursive: true });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype', notes: 'keep me' });
+  p.write('specs/logs/02-swarm.md', swarmLog(1));
+  p.write('CLAUDE.md', fs.readFileSync(path.join(old, 'specs/.sdd/_config/entrypoint.md'), 'utf8'));
+  p.write('AGENTS.md', 'custom agent file\n');
+  const t = p.sdd('upgrade', '--from', TEMPLATE);
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /Upgraded specs\/.sdd: 2026.10.18-v3.3-prototype-first → 2026\.10\.21-v3\.5-prototype-first/);
+  assert.match(t.out, /renamed specs\/logs\/02-swarm.md → specs\/logs\/03-swarm.md/);
+  assert.match(t.out, /CLAUDE.md: regenerated/);
+  assert.match(t.out, /AGENTS.md: left as is \(customized/);
+  assert.ok(!fs.existsSync(p.at('specs/.sdd/03p_prototype')), 'removed stage folder is gone');
+  assert.equal(p.json('specs/.sdd/_config/sdd-state.json').notes, 'keep me');
+  assert.equal(p.read('CLAUDE.md'), fs.readFileSync(path.join(TEMPLATE, 'specs/.sdd/_config/entrypoint.md'), 'utf8'));
+  assert.equal(p.read('AGENTS.md'), 'custom agent file\n');
+  const log = p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first.md');
+  assert.match(log, /# Upgrade to pipeline 2026\.10\.21-v3\.5-prototype-first/);
+  assert.match(log, /03p_prototype\/CONTEXT.md/);
+  assert.match(log, /SDD status[\s\S]*Next stage: 03_hardening/);
+  assert.match(log, /## Next actions/);
+});
+
+test('order: next slice before contracts exist — the cadence is the user\'s call at acceptance until Stage 03 declares it', () => {
+  const p = project({ example: true });
+  fs.rmSync(p.at('specs/contracts'), { recursive: true, force: true });
+  p.state({ lastCompletedStep: 2, stepName: '02_prototype' });
+  assert.match(p.sdd('status').out, /no contracts yet: `transition --completed 01` for another slice is also in order/);
+  assert.match(p.sdd('transition', '--completed', '01').out, /✓ next slice before hardening \(no contracts yet/);
+});
+
+test('dashboard: one self-contained page from the same data as status/readiness; --json for other tools; transitions rewrite it', () => {
+  const p = project({ example: true });
+  freeze(p);
+  p.state({ lastCompletedStep: 3, stepName: '03_hardening' });
+  const t = p.sdd('dashboard');
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /Wrote specs\/logs\/dashboard.html: next 04 Oracle \+ freeze/);
+  const html = p.read('specs/logs/dashboard.html');
+  assert.match(html, /<!doctype html>/);
+  assert.doesNotMatch(html, /<script/, 'no scripts: the page is inert');
+  assert.match(html, /class="stage done"><div class="num">01<\/div>/);
+  assert.match(html, /class="stage next"><div class="num">04<\/div>/);
+  assert.match(html, /Next action \(yours\):<\/b> approve the freeze/);
+  assert.match(html, /v1 intact/);
+  assert.match(html, /Interview questions/);
+  const j = JSON.parse(p.sdd('dashboard', '--json').out);
+  assert.equal(j.next.id, '04');
+  assert.equal(j.stages.filter(s => s.done).length, 3);
+  assert.ok(j.gates.length > 0 && j.gates.every(g => typeof g.ok === 'boolean'));
+  assert.equal(j.lock.intact, true);
+  assert.equal(j.settings.prototypeCadence, 'slice (default)');
+  // a transition rewrites the page
+  fs.rmSync(p.at('specs/logs/dashboard.html'));
+  p.state({ lastCompletedStep: 7, stepName: '07_verification_before_completion' });
+  const tr = p.sdd('transition', '--completed', '01');
+  assert.equal(tr.code, 0, tr.out);
+  assert.match(tr.out, /dashboard: specs\/logs\/dashboard.html/);
+  assert.match(p.read('specs/logs/dashboard.html'), /class="stage next"><div class="num">02<\/div>/);
+});
+
+test('upgrade: legacy state names are mapped to today\'s numbering (03p accepted = Stage 02 complete) and an earlier log is kept', () => {
+  const p = project({ example: true });
+  p.state({ lastCompletedStep: 3, stepName: '03p_prototype', notes: 'Completed 03p_prototype; prototype accepted by Ada' });
+  p.write('specs/logs/upgrade-2026.10.21-v3.5-prototype-first.md', 'filled in by the agent\n');
+  const t = p.sdd('upgrade', '--from', TEMPLATE);
+  assert.equal(t.code, 0, t.out);
+  assert.match(t.out, /state mapped: 03p_prototype \(lastCompletedStep=3\) → 02_prototype \(2\)/);
+  const s = p.json('specs/.sdd/_config/sdd-state.json');
+  assert.equal(s.lastCompletedStep, 2);
+  assert.equal(s.stepName, '02_prototype');
+  assert.match(s.notes, /prototype accepted by Ada; upgrade .*: mapped legacy stage 03p_prototype → 02_prototype/);
+  assert.match(p.sdd('status').out, /Next stage: 03_hardening/);
+  assert.equal(p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first.md'), 'filled in by the agent\n', 'the filled-in log is kept');
+  assert.match(p.read('specs/logs/upgrade-2026.10.21-v3.5-prototype-first-2.md'), /State file mapped: 03p_prototype/);
+});

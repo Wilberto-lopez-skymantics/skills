@@ -165,7 +165,7 @@ Independence starts with the input: give the second author `node specs/.sdd/scri
 - a case whose only citations are `recorded:…` — a recorded value says what a build did, not why the spec requires it (see §Prototype recording);
 - differing requests (both authors must predict the same requests).
 
-Generated profile cases (`"tags": ["generated"]`, citing only `profile XXX-n` rules and contracts) are skipped by `diff-expect` and `strip-expect`: their second interpretation is `oracle run` against the prototype (Stage 04 Part A step 4).
+`sdd.cjs check` credits `inv:Vn` coverage to a non-probe case that cites the invariant in `derivedFrom` (a case derived from an invariant exercises it); an explicit `covers` entry remains the stronger claim and the one to use when the citation is incidental. Generated profile cases (`"tags": ["generated"]`, citing only `profile XXX-n` rules and contracts) are skipped by `diff-expect` and `strip-expect`: their second interpretation is `oracle run` against the prototype (Stage 04 Part A step 4).
 
 Not gaps (normalized away): header-name case, `{"$eq": x}` vs `x`, the order of concurrent `responses`, headers or subset-mode keys that only one author chose to assert (asserting less is not a disagreement). Byte-identical A and B never satisfy a gate.
 
@@ -201,7 +201,7 @@ Every non-probe case has `phase: N` from `IMPLEMENTATION_PHASES.md`. `oracle.cjs
 Black-box `@playwright/test` specs in `specs/fixtures/ui/`, written in Stage 04 and frozen with the rest:
 - **Frozen config** `specs/fixtures/ui/playwright.config.ts` (required by `sdd.cjs check`): `testDir: '.'`, `baseURL: process.env.ORACLE_UI_URL`, a single pinned browser project (e.g. chromium), fixed `viewport`, `locale: 'en-US'`, `timezoneId: 'UTC'`, `retries: 0`, `workers: 1`. Everything that changes rendering is pinned here, not by the builder.
 - Select only by `data-testid`, ARIA role + accessible name, or copy-table text (UI-3).
-- ∀ UI State Matrix state ≥ 1 test (UI-4); ∀ interaction in SPEC §Input & Interaction Contract ≥ 1 test. Declare coverage with `// covers: …` comments.
+- ∀ UI State Matrix state ≥ 1 test (UI-4): `specs/fixtures/ui/generated-wireframes.spec.ts`, produced by `ui-specgen.cjs` from the Stage 03 capture records, gives one smoke test per captured state (regenerate, never edit). ∀ interaction in SPEC §Input & Interaction Contract ≥ 1 hand-written test. Declare coverage with `// covers: …` comments.
 - **Observations for `diff-ui`:** at every meaningful screen or state, call `observe(page, '<unique-name>')` from `require('../../.sdd/scripts/ui-observe.cjs')`. It records the ARIA snapshot (roles, accessible names, text) and the `data-testid` sequence — the user-observable structure, independent of CSS and DOM details.
 - Evidence: `ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-e2e.json npx playwright test --config specs/fixtures/ui/playwright.config.ts --reporter=json`. The Stage 05/06/07 gates require every frozen spec file in the report, ≥ 1 passing test, 0 failed, 0 flaky, and a report newer than the lock.
 - L2 (Stage 07): run the suite once per build with `SDD_UI_OBS_FILE=specs/logs/ui-obs-a.jsonl` / `ui-obs-b.jsonl`, then `node specs/.sdd/scripts/oracle.cjs diff-ui --a specs/logs/ui-obs-a.jsonl --b specs/logs/ui-obs-b.jsonl --b-root <build B workspace>`. Ids and timestamps inside snapshots are normalized; everything else must match.

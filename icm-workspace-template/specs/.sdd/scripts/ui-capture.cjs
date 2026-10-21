@@ -16,7 +16,8 @@
  *     carrying the alt/aria-label text (semantic placeholders, no binaries),
  *   - data-testid, data-key, ARIA attributes, visible text, form control state and DOM order preserved.
  * With --aria also writes <out>/<name>.aria.json: the ARIA snapshot and data-testid sequence (same shape
- * as ui-observe.cjs), the reference for `oracle.cjs diff-ui`.
+ * as ui-observe.cjs), the reference for `oracle.cjs diff-ui`. Always writes <out>/<name>.capture.json (url, path,
+ * setup module, wait selector, viewport, test ids): the record ui-specgen.cjs turns into a per-state UI spec.
  *
  * --setup names a CommonJS module exporting `async (page) => {}`, run after navigation to drive the
  * prototype into the state to capture (log in, open a modal, trigger the empty state).
@@ -99,6 +100,20 @@ async function main() {
     const testids = await page.locator('[data-testid]').evaluateAll(els => els.map(e => e.getAttribute('data-testid')));
     console.log(`Captured ${L.rel(root, file)} (${Math.round(Buffer.byteLength(html) / 1024)} KB, ${testids.length} data-testid${testids.length === 1 ? '' : 's'})`);
     if (!testids.length) console.log('⚠ no data-testid in this screen: the frozen UI specs select by test id (profile UI-1); fix the prototype, re-capture');
+    // Capture record: how this state was reached, so ui-specgen.cjs can generate a per-state smoke spec from it.
+    const record = {
+      name,
+      url,
+      path: new URL(page.url()).pathname + new URL(page.url()).search,
+      setup: typeof args.flags.setup === 'string' ? L.rel(root, path.resolve(root, args.flags.setup)) : null,
+      wait: typeof args.flags.wait === 'string' ? args.flags.wait : null,
+      viewport: { width: w || 1280, height: h || 800 },
+      testids,
+      covers: [],
+      capturedAt: new Date().toISOString(),
+    };
+    const recFile = path.join(outDir, `${name}.capture.json`);
+    fs.writeFileSync(recFile, JSON.stringify(record, null, 2) + '\n');
     if (args.flags.aria) {
       const aria = await page.locator('body').ariaSnapshot();
       const ariaFile = path.join(outDir, `${name}.aria.json`);
