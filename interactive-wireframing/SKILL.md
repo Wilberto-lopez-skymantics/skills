@@ -7,6 +7,8 @@ description: "Build iterative WYSIWYG HTML wireframes from DESIGN.md design toke
 
 # Interactive Wireframing
 
+**Authority:** ∃ `specs/.sdd/03_interactive_wireframing/CONTEXT.md` in the project → that file is the stage contract; follow it and run its `sdd.cjs` commands. This skill is its portable summary; `scripts/validate-icm-sync.sh` checks that the rules below appear in both.
+
 Turn text-based layout rules & design tokens from `DESIGN.md` → tangible interactive HTML wireframes via local Visual Companion server.
 
 Bridge between requirements gathering (Brainstorming) & production implementation (Dev Swarm). Relies purely on Agent code-generation → HTML. Zero external API dependencies.
@@ -98,3 +100,9 @@ Enable cross-conversation resumption via `specs/.wireframe-state.json`:
 ```
 
 Update after each screen approved | starting new screen. On invocation, check file → resume from last incomplete screen.
+
+## Exit rules (mirror of the Stage 03 stage contract)
+- **Test-id & copy preflight** before the first screen: every SPEC §14 component, UI State Matrix state id and copy key the screen shows has its test id / copy key.
+- **One screen at a time** stays the default. **Deadline waves** only with a decision-log entry: wave 1 independent screens (own CSS each), wave 2 dependents, orchestrator merge + re-audit, one user review.
+- **One server, one URL:** start the Visual Companion from the orchestrator with `--detach`; re-running `start-server.sh --project-dir …` returns the live server or restarts on the recorded port (`specs/brainstorming/current-server.json`). `"port_changed": true` → send the new URL to every author.
+- **Exit audit:** `sdd.cjs token-audit --stage 03` → measure every DESIGN component × state × property in the wireframe CSS (✅ | ❌, a missing rule = ❌); every state SPEC/DESIGN/UI spec names for a screen appears in it; every Stage 02 deferred UI finding closed. The transition refuses otherwise.

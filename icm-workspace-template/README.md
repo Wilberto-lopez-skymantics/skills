@@ -1,6 +1,6 @@
 # SDD ICM Workspace Template
 
-> **Release Version:** `2026.10.01-v3` (Updated October 1, 2026)
+> **Release Version:** `2026.10.01-v3+sky.2` — Skymantics CLI variant of `2026.10.01-v3`. Every difference from upstream `v3` is a labeled commit on `skymantics-cli/v3`.
 
 A portable, agent-agnostic workspace template that enforces the **Spec-Driven Development (SDD)** pipeline through filesystem structure and a small set of zero-dependency tools, so that independent coding agents built from the same spec produce **observationally equivalent** systems — and so that claim can be checked.
 
@@ -74,9 +74,11 @@ All tools are zero-dependency Node.js scripts in `specs/.sdd/scripts/`.
 |---|---|
 | `sdd.cjs status` | Current stage, lock state, latest evidence, and the next stage's exit gates |
 | `sdd.cjs check [--contracts]` | Validate manifest, contracts, oracle cases, cross-references, coverage (every operation × status, transition, illegal transition, invariant, error code) and phase binding |
-| `sdd.cjs freeze --reason R --approved-by U` | Lock the frozen set (refused unless `check` passes) |
+| `sdd.cjs freeze --reason R --approved-by U --claim grader-ready\|two-build` | Lock the frozen set (refused unless `check` passes, the claim matches `equivalenceTarget`, and no hotfix SCR is still Proposed) |
 | `sdd.cjs verify` | Exit 1 if any frozen file changed since the last freeze |
-| `sdd.cjs transition --completed <stage>` | Record a completed stage — refused if out of order (unless `--override DECnnn`) or until that stage's exit gates pass |
+| `sdd.cjs phase --completed N` | Stage 05 phase gate: green cumulative oracle run on a clean, committed HEAD, earlier phases gated, no open SCR |
+| `sdd.cjs transition --completed <stage>` | Record a completed stage — refused if out of order (unless `--override DECnnn`) or until that stage's exit gates pass; appends a row to `specs/logs/scoreboard.md` |
+| `sdd.cjs token-audit --stage 03\|06` | Print the token-audit table (one row per DESIGN component × state × property) that Stages 03 and 06 fill with measured values |
 | `sdd.cjs export <dir> [--update]` | Copy only the frozen set into `<dir>` for an independent (L2) build; `--update` resyncs it after a re-freeze, keeping B's code and progress |
 | `oracle.cjs run [--phase N]` | Grade a build: HTTP, SQL and CLI steps with matchers, captures and templates |
 | `oracle.cjs diff --a a --b b` | Run the same cases and probes against two builds; report every undeclared difference |
@@ -110,6 +112,8 @@ ICM moves the orchestration logic **into the project's filesystem**. The agent d
 | **Layer 3: Reference Material** | Profile, schemas, templates, checklists — loaded on demand | `_config/` |
 | **Layer 4: Working Artifacts** | Spec, contracts, oracle, logs | `specs/` root |
 
+**Why `CONTEXT.md`, not `AGENTS.md`.** The two names do different jobs. `AGENTS.md` / `CLAUDE.md` / `.cursorrules` are entry files that agents load automatically, and some tools also load them from any subdirectory they work in. A stage contract must load only when routing selects that stage, so it uses the ICM name `CONTEXT.md`, which no tool auto-loads. Hosts depend on that name: the Grok CLI's template manifest and its roster drift check read `NN_stage/CONTEXT.md`.
+
 **Token efficiency.** The agent reads `WORKSPACE_ROUTING.md` (~80 lines) to route, then only the relevant stage's `CONTEXT.md`; heavy references load only when a stage asks for them. Stage contracts use a compressed notation (`!` = must, `⊥` = forbidden, `∀` = for all, …) with a decoder line in each file.
 
 ## The Pipeline
@@ -139,13 +143,13 @@ flowchart TD
 | Stage | Purpose | Exit gate (`sdd.cjs transition`) |
 |-------|---------|------|
 | `00_backprop` | Classify defect → Spec Change Request → approval → patch spec/contracts/oracle → re-freeze | Lock intact, backprop log, `--resume` target |
-| `01_brainstorming` | Socratic interview; all business policy extracted | SPEC, DECISION_LOG, (DESIGN), no placeholders |
+| `01_brainstorming` | Socratic interview; all business policy extracted | SPEC, DECISION_LOG, (DESIGN), no placeholders, no scenario left UNSPECIFIED, docs match |
 | `01b_adoption` | Reverse-engineer an existing codebase; record a characterization oracle | Same as 01 |
 | `02_adversarial_swarm_analysis` | Contracts + hardening against the Equivalence Profile | `check --contracts` passes, persisted swarm log |
-| `03_interactive_wireframing` | Wireframes with tokens, test ids and copy (UI only) | Wireframes + relative-linked DESIGN.md section |
+| `03_interactive_wireframing` | Wireframes with tokens, test ids and copy (UI only) | Wireframes carry every component/state test id and copy string, token audit all ✅ |
 | `04_writing_implementation_phases` | Oracle synthesis, phases, user-approved freeze | Full `check` passes, lock intact |
-| `05_development_swarm` | Spec-only build until the oracle is green | Lock intact, current unfiltered oracle run green, zero drift |
-| `06_visual_acceptance_testing` | Frozen UI specs + visual walk (UI only) | VAT verdict PASS |
+| `05_development_swarm` | Spec-only build until the oracle is green | Lock intact, every phase gated, no open SCR, current unfiltered oracle run green, zero drift |
+| `06_visual_acceptance_testing` | Frozen UI specs + visual walk (UI only) | Every DESIGN token row measured, VAT verdict PASS |
 | `07_verification_before_completion` | Fresh evidence; L1/L2 certification | Fresh green run, equivalence report, (L2) zero-divergence diff |
 
 ## Change Classes
@@ -216,6 +220,15 @@ v3 challenges several v2 decisions that worked against the equivalence goal:
 | Error envelope labelled RFC 9457 but non-compliant; three codes for OCC conflicts | RFC 9457 problem details; one canonical code table | A self-contradictory standard forks builders |
 | Pinned directory layout and dependencies | Pinned *observable* environment; internals free | Layout is not observable; DB collation is |
 
+## Upgrading a project to `+sky.2`
+
+The template is in the frozen set, so upgrading is a re-freeze with the user's approval. What changes for a running project:
+
+- **SCR Status rows.** `specs/changes/SCR-*.md` need a `| Status | Draft / Approved / Applied (lock vN) / Rejected / Withdrawn / Proposed |` row. An SCR without one counts as open and blocks the Stage 05 phase gate and the 05/07 transitions: backfill the row for SCRs written before the upgrade.
+- **Freeze claim.** The first freeze states `--claim grader-ready|two-build`; it must match `manifest.json#equivalenceTarget`. A lock written before this version records the claim its manifest implies on the next freeze (with a warning).
+- **Phase gates.** `transition --completed 05` needs every phase gated by `sdd.cjs phase --completed N` (one green, committed run per phase; one clean unfiltered run on HEAD can gate already-built phases in order).
+- **Stage 01 / 03 / 06 exit checks.** `01-interpretations.md` in the table format of Stage 01; `03-token-audit.md` / `06-token-audit.md` from `sdd.cjs token-audit`; `@keyboard`/`@focus` UI specs repeated. These apply when the project next completes those stages.
+
 ## Relationship to SDD Skills
 
 This template implements the same pipeline as the [SDD skills](../README.md), delivered as files instead of global configuration.
@@ -233,8 +246,8 @@ This template implements the same pipeline as the [SDD skills](../README.md), de
 Check the version header in `specs/.sdd/WORKSPACE_ROUTING.md`:
 ```html
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.01-v3 -->
-<!-- source: github.com/Wilberto-lopez-skymantics/skills -->
+<!-- version: 2026.10.01-v3+sky.2 -->
+<!-- source: github.com/dalmeida2/skills@skymantics-cli/v3 (base: github.com/Wilberto-lopez-skymantics/skills@v3) -->
 ```
 
 The lock (`specs/spec.lock.json`) records the hash of every pipeline file a project was built with; upgrading the template is a frozen-set change and requires a re-freeze.

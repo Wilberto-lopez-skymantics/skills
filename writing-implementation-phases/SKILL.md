@@ -7,6 +7,8 @@ description: "Break a hardened SPEC.md into a granular, dependency-ordered, and 
 
 # Writing Implementation Phases
 
+**Authority:** ∃ `specs/.sdd/04_writing_implementation_phases/CONTEXT.md` in the project → that file is the stage contract; follow it and run its `sdd.cjs` commands. This skill is its portable summary; `scripts/validate-icm-sync.sh` checks that the rules below appear in both.
+
 ## Overview
 Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for builder agent to execute ∈ one shot. This skill converts high-level contract → granular, traceable, strictly sequenced checklist: `IMPLEMENTATION_PHASES.md`.
 
@@ -47,6 +49,13 @@ Critical governance bridge. Hardened `specs/SPEC.md` too large & conceptual for 
 ## Phase 2: [Name]
 ...
 ```
+
+## Oracle & freeze rules (mirror of the Stage 04 stage contract)
+- **Scoped rules get a sibling:** a rule scoped to "this module | project | tenant | owner" has ≥ 1 case with a sibling container holding colliding data; the phase-integrity check lists them.
+- **Idempotency keys:** one named `{{$uuid:k}}` per operation; `sdd.cjs check` rejects a key sent to two operations unless the case is tagged `idempotency-key-reuse`.
+- **Test data:** reserved domains only (`@example.com`, `*.test`); `check` rejects other addresses unless SPEC pins them.
+- **Keyboard / focus UI specs** carry `@keyboard` or `@focus` in their title; later stages repeat them.
+- **Freeze claim:** the approval states `grader-ready` (one build, L1) or `two-build` (Stage 07 dual build, L2, build B on the calendar). `sdd.cjs freeze … --claim <…>` refuses a claim that contradicts `equivalenceTarget`, and refuses while a hotfix SCR is Proposed. The approval is the user's own message — ⊥ pre-fill it or read a closed question as yes.
 
 ## Usage Triggers
 User asks "write implementation plan" | "break down spec" | "plan phases" → adopt this workflow.

@@ -29,8 +29,12 @@ Logs are persisted to those files (the audit trail); the chat shows a summary. L
 ### Machine Validation
 [Paste `node specs/.sdd/scripts/sdd.cjs check --contracts` output]
 
+Findings: API <n> · UI <m>
+
 ### Verdict: PASS / FAIL (N findings remaining)
 ```
+
+The `Findings:` line is required in every Stage 02 iteration (API = operations, contracts, errors, storage, lifecycles, limits; UI = visible copy, layout, test ids). `sdd.cjs transition --completed 02` copies the per-round counts into `specs/logs/scoreboard.md`, so a falling API curve and a late UI-copy spike stay distinguishable. UI-only findings deferred to Stage 03 are counted in the round that found them and listed in `specs/logs/02-deferred-ui.md`.
 
 The final iteration additionally contains the **Outcome Table** consumed by Stage 04:
 
@@ -81,6 +85,10 @@ The final iteration additionally contains the **Outcome Table** consumed by Stag
 ```
 
 ---
+
+## Scoreboard
+
+`sdd.cjs transition` appends one row per completed stage to `specs/logs/scoreboard.md`: lock, open SCR ids and SCR count, last green phase and its commit, decision-log rows (and how many this stage added), open interpretation-diff gaps, Red Team findings per round (API/UI), gate refusals for the stage, and tokens. Pass the token counts you know as whole tokens: `--tokens orchestrator=184000,subagents=2310000` (subagents are usually most of the total; ⊥ "k" or "mil" labels). The row is written by the gate, not the orchestrator, so the handoff quotes it instead of describing the curve.
 
 ## Rules
 

@@ -16,6 +16,8 @@ Empirical replacement for subjective confidence scoring. Guarantees zero unconst
 
 ### 1. Entity Lifecycle & Transition Closure (Finite State Completeness)
 ∀ identified domain entity:
+- [ ] **Identity Form:** How does a user name or find it — handle, email, number, slug, another pattern? Format, uniqueness scope, case sensitivity, whether it can change. (business policy — ask; a first-iteration default is a guess)
+- [ ] **Retirement:** Can the user delete it, archive it, or neither? What happens to its children and to references from siblings? (business policy — ask, even when "never" seems obvious)
 - [ ] **State Enumeration:** Complete set of states $S = \{s_1, s_2, \dots, s_n\}$ explicitly declared.
 - [ ] **Deterministic Transitions:** ∀ legal transition ! specify:
   $$\text{Current State } (s_i) \xrightarrow[\text{Actor / Role } + \text{ Guard Condition}]{\text{Event / Trigger}} \text{New State } (s_j)$$

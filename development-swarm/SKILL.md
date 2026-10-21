@@ -1,136 +1,108 @@
 ---
 name: development-swarm
-description: "Execute a rigorous, iterative Builder vs. Critic attack loop to produce hardened, test-verified implementation code from a spec and implementation phases checklist."
+description: "Execute a Builder vs. Critic loop that implements the frozen spec phase by phase, graded only by the frozen oracle, with one green, committed phase at a time and spec gaps routed to Stage 00 instead of guessed."
 ---
 
-<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | § = section ref | & = and | | = or -->
+<!-- CAVEMAN-ENCODED. DECODER: ! = must/required | ⊥ = forbidden/never | → = leads to/becomes | ∀ = for all | ∃ = exists | ∄ = does not exist | § = section ref | & = and | | = or -->
 
-# Test-Driven Development Swarm
+# Spec-Only Development Swarm (SDD Stage 05)
 
-## Overview
-Builder vs. Critic loop during code generation & implementation. Prevents vulnerabilities, unhandled exceptions, logic errors from being committed.
+**Authority:** ∃ `specs/.sdd/05_development_swarm/CONTEXT.md` in the project → that file is the stage contract; follow it and run its `sdd.cjs` / `oracle.cjs` commands. This skill is its portable summary. The two ! say the same thing — `scripts/validate-icm-sync.sh` checks the anchors.
 
-**! execute attack-and-refine loop iteratively until Red Team finds zero attacks. Stopping after single pass = severe failure.**
+Builder's mandate is narrow: make the frozen oracle pass using only the frozen spec set. A second builder with the same files must reach the same observations.
+
+**! execute the attack-and-refine loop until the Red Team finds zero findings with terminal evidence. Stopping after a single unverified pass = severe failure.**
+
+## Inputs (the ONLY inputs)
+`specs/SPEC.md`, `specs/DESIGN.md` (UI), `specs/contracts/*`, `specs/fixtures/*` (the oracle), `specs/wireframes/*` (UI), `specs/CODING_STANDARDS.md` (∃), `specs/IMPLEMENTATION_PHASES.md`. ⊥ Stage 01–04 conversation, swarm logs, decision-log rationale, other implementations.
+
+## Gates
+
+### ⛔ Spec gaps & disputed cases
+Need a fact the frozen set does not state → spec gap. ⊥ guess. Draft `specs/changes/SCR-NNN.md` (`| Status | Draft |`), stop that item. Other tasks inside the current phase may continue; the next phase may not start. Case looks wrong → same route; the case stays until the user approves the SCR.
+
+### ⛔ Anti-Tampering
+⊥ modify the frozen set (spec, design, contracts, fixtures, wireframes, pipeline). A failing case means the CODE is defective unless an approved SCR says otherwise. `sdd.cjs verify` before and after every phase.
+
+### ⛔ Phase Boundary
+A phase is **done** only when: wired into the running system → committed alone (no later-phase files) → `oracle.cjs run --phase N` on that commit 0 failed / 0 errored (cumulative) → `sdd.cjs phase --completed N` passes (lock intact, graded tree = clean HEAD, earlier phases gated, no open SCR). Then tick its boxes.
+⊥ write phase N+1 files while phase N is red or any SCR is open. Suite-local greens ⊥ tick a cumulative box.
+
+**Status block** in every user-facing update: last green phase + commit, open phase, open SCR ids, whether the tree holds uncommitted work (`sdd.cjs status` → `build:` line). ⊥ answer "is it ready?" from memory.
 
 ## Implementation Swarm (Blue Team)
 Roles: Infrastructure, Backend, Security, Frontend, Writer.
-∃ role standards → read [role-standards.md](file://{{SKILLS_DIR}}/shared/role-standards.md).
-∃ project standards → read `specs/CODING_STANDARDS.md`.
+∃ role standards → read [role-standards.md](file://{{SKILLS_DIR}}/shared/role-standards.md). ∃ `specs/CODING_STANDARDS.md` → read it.
 Analyze project stack → instantiate additional specialist roles as needed.
 
-*∀ Builders SHOULD query Context7 MCP server before writing code → ensure syntax matches latest framework versions. ⊥ Context7 → use web search | training knowledge, but note "docs not verified against latest version" ∈ iteration log.*
+*∀ Builders SHOULD query Context7 MCP before writing code. ⊥ Context7 → web search | training knowledge, note "docs not verified against latest version" ∈ iteration log.*
 
 ## Validation Swarm (Red Team)
 After Blue Team drafts code, adopt attack roles *before* saving:
 Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer, DX Auditor, Architect (Spec Enforcer), Visual QA Tester, Design Token Auditor.
 ∃ role standards → read [role-standards.md](file://{{SKILLS_DIR}}/shared/role-standards.md).
-Analyze project stack → instantiate additional attack vectors as needed.
 
 ## Pipeline Rules (∀ roles)
 
 ### Build Rules
-- **TDD:** ! write tests before logic. ! invoke `test-driven-development` skill.
-- **K8s:** ∃ cluster manifests → invoke `kubernetes-deployment` skill.
-- **Docker:** ! generate `.dockerignore` when `Dockerfile` created | modified.
-- **Frontend (Non-SDD):** ! invoke `frontend-ui-design` skill for React/Next.js projects.
+- **Oracle = acceptance.** Done = `oracle.cjs run` 100% against the current lock (+ frozen UI specs for browser projects). Nothing else is acceptance evidence.
+- **Internal tests** (`test-driven-development` skill) are allowed outside `specs/` as builder feedback. They never replace, extend or count as oracle evidence.
+- **Graded configuration:** `eval "$(node specs/.sdd/scripts/oracle.cjs env)"` before starting the build for any graded run.
+- **Runtime by path:** every command & subagent brief invokes the runtime SPEC §10 names by exact binary (e.g. Node 22's `node`/`npx`), not whatever is first on `PATH`. Paste `--version` per phase.
+- **Docker:** ! `.dockerignore` when `Dockerfile` created | modified. **K8s:** ∃ manifests → `kubernetes-deployment` skill.
+- **Failure routing:** spec defect → SCR → Stage 00. ⊥ patch code around it.
+
+### Parallel builders
+- **Shared kernel first:** compile/start, body parsing, empty (204) responses + headers, session/auth graded green (phase 1 gate) before any parallel author starts.
+- **One module per builder** after that; parent owns shared files (entry point, router), the oracle run, the phase gate, the commit. Shared file → serial.
+- **Brief:** named inputs, timebox + stop-and-report, WIP commits on a branch, script edits for large files, fallback model; ⊥ relaunch the same brief. Success = files written + gaps listed. Skipping a numbered SPEC procedure step ≠ success even if it typechecks. Procedures Stage 02 rewrote as one sequence → stronger model or planned second pass.
 
 ### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
-- Before generating frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
-- ∀ color/font/spacing/border-radius values ! reference tokens. Hardcoded values that ∃ as DESIGN.md tokens = automatic FAIL.
-- Framework-agnostic: CSS → scan stylesheets. Canvas/WebGL → scan rendering config.
-- Component names ! match DESIGN.md `components:` section.
+- Read DESIGN.md tokens before generating a component. Hardcoded values that ∃ as tokens = automatic FAIL.
+- Component names = DESIGN.md `components:`; `data-testid`s, copy text, state ids = wireframes & SPEC §14 exactly.
 
 ### Verification Rules
-- ⊥ PASS on `200 OK` | code inspection alone. ! run code + include output ∈ iteration log.
-- **TypeScript:** ! execute `tsc --noEmit` & verify zero errors. Bundler build (Vite) ⊥ sufficient.
-- **Empirical evidence:** ! invoke `verification-before-completion` skill before deploy.
-- **Headless Mock Caveat:** Unit tests with mocks ⊥ sole evidence for integration | visual phases.
+- ⊥ PASS on `200 OK` | code inspection. ! run `oracle.cjs run --phase N`, paste output ∈ iteration log.
+- **TypeScript:** `tsc --noEmit` zero errors; bundler build ⊥ sufficient.
+- **Mocks** ⊥ evidence for integration | contract behavior.
+- **UI:** screenshot each touched screen (smoke); formal visual gate = Stage 06 (`visual-acceptance-testing`). Specs tagged `@keyboard`/`@focus` → repeated run (`--repeat-each=20`) before the stage closes.
 
-### Spec Enforcement
-- Architect ! cross-ref code vs `specs/SPEC.md` & `IMPLEMENTATION_PHASES.md`.
-- ∀ components ∈ current phase ! ∃ in code. Missing = FAIL.
-- **Orphan Check:** ∀ helper/utility created → verify imported & called ∈ main entry files. Module only imported ∈ unit tests = FAIL.
-
-### Visual Verification (∃ UI)
-- ! invoke `visual-acceptance-testing` skill → screenshot ∀ screens, verify ∀ components present/visible/interactive.
-- ⊥ PASS based on code inspection alone — must see it rendered.
-
-## Dynamic Swarm Scaling
-Base roles = foundation. Before loop, analyze file/framework → auto-instantiate temporary expert roles as needed. *(Example: WebGL canvas → 'Graphics Shader Optimizer'. Kubernetes Helm → 'Cluster Network Architect').*
+### Spec & Contract Enforcement
+- Architect cross-refs code vs SPEC, contracts, phases. ∀ endpoint ↔ `openapi.yaml`; ∀ query ↔ `schema.sql`.
+- **Orphan Check:** helper only imported ∈ tests = FAIL.
 
 ## Anti-Simulation Enforcement
-
-### Mandatory Visible Iteration Logs
 <format_enforcement>
-⊥ claim "internally looped" | "simulated Red Team." ∀ iteration ! be printed to user in real-time using Development Swarm Iteration Log format ∈ [iteration-log-format.md](file://{{SKILLS_DIR}}/shared/iteration-log-format.md).
+⊥ claim "internally looped" | "simulated Red Team." Write each iteration in full, Development Swarm format ∈ [iteration-log-format.md](file://{{SKILLS_DIR}}/shared/iteration-log-format.md), to `specs/logs/05-swarm.md`.
 
 **⛔ GATE:** Missing | summarized iteration log → swarm run invalid.
 </format_enforcement>
 
-### Minimum Iteration Count
-- **≥ 2 documented iterations** per complex file/component. First draft never perfect.
-- Red Team PASS on iteration 1 → override, ! attack harder (edge cases, performance, missing docs).
-- **User-Adjustable:** Default = 2, adjustable at SDD Execution Gate. User sets 1 → document choice, respect it.
+Red Team ⊥ PASS on inspection alone; ! terminal output. A first-draft PASS is allowed only with that evidence.
 
-### Mandatory Empirical Evidence
-Red Team ⊥ PASS based on visual inspection alone. ! use `verification-before-completion` skill → actually run code/tests/build & include terminal output ∈ Iteration Log.
+## Implementation Loop
+**⛔ GATE: One File at a Time (per builder):** ⊥ build an entire phase ∈ one loop. Select one file → Draft → Attack → Refine until PASS → write → next file.
+- **Continuous execution** ("run continuously" | "finish development") → ⊥ pause between files or between gated phases. ⊥ override a **hard stop**: open SCR, refused phase gate, red oracle run, 5-iteration cap, policy question, broken lock. At a hard stop → commit WIP on the branch, post the status block, stop.
 
-## Test-Driven Implementation Loop
-Execute this exact sequence ∀ file/component:
+0. **Pre-Flight:** `sdd.cjs verify`; Context7 (∃); log documentation source.
+0b. **Decision Inventory (once per phase):** list every observable decision the phase needs, cite the frozen line → `specs/logs/05-decisions.md`. Uncitable → SCR now.
+1. **Draft (Blue Team).**
+2. **Attack (Red Team)** vs contracts, profile, edge cases, security.
+3. **Refine (Blue Team).** Surgical edits; ⊥ rewrite a whole file to fix a few lines.
+4. **Verify:** repeat 1–3 until PASS with zero findings + evidence. **Hard Limit:** Max 5 iterations per component; still failing → halt & ask user.
+5. **Phase gate:** commit phase alone → `oracle.cjs run --phase N` → `sdd.cjs phase --completed N && <tick boxes>`.
+6. **Document & Run:** single-command start; DX Auditor verifies; Technical Writer updates `README.md`.
 
-**⛔ GATE:** **One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
+## Post-Implementation Reconciliation
+After ALL phases gated, Architect writes `specs/dev-swarm-reconciliation.md` (table with a `Drift` column, ✅ | ❌ per row): endpoints ↔ openapi, migrations ↔ schema, hierarchy components ↔ files + test ids, SPEC §12 env vars referenced, new runtime deps justified, full unfiltered oracle output pasted.
+<anti_hallucination>Fresh file reads; ⊥ "code matches spec" from memory.</anti_hallucination>
 
-0. **Pre-Flight Dependency Check:** ∃ Context7 MCP → Blue Team ! invoke `mcp_context7_resolve-library-id` then `mcp_context7_query-docs`. <anti_hallucination>⊥ simulate Context7 output | claim "reviewed docs" without executing tool call.</anti_hallucination> ⊥ Context7 → use web search | built-in knowledge for framework APIs. Log: "Context7 unavailable — docs sourced from [web search | training data]."
-1. **Draft (Blue Team):** Appropriate Builder generates code.
-2. **Attack (Red Team):** Critics analyze drafted code → flaws, missing edge cases, security holes. *∃ Context7 → Critic SHOULD use it to verify attack vectors valid for specific framework version. Architect ! verify EVERY component ∈ current `IMPLEMENTATION_PHASES.md` phase ∃ & aligns with `specs/SPEC.md`.*
-3. **Refine (Blue Team):** Builder fixes based on Red Team findings. **GUARDRAIL:** Fixing bugs ∈ existing files → ! use `replace_file_content` | `multi_replace_file_content` for surgical edits. ⊥ rewrite entire file via `write_to_file` to fix few lines.
-4. **Deploy:** ! recursively repeat Steps 1-3 until Critics → "PASS" with ZERO findings. <anti_hallucination>⊥ run all loops internally ∈ single hidden thought block (with only the final result shown). Instead, execute all loop iterations sequentially in a single model response (turn) without stopping to wait for user input (unless explicit feedback is required). ! persist state to artifact & output each iteration log sequentially.</anti_hallucination> **Hard Limit:** Max 5 attack/resolve iterations per component. Still failing → halt & ask user for architectural guidance. After PASS → write hardened code. **! invoke `verification-before-completion` before concluding deploy.**
-4.5. **VAT Gate (UI projects):**
-   After code deployed & verified to compile → ! invoke `visual-acceptance-testing` skill ∀ projects with UI:
-   - Walk ∀ screens ∈ spec's Component Hierarchy via `browser_subagent`
-   - Screenshot each, verify ∀ components present/visible/non-empty
-   - Test ∀ interactions ∈ Input & Interaction Contract
-   - Scan for debug artifacts (mock buttons, dev flags, placeholder text)
-   
-   **⛔ GATE:** VAT FAIL → Blue Team ! fix visual defects & re-run VAT. ⊥ advance past this gate with visual failures.
-5. **Document & Dockerize:**
-   - **`backend-service` | `fullstack-app`:** Infrastructure Engineer ! ensure `docker-compose.yml` starts entire app with single command. DX Auditor ! invoke `verification-before-completion` → `docker-compose up -d`, check logs for crashes/errors, tear down cleanly.
-   - **`client-side-app` | `game`:** Docker Compose NOT required. Technical Writer ! document dev server command ∈ README. DX Auditor verifies dev server starts & serves app.
-   - Technical Writer ! generate/update `README.md` with run instructions & env var table.
-6. **Post-Implementation Reconciliation (CRITICAL):**
-   After ALL phases complete & verified, Architect ! execute full reconciliation:
-   
-   **⛔ GATE:** ! create tracking artifact `dev-swarm-reconciliation.md`. Evaluate cross-refs sequentially, write findings ∀ bullet, check box only when proven. Rubber-stamping = process violation.
+**Drift:** code differs → fix the CODE. Spec seems wrong → SCR → Stage 00. ⊥ edit SPEC or contracts to match code — that is the builder grading itself.
 
-   **What to check:** Re-read `specs/SPEC.md`, cross-ref vs ∀ created/modified files:
-   - ∀ API endpoint field names ∈ spec match actual schema/route handlers
-   - ∀ port mappings ∈ spec match actual `docker-compose.yml`
-   - ∀ components ∈ Frontend Hierarchy ∃ as actual files
-   - ∀ env vars ∈ spec actually referenced ∈ code
-   - ∀ error handling scenarios ∈ spec actually implemented
-   
-   **DESIGN.md Audit (∃ `specs/DESIGN.md`):**
-   - **Token Usage:** ∀ frontend component → scan for hardcoded visual values that should be DESIGN.md tokens. CSS frameworks → verify mapped class usage. Vanilla CSS → verify custom properties. Canvas/WebGL → verify rendering config.
-   - **Component Coverage:** ∀ component ∈ DESIGN.md `components:` has implementation file using its tokens.
-   - **State Coverage:** ∀ component with interaction states (hover, focus, disabled) ∈ DESIGN.md → verify state styles ∃ ∈ code.
-   - **Cross-Artifact Naming:** Component names consistent: DESIGN.md kebab-case → SPEC.md PascalCase → implementation filenames. Flag any orphan.
-   
-   <anti_hallucination>Architect ! use file-reading tools to inspect actual source. ⊥ claim "code matches spec" from memory. Fresh reads only.</anti_hallucination>
-   
-   **Output format:** Use Reconciliation Report format ∈ [iteration-log-format.md](file://{{SKILLS_DIR}}/shared/iteration-log-format.md).
-   
-   **Drift found:**
-   - **Minor** (field renamed, port changed): Architect ! update `specs/SPEC.md` to match implementation.
-   - **Major** (missing feature, architectural deviation): Swarm ! HALT. Architect flags drift & invokes `adversarial-swarm-analysis` to re-harden spec.
-   
-   **⛔ GATE:** ⊥ issue final Report (Step 7) until reconciliation = ZERO ❌ drift entries.
+**⛔ GATE:** ⊥ proceed until reconciliation = ZERO ❌.
 
-7. **Report:** Summary using Swarm Completion Report format ∈ [iteration-log-format.md](file://{{SKILLS_DIR}}/shared/iteration-log-format.md).
+## Handoff
+`node specs/.sdd/scripts/sdd.cjs transition --completed 05 && git commit …` — refuses unless lock intact, latest unfiltered oracle run green, every phase gated, no open SCR, (UI) keyboard/focus repeat green, reconciliation zero ❌. ⊥ pipe a gate into `tail`/`head` before `&&`. Then UI → Stage 06, else Stage 07. Invoked by the SDD orchestrator → return control.
 
 ## Usage Triggers
 User asks "use development swarm" | "build with red team" | "code using swarm loop" → adopt this workflow.
-
-**Mandatory Input:** ! ingest on invocation:
-1. `specs/SPEC.md`: Source of truth — API contracts, data models, layout rules, edge cases.
-2. `specs/IMPLEMENTATION_PHASES.md`: Sequential checklist. Execute strictly in order, check off tasks (`[x]`) as verified.
-3. `specs/DESIGN.md` (if ∃): Visual design token schema. Frontend Engineer ! read before writing components. Design Token Auditor ! validate ∀ generated frontend code against it.

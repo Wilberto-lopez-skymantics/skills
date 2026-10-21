@@ -1,7 +1,10 @@
 # VAT Report Formats
 
-Shared format templates for Visual Acceptance Testing reports. Referenced by:
-- `visual-acceptance-testing/SKILL.md` — Screen Walk, Interaction Audit, Design Token, Debug Artifact reports
+Shared format templates for Visual Acceptance Testing reports. Used by Stage 06 (`06_visual_acceptance_testing`) to write `specs/VAT_REPORT.md`. The report ! end with a verdict line — `sdd.cjs transition --completed 06` reads it:
+
+```markdown
+**Verdict:** PASS
+```
 
 ---
 
@@ -10,11 +13,11 @@ Shared format templates for Visual Acceptance Testing reports. Referenced by:
 ```markdown
 ## 🖥️ Screen Walk Report
 
-| Screen | Component | Present? | Visible? | Has Content? | Status |
-|--------|-----------|----------|----------|--------------|--------|
-| TitleScreen | Logo | ✅ | ✅ | ✅ "COFFEE RUSH" | PASS |
-| LevelComplete | StarAnimation | ✅ | ❌ | ❌ empty div | FAIL |
-| LevelComplete | Stats | ❌ | — | — | FAIL |
+| Screen | Component | Present? | Visible? | Has Content? | Test id / copy match? | Status |
+|--------|-----------|----------|----------|--------------|-----------------------|--------|
+| TitleScreen | Logo | ✅ | ✅ | ✅ "COFFEE RUSH" | ✅ `logo` | PASS |
+| LevelComplete | StarAnimation | ✅ | ❌ | ❌ empty div | ✅ `star-animation` | FAIL |
+| LevelComplete | Stats | ❌ | — | — | — | FAIL |
 ```
 
 ## Interaction Audit
@@ -33,11 +36,24 @@ Shared format templates for Visual Acceptance Testing reports. Referenced by:
 ```markdown
 ## 🎨 Design Token Verification
 
-| Component | Property | DESIGN.md Token | Expected Value | Rendered Value | Status |
-|-----------|----------|-----------------|----------------|----------------|--------|
-| chat-card-user | borderLeft | colors.accent | #00D4FF | #00D4FF | PASS |
-| send-button | backgroundColor | colors.accent | #00D4FF | #3B82F6 | FAIL |
+Every row of `specs/logs/06-token-audit.md` (from `sdd.cjs token-audit --stage 06`), measured with `getComputedStyle` — not a sample, not a screenshot:
+
+| Component | State | Property | Token | Expected | Measured | Match |
+|---|---|---|---|---|---|---|
+| chat-card-user | base | borderLeft | `{colors.accent}` | `#00D4FF` | rgb(0, 212, 255) | ✅ |
+| send-button | hover | backgroundColor | `{colors.accent-hover}` | `#3B82F6` | rgb(0, 212, 255) | ❌ |
 ```
+
+## UI Spec Runs
+
+```markdown
+| Run | Command | Result |
+|-----|---------|--------|
+| Full suite | `… --reporter=json` → specs/logs/ui-e2e.json | 252 passed, 0 failed, 0 flaky |
+| Keyboard / focus ×20 | `… --grep "@keyboard|@focus" --repeat-each=20` → specs/logs/ui-repeat.json | 600 passed, 0 failed, 0 flaky |
+```
+
+A walker stopped by a shared limit (HTTP 429 on sign-in) is **BLOCKED** and re-run with its own accounts or a reset window; it is not a FAIL. A control the spec says is absent for that role or state is a PASS when absent.
 
 ## Debug Artifact Scan
 

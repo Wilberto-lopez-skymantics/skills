@@ -4,7 +4,7 @@
 
 A curated set of AI agent skills that enforce a rigorous **Spec-Driven Development (SDD)** pipeline. Every skill ensures specifications are written, hardened, and phase-planned *before* implementation code is generated. If your project has a `specs/` folder, these skills govern the entire lifecycle — from ideation through adversarial review to verified, production-ready code.
 
-**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification** · **🏷️ Release `2026.09.28-v2`** · [**📖 Interactive Visual Guide**](./sdd-icm-documentation.html)
+**🎯 Spec First** · **🔴 Adversarial Hardening** · **🔵 Builder–Critic Swarms** · **✅ Empirical Verification** · **🏷️ Template `2026.10.01-v3+sky.2`** · [**📖 Interactive Visual Guide**](./sdd-icm-documentation.html)
 
 ## Quick Start
 
@@ -49,11 +49,14 @@ For agents that don't support global skills, or for projects that need to be sha
 
 ### Keeping Them in Sync
 
-The skills are the source of truth. The ICM template is a portable view of the same pipeline. Run the sync validator to detect drift:
+The ICM template is the source of truth for the pipeline: its stage `CONTEXT.md` files and `specs/.sdd/scripts/sdd.cjs` are what Cursor, Claude Code and the Grok CLI actually run, and `sdd.cjs` enforces the gates no prompt can waive. Each stage `SKILL.md` is a portable summary of its `CONTEXT.md`, and `shared/` is a copy of `_config/`. Change the template first, then mirror the skill. The validator fails when a rule phrase is missing from either side, a v2 rule survives in a skill, a Stage 02/05 roster differs, or `shared/` differs from `_config/`:
 
 ```bash
 ./scripts/validate-icm-sync.sh
+node --test tests/        # gate tests for sdd.cjs (temp projects built from the template)
 ```
+
+The Grok CLI vendors `icm-workspace-template/` from the `skymantics-cli/v3` branch through its pin (`overlays/skymantics/sync-sdd-template.sh`); its `verify-sdd.sh` parses the Stage 02/05 rosters and the Stage 05 iteration cap, so keep those lines stable.
 
 
 ## The SDD Pipeline
@@ -119,10 +122,10 @@ All specs live in the project's `specs/` directory — the single source of trut
 |-------|---------|
 | [`spec-driven-development`](./spec-driven-development/) | The governor — enforces "spec first, code second." Orchestrates the lifecycle, execution gates, checkpoints, drift handling, and bug escape hardening. |
 | [`brainstorming`](./brainstorming/) | Ideas → design → specs. Confidence assessment, theme brainstorming, decision log, DESIGN.md, spec merge. Includes Visual Companion for live browser mockups. |
-| [`adversarial-swarm-analysis`](./adversarial-swarm-analysis/) | Harden specs via Creator vs Critic loop. 6 Blue + 6 Red Team personas. Minimum 3 iterations. Completeness checklists with project-type adapters. |
+| [`adversarial-swarm-analysis`](./adversarial-swarm-analysis/) | Harden specs and compile machine contracts via Creator vs Critic loop. 6 Blue + 8 Red Team personas. Exits on objective criteria (clean round, Outcome Table, zero-gap interpretation diff), never on an iteration count. |
 | [`interactive-wireframing`](./interactive-wireframing/) | Screen-by-screen WYSIWYG HTML wireframes from DESIGN.md tokens and SPEC.md hierarchy. Iterative user approval. |
 | [`writing-implementation-phases`](./writing-implementation-phases/) | Spec → dependency-ordered, testable phase checklist. Phase integrity validation. |
-| [`development-swarm`](./development-swarm/) | Code via Builder vs Critic loop. 5 Blue + 8 Red Team personas. Context7 pre-flight. Design Token Auditor. VAT gate. Post-implementation reconciliation. |
+| [`development-swarm`](./development-swarm/) | Spec-only build via Builder vs Critic loop. 5 Blue + 8 Red Team personas. The frozen oracle is the only acceptance evidence; one green, committed phase at a time; open SCRs stop the next phase. |
 
 ### Supporting Skills
 
@@ -137,9 +140,9 @@ All specs live in the project's `specs/` directory — the single source of trut
 
 ### Shared Resources
 
-The `shared/` directory contains templates and format definitions referenced by multiple skills. This is the **source of truth** for shared resources.
+The `shared/` directory contains templates and format definitions referenced by multiple skills. It mirrors `icm-workspace-template/specs/.sdd/_config/`, which is the source of truth.
 
-> **`shared/` vs `_config/`:** The ICM workspace template copies these files into `icm-workspace-template/specs/.sdd/_config/` for portability — ICM workspaces must be self-contained folders. When updating shared resources, edit `shared/` first, then sync to `_config/`. Run `./scripts/validate-icm-sync.sh` to detect drift.
+> **`shared/` vs `_config/`:** The ICM workspace template copies these files into `icm-workspace-template/specs/.sdd/_config/` for portability — ICM workspaces must be self-contained folders. When updating shared resources, edit `_config/` first (it ships with the template), then copy to `shared/`; `visual-companion.md` keeps skill-side script paths. Run `./scripts/validate-icm-sync.sh` to detect drift.
 
 | File | Used By |
 |------|---------|
@@ -164,6 +167,7 @@ skills/
 │   └── visual-companion.md
 ├── scripts/                          # Tooling
 │   └── validate-icm-sync.sh          # Skills ↔ ICM drift detector
+├── tests/                            # node --test: sdd.cjs gate tests
 ├── icm-workspace-template/           # Portable ICM template (Option B)
 │   ├── README.md                     # Setup guide + ICM theory
 │   ├── CLAUDE.md                     # Agent pointer → specs/.sdd/

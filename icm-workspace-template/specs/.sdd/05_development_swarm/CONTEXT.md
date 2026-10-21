@@ -16,13 +16,24 @@ Builder vs. Critic loop during implementation. The builder's mandate is narrow: 
 
 ### ⛔ GATE: Spec-Only Context
 - Run Stage 05 in a fresh session | sub-agent. ⊥ read Stage 01–04 conversation history, `specs/logs/` (swarm and gap logs), `specs/DECISION_LOG.md` rationale, or any other implementation of this spec. Those carry information outside the frozen set that a second builder would not have.
-- Need a fact the frozen set does not state (a value, an ordering, a message, an edge case) → **spec gap**. ⊥ guess, ⊥ pick "the obvious" option. Draft `specs/changes/SCR-NNN.md` (Stage 00 format, class C) and stop work on that item. Work on unaffected items may continue.
+- Need a fact the frozen set does not state (a value, an ordering, a message, an edge case) → **spec gap**. ⊥ guess, ⊥ pick "the obvious" option. Draft `specs/changes/SCR-NNN.md` (Stage 00 format, class C, `| Status | Draft |`) and stop work on that item. Other tasks **inside the current phase** may continue; the next phase may not start (Phase Boundary below).
 - Believe an oracle case is wrong → same route (class B). The case stays as-is until the user approves the SCR.
 
 ### ⛔ IMMUTABLE GATE (Anti-Tampering)
 - Builder ⊥ modify, add or delete any file in the frozen set (`specs/SPEC.md`, `specs/DESIGN.md`, `specs/CODING_STANDARDS.md`, `specs/contracts/`, `specs/fixtures/`, `specs/wireframes/`, `specs/.sdd/`). Relaxing an assertion, skipping a case or altering an expected payload = AUTOMATIC PROCESS FAILURE. If a case fails, the CODE is defective, not the case — unless an approved SCR says otherwise.
 - `node specs/.sdd/scripts/sdd.cjs verify` ! pass before starting and after finishing every phase. Failing → stop, report which frozen files changed, restore them (`git checkout -- <file>`).
 - Files Stage 05 may write under `specs/`: checkboxes in `IMPLEMENTATION_PHASES.md`, `dev-swarm-reconciliation.md`, `logs/**`, `changes/SCR-*` drafts.
+
+### ⛔ GATE: Phase Boundary
+A phase is **done** only when all of these hold, in this order:
+1. Its tasks are wired into the running system (entry point, router, UI shell), not just present as files.
+2. It is committed **alone**: the commit holds phase N and nothing from a later phase.
+3. `node specs/.sdd/scripts/oracle.cjs run --phase N` on that commit → 0 failed, 0 errored (cumulative: phases ≤ N). A suite-local green does not tick a cumulative box. A phase graded only by the frozen UI specs (no oracle cases of its own): run the UI spec files that declare `// phase: M` with M ≤ N, after the commit, → `specs/logs/ui-e2e.json` with 0 failed, 0 flaky.
+4. `node specs/.sdd/scripts/sdd.cjs phase --completed N` passes. It checks the lock, that the green run graded exactly the committed HEAD on a clean tree, that phases < N are gated, and that **no SCR is open**, then records `specs/logs/phases.jsonl`. Only then tick the boxes.
+
+⊥ write phase N+1 files while phase N is not done. A red phase or an open SCR → fix phase N, or stop and route the SCR to Stage 00; the tree ⊥ gain later phases on top of a red one. `transition --completed 05` refuses until every phase is gated and no SCR is open.
+
+**Status block** in every user-facing update during Stages 05–07 — paste the `build:` line of `node specs/.sdd/scripts/sdd.cjs status`: last green phase and its commit, the open phase, open SCR ids, whether the working tree holds uncommitted work. ⊥ answer "is it ready / are we done?" from memory.
 
 ### Implementation Swarm (Blue Team)
 Roles: Infrastructure, Backend, Security, Frontend, Writer.
@@ -47,6 +58,12 @@ Roles: Penetration Tester, Chaos Engineer, Resource Starver, Compliance Enforcer
 - **Equivalence Profile:** ∀ behavior SPEC does not override follows `../_config/references/systems-standards.md` exactly (envelope, statuses, evaluation order, formats). The profile is part of the spec.
 - **Docker (backend-service, fullstack-app):** ! generate `.dockerignore` when `Dockerfile` created | modified.
 - **Failure Routing (Backprop):** unresolvable spec defect → Stage 00 via SCR draft. ⊥ patch code around a spec defect.
+- **Runtime by path:** every command and every subagent brief invokes the runtime SPEC §10 names by its exact binary (e.g. the Node 22 `node`/`npx` from its install path or version manager), never whatever `node`/`npx` is first on `PATH`. Paste `<runtime> --version` into the first iteration log of each phase.
+
+#### Parallel builders (fan-out)
+- **Shared kernel first.** The pieces every module depends on — it compiles and starts, request bodies parse, empty responses (204) and their headers, the session / auth mechanism — are graded green (`phase --completed 1`) before any parallel author starts. Parallel authors on a broken kernel all hit the same error.
+- **One module per builder.** After the kernel is green, builders may work in parallel on disjoint modules (one route module, one screen). The parent owns shared files (entry point, router, `app.*`), the oracle run, the phase gate and the commit. Handlers that share one file → serial.
+- **Brief:** WORKSPACE_ROUTING §Delegation (named inputs, timebox, stop-and-report, WIP commits on a branch, script edits for large files, fallback model). Success = files written + gaps listed. A handler that skips a numbered step of a SPEC procedure is not success even if it typechecks. Procedures Stage 02 had to rewrite as one numbered sequence (import, restore, migrations) get a stronger model or a planned second pass.
 
 #### Design Token Mandate (UI + ∃ `specs/DESIGN.md`)
 - Before generating a frontend component, ! read `specs/DESIGN.md` & extract YAML tokens.
@@ -89,8 +106,8 @@ Red Team ⊥ PASS based on inspection alone. ! run code/tests/build & include te
 ### Test-Driven Implementation Loop
 Execute this exact sequence ∀ file/component:
 
-**⛔ GATE: One File at a Time:** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file.
-- **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → agent ! proceed through ∀ files & phases sequentially. ⊥ pause | return to user after single file/phase written. Loop next files/phases via tool calls.
+**⛔ GATE: One File at a Time (per builder):** ⊥ build entire Phase (multiple files) ∈ single loop. ! select one file → complete Draft → Attack → Refine loop until PASS → write to disk → select next file. Parallel builders each follow this on their own module (Parallel builders above).
+- **Continuous Session Execution**: User explicitly requests "run continuously" | "finish development" → ⊥ pause between files, or between phases whose gate passed. Continuous mode never overrides a **hard stop**: an open SCR, a refused `phase --completed`, a red oracle run, the 5-iteration cap, a policy question, a broken lock. At a hard stop → commit work in progress on the branch, post the status block and what is needed, and stop. ⊥ route around the stop by starting the next phase.
 
 0. **Pre-Flight:** `sdd.cjs verify` passes. ∃ Context7 MCP → invoke its resolving tools; ⊥ Context7 → web search | training knowledge. Log documentation source.
 0b. **Decision Inventory (once per phase, before any code):** list every observable decision the phase requires — each status, header, field value, ordering, message, default, limit — and cite the frozen file line that pins it, in `specs/logs/05-decisions.md`. A decision you cannot cite = spec gap → SCR draft now, not after the code exists. This is the builder-side interpretation check: it catches the gaps a second builder would fill differently.
@@ -98,7 +115,7 @@ Execute this exact sequence ∀ file/component:
 2. **Attack (Red Team):** Critics analyze drafted code against contracts, the profile, edge cases, security.
 3. **Refine (Blue Team):** Builder fixes based on Red Team findings.
 4. **Deploy & Verify:** repeat 1–3 until Critics → "PASS" with ZERO findings and evidence. **Hard Limit:** Max 5 iterations per component; still failing → halt & ask user. After PASS → write code.
-5. **Phase gate:** `node specs/.sdd/scripts/oracle.cjs run --phase N` → 0 failed, 0 errored (browser-only phases: the frozen UI suite, `oracle-standard.md` §UI specs); `sdd.cjs verify` passes; tick the phase's boxes.
+5. **Phase gate:** commit phase N alone → `node specs/.sdd/scripts/oracle.cjs run --phase N` → 0 failed, 0 errored (browser-only phases: the frozen UI suite, `oracle-standard.md` §UI specs) → `node specs/.sdd/scripts/sdd.cjs phase --completed N && <tick the phase's boxes>`. Refused → the phase is open (Phase Boundary).
 6. **Document & Run:** single-command start (`docker-compose up -d` for services; the documented command otherwise). DX Auditor verifies. Technical Writer updates `README.md`.
 
 ### Post-Implementation Reconciliation (CRITICAL)
@@ -119,14 +136,14 @@ After ALL phases complete & verified, Architect ! execute full reconciliation:
 **⛔ GATE:** ⊥ proceed until reconciliation = ZERO ❌ drift entries.
 
 ### Handoff / Transitions
-1. **Final evidence:** `node specs/.sdd/scripts/oracle.cjs run` (unfiltered) → 100% green; UI projects also write `specs/logs/ui-e2e.json` (see `oracle-standard.md` §UI specs).
-2. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 05` (refuses unless the lock is intact, the latest unfiltered oracle run against this lock is green, and reconciliation has zero ❌).
+1. **Final evidence:** `node specs/.sdd/scripts/oracle.cjs run` (unfiltered) → 100% green; UI projects also write `specs/logs/ui-e2e.json` (see `oracle-standard.md` §UI specs), and when any frozen UI spec is tagged `@keyboard`/`@focus`, a repeated run of those specs: `ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-repeat.json npx playwright test --config specs/fixtures/ui/playwright.config.ts --grep "@keyboard|@focus" --repeat-each=20 --reporter=json` — one clean pass is not evidence for focus timing.
+2. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 05 && git commit …` (refuses unless the lock is intact, the latest unfiltered oracle run against this lock is green, every phase passed its phase gate, no SCR is open, the keyboard/focus repeat is green (UI), and reconciliation has zero ❌). ⊥ pipe the transition into `tail`/`head` before `&&` (WORKSPACE_ROUTING §Gate Commands).
 3. **Handoff:** UI project → prompt `06_visual_acceptance_testing`. Otherwise → `07_verification_before_completion` (the transition skips 06 automatically).
 
 ## Outputs
 - Codebase files
 - `specs/dev-swarm-reconciliation.md`
-- `specs/logs/05-swarm.md`, `specs/logs/oracle/run-*.json`
+- `specs/logs/05-swarm.md`, `specs/logs/oracle/run-*.json`, `specs/logs/phases.jsonl`
 - `specs/changes/SCR-*.md` drafts (if gaps were found)
 - `README.md`
 - `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)

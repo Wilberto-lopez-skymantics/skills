@@ -25,9 +25,11 @@ Critical governance bridge. Converts the hardened spec into (1) the **Immutable 
 2. **Derive cases** from the Outcome Table: ∀ operation | command | transition, every outcome. Each case cites its sources in `derivedFrom`.
    **⛔ GATE (Derivability):** an expected value that cannot be cited from SPEC, contracts or the profile = spec gap. ⊥ invent it. Log it in `specs/logs/04-spec-gaps.md`; at the end of Part A, route all gaps to Stage 02 (technical) or the user (policy), update the spec, then continue. Before the first freeze these spec edits need no SCR; after a freeze they are part of the Class 1 iteration.
 3. **Cover the mandatory case families** in `oracle-standard.md` (idempotency, OCC, pagination, validation ordering, evaluation-order precedence, null/whitespace round-trips). Concurrency (in-flight idempotency, OCC races) uses `parallel` steps with the ENV-5 delay frozen in `buildEnv`.
+3b. **Scoped rules get a sibling.** ∀ rule scoped to "this module | project | tenant | owner" (a missing-list, a uniqueness check, a count, a cascade): ≥ 1 case where a sibling container holds colliding data — another module in the same project, another project, a deleted row in the sibling. A scoped rule graded only in a single container cannot fail on a build that ignores the scope.
+3c. **Test data is not personal data.** Names and addresses in cases and seed data use reserved domains (`@example.com`, `*.test`, RFC 2606). `sdd.cjs check` rejects any other address unless SPEC pins that exact value. One named `{{$uuid:k}}` per operation as `Idempotency-Key`: `check` rejects a key sent to two different operations (IDEM-4 would answer 422) unless the case is tagged `idempotency-key-reuse` because that mismatch is what it tests.
 4. **Probes:** run `node specs/.sdd/scripts/oracle.cjs gen-probes` (http projects) to derive edge-case probes from the contracts, then add hand-written probes (`"probe": true`) for domain-specific edge inputs. Probes power `oracle diff`; re-run `gen-probes` whenever the contracts change.
 4b. **Dual authoring:** `node specs/.sdd/scripts/oracle.cjs strip-expect --from specs/fixtures/cases --out specs/changes/oracle-b` writes request-only skeletons with neutral titles. A second fresh author — given ONLY that directory, `specs/SPEC.md`, `specs/contracts/` and the Equivalence Profile, never `specs/fixtures/cases` or A's drafts — fills in `expect` and `derivedFrom` in place. `node specs/.sdd/scripts/oracle.cjs diff-expect --a specs/fixtures/cases --b specs/changes/oracle-b --label final` ! report zero gaps. Every gap → spec fix, never a coin flip. (Starting from the Stage 02 interpretation cases makes this cheap.)
-5. **UI projects:** a frozen `specs/fixtures/ui/playwright.config.ts` plus black-box Playwright specs selecting only by `data-testid`, role + accessible name, or copy-table text (profile UI-3). ∀ UI State Matrix state & ∀ interaction ≥ 1 test, coverage declared with `// covers:` comments, `observe(page, name)` calls at every screen/state for `diff-ui` (`oracle-standard.md` §UI specs).
+5. **UI projects:** a frozen `specs/fixtures/ui/playwright.config.ts` plus black-box Playwright specs selecting only by `data-testid`, role + accessible name, or copy-table text (profile UI-3). ∀ UI State Matrix state & ∀ interaction ≥ 1 test, coverage declared with `// covers:` comments, `observe(page, name)` calls at every screen/state for `diff-ui` (`oracle-standard.md` §UI specs). Tests that depend on keyboard navigation or focus carry `@keyboard` or `@focus` in their title: Stages 05 and 06 must repeat them (`--repeat-each=20`), because focus bugs race frame timing and pass a single run.
 6. **Library projects:** a minimal JSON-in/JSON-out adapter in `specs/fixtures/adapters/`, invoked by `run` steps. It may call only the public API in `api.d.ts`.
 7. **Iterative cycle (Class 1 change on a frozen project):** ⊥ delete, loosen (exact → subset, literal → matcher) or re-expect an existing case unless a DECISION_LOG entry from this iteration declares that behavior change. List every changed or removed case id in `specs/phase-integrity-check.md`. Existing cases are the regression oracle that keeps old behavior equivalent.
 
@@ -50,18 +52,23 @@ Critical governance bridge. Converts the hardened spec into (1) the **Immutable 
 5. **Wireframe Sync Check (UI):** ∃ `specs/wireframes/*.html` → verify ∀ new UI components, states, layouts exist in wireframes with their `data-testid`s.
 6. **Matcher Audit:** ∀ variable matcher (`$type`, `$regex`, `$any`, `$oneOf`) and ∀ `bodyMatch: subset` → justify against SPEC §9 or another case that pins the full shape. Unjustified → replace with exact literals.
 7. **Changed-case ledger (iterations only):** every changed/removed existing case ↔ its DECISION_LOG entry.
+8. **Scoped-rule audit:** list every SPEC rule scoped to "this module | project | tenant | owner" and the case id that exercises it with a colliding sibling container (Part A 3b). A rule with only single-container cases = ❌ → add the case before the freeze.
 
 ### Part D — Freeze
 
 **Builder conventions:** if the project wants internal coding conventions for builders, write `specs/CODING_STANDARDS.md` now — it is frozen with the rest, so every builder sees the same file. ⊥ put observable behavior in it.
 
-**⛔ GATE (User approval):** present the oracle summary — case count per suite, the coverage line from `sdd.cjs check`, declared degrees of freedom (`variablePaths` + variable matchers), and changed cases (iterations) — and ask the user to approve the freeze. On explicit approval:
+**⛔ GATE (User approval):** present the oracle summary — case count per suite, the coverage line from `sdd.cjs check`, declared degrees of freedom (`variablePaths` + variable matchers), changed cases (iterations) — and the **certification claim** this freeze makes:
+- **grader-ready** — one build will be scored against this oracle (L1). Requires `manifest.json#equivalenceTarget: 1` with its DECnnn.
+- **two-build** — Stage 07 dual build + `oracle diff` is in scope (L2, the default): name when build B runs (lockstep in Stage 05, or Stage 07) so it is on the calendar now.
+
+Ask the user to approve the freeze and the claim. The approval is the user's own message: ⊥ pre-fill it, ⊥ answer the question for them, ⊥ treat a question widget that closed without an answer as approval. On explicit approval:
 
 ```bash
-node specs/.sdd/scripts/sdd.cjs freeze --reason "<Initial freeze | Class 1: feature X>" --approved-by "<user's name>"
+node specs/.sdd/scripts/sdd.cjs freeze --reason "<Initial freeze | Class 1: feature X>" --approved-by "<user's name>" --claim <grader-ready|two-build>
 ```
 
-`freeze` refuses unless `sdd.cjs check` passes. From now on the frozen set changes only through a Class 1 iteration or a Stage 00 SCR.
+`freeze` refuses unless `sdd.cjs check` passes, the claim matches `equivalenceTarget`, and no hotfix SCR is still Proposed. The lock records the claim; summaries quote it ("lock v3, grader-ready") and ⊥ describe a grader-ready freeze as two builds being indistinguishable. From now on the frozen set changes only through a Class 1 iteration or a Stage 00 SCR.
 
 ### Handoff / Transitions
 1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 04` (refuses unless check passes, the phases file exists, `phase-integrity-check.md` was written this stage, a fresh zero-gap `diff-expect` covers the current `specs/fixtures/cases`, and the lock is intact).

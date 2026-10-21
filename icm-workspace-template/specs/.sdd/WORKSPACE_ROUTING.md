@@ -1,6 +1,6 @@
 <!-- sdd-icm-template -->
-<!-- version: 2026.10.01-v3 -->
-<!-- source: github.com/Wilberto-lopez-skymantics/skills -->
+<!-- version: 2026.10.01-v3+sky.2 -->
+<!-- source: github.com/dalmeida2/skills@skymantics-cli/v3 (base: github.com/Wilberto-lopez-skymantics/skills@v3) -->
 
 # Spec-Driven Development (SDD v3) Workspace
 ## Observational Equivalence Engine
@@ -16,7 +16,7 @@
 | L2 Equivalence-verified (default target) | L1 + `oracle.cjs diff` between two independently built implementations reports zero divergences |
 
 **Tools** (Node.js ≥ 18, zero dependencies):
-- `node specs/.sdd/scripts/sdd.cjs status | check | freeze | verify | transition | export [--update]`
+- `node specs/.sdd/scripts/sdd.cjs status | check | freeze | verify | phase | transition | token-audit | export [--update]`
 - `node specs/.sdd/scripts/oracle.cjs run | diff | diff-ui | diff-expect | gen-probes | record | env`
 
 **Reference example:** `specs/.sdd/_config/examples/notes-service/` — a complete, validated frozen spec set. Imitate its precision, not its domain.
@@ -30,6 +30,42 @@
 3. Read the target stage's `CONTEXT.md` before doing anything else.
 4. The target stage's inputs are missing → ⊥ proceed. Tell the user what is missing and which stage produces it. Skipping requires the user's explicit instruction, recorded in `specs/DECISION_LOG.md`.
 5. Finish a stage only with `sdd.cjs transition --completed <stage>`. It refuses a stage that is out of order and refuses until the exit gates pass, then records the transition in `specs/logs/transitions.jsonl`. A user-approved skip uses `--override DECnnn` (the decision ! exist in `specs/DECISION_LOG.md`); the exit gates still apply. ⊥ hand-edit `specs/.sdd/_config/sdd-state.json` (the SDD VS Code extension reads it).
+
+## Gate Commands
+
+`sdd.cjs transition`, `sdd.cjs phase`, `sdd.cjs freeze`, `sdd.cjs verify` and `oracle.cjs run` exit non-zero when they refuse. Anything that depends on them (a commit, a push, a handoff that says "done") runs only after a zero exit:
+
+```bash
+node specs/.sdd/scripts/sdd.cjs transition --completed 06 && git commit -m "Stage 06: VAT PASS"
+```
+
+⊥ pipe a gate into `tail`, `head` or `tee` in front of `&&`: the pipeline's status is the last command's, so a refused gate is followed by the commit. Need trimmed output → `set -o pipefail` first, or run the gate on its own line and check `$?`.
+
+## Delegation (fresh agents and subagents)
+
+Several stages hand work to a fresh agent (Stage 01 predictors, Stage 02 critics and predictors, Stage 04 oracle authors, Stage 05 builders, Stage 06 walkers). Every brief, in every host:
+
+1. **Names its inputs and outputs.** Only the files the stage allows; the deliverable is files written plus a short report of gaps.
+2. **Has a timebox and a stop-and-report rule.** At the limit (default 45 min), stop, commit what exists and report what is done, what is not, and the evidence. A partial report is a result; silence is not.
+3. **Checkpoints.** Work in progress is committed on a branch at least at every finished step, so a stall never leaves the only copy in an editor buffer.
+4. **Edits large generated files by script** (fixtures, case files, copy tables): a script that changes the needed entries, never a full rewrite of the file.
+5. **Has a named fallback.** Before the stage starts, record the primary model and the fallback model for its subagents (decision log or run notes). A subagent that stops without a report, or a model that becomes unavailable, → fallback model with a smaller brief (one step, its evidence). ⊥ relaunch the same brief on the same model: it stalls the same way.
+
+The parent owns integration, the grader run and the commit. A subagent's "done" counts only with the evidence the stage requires.
+
+## Spec Change Requests
+
+`specs/changes/SCR-NNN.md` carries a `| Status | … |` row; `sdd.cjs` reads it:
+
+| Status | Meaning | Blocks |
+|---|---|---|
+| Draft | Raised, waiting for the user | the next phase gate and Stage 05/07 transitions |
+| Approved | User approved, frozen-set edits not yet re-frozen | same |
+| Applied (lock vN) | Edits made and re-frozen | — |
+| Rejected / Withdrawn | Closed without a change | — |
+| Proposed | Hotfix shipped ahead of the pipeline (Stage 00 hotfix lane) | only the next `freeze`, until that freeze re-grades it |
+
+An SCR without a Status row counts as open (Draft). The row may be `| Status | … |`, `| **Status** | … |` or `Status: …`.
 
 ## Change Classes
 

@@ -7,6 +7,8 @@ description: "Explore user intent, requirements, and design direction through co
 
 # Brainstorming Ideas Into Designs
 
+**Authority:** ∃ `specs/.sdd/01_brainstorming/CONTEXT.md` in the project → that file is the stage contract; follow it and run its `sdd.cjs` commands. This skill is its portable summary; `scripts/validate-icm-sync.sh` checks that the rules below appear in both.
+
 Turn ideas → fully formed designs & specs through collaborative dialogue.
 
 Start: understand project context → ask questions one at a time → present design → get user approval.
@@ -227,3 +229,11 @@ Browser-based companion for mockups, diagrams, visual options. Available as tool
 UI topic ≠ automatically visual question. "What does personality mean in this context?" = conceptual → terminal. "Which wizard layout works better?" = visual → browser.
 
 If they agree, read detailed guide: [visual-companion.md](file://{{SKILLS_DIR}}/shared/visual-companion.md)
+
+## Exit rules (mirror of the Stage 01 stage contract)
+- **Calendar check:** user names a date → first gate offers (a) a throwaway prototype outside the repo, or (b) in-repo SDD with no code until the Stage 04 freeze. Record the choice as a decision-log entry.
+- **Identity & retirement:** ∀ entity ask how the user identifies it (handle, email, number, other pattern) and how it ends (delete, archive, or neither; what happens to children). Each answer = decision-log entry; a first-iteration default is not an answer.
+- **Domain-expert block:** before the first Dual Interpretation round, one session with a named expert on entity lifecycle, or a decision-log entry that skips it.
+- **Dual Interpretation:** scenarios logged in `specs/logs/01-interpretations.md` (a `Scenario` column, stable ids). A scenario whose latest prediction is `UNSPECIFIED` blocks the stage unless its row cites the DECnnn that scopes it out.
+- **Docs match SPEC:** README and architecture docs describe the stack SPEC describes; no "TBD" or "open in Stage 01" language left.
+- **Test data is not personal data:** examples use `@example.com` / `*.test`; they become fixtures.

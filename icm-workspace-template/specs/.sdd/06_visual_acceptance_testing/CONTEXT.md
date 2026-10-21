@@ -26,6 +26,15 @@ ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-e2e.json npx
 ```
 Any failed or flaky test = VAT FAIL. ⊥ edit the specs to make them pass (frozen set).
 
+Specs tagged `@keyboard` or `@focus` also run repeated — one "0 flaky" pass does not show a focus race:
+```bash
+ORACLE_UI_URL=<build url> PLAYWRIGHT_JSON_OUTPUT_FILE=specs/logs/ui-repeat.json npx playwright test --config specs/fixtures/ui/playwright.config.ts --grep "@keyboard|@focus" --repeat-each=20 --reporter=json
+```
+Cite the repeat count and pass count in `VAT_REPORT.md`. Any failure in the repeat = VAT FAIL.
+
+#### Walkers (parallel screen walks)
+Walkers share one disposable stack, so they share its rate limits. Before a group of walkers starts, give each walker its own accounts, or reset the sign-in rate window (and any other per-client limit the spec declares) for the group. A walker that hits a limit (e.g. HTTP 429 on sign-in) reports **BLOCKED**, not FAIL: the orchestrator resets and re-runs that walker. A rate limit the spec declares is product behavior only in a case that tests it. Each walker brief follows WORKSPACE_ROUTING §Delegation.
+
 ### VAT Protocol
 
 **⛔ GATE:** ! create tracking artifact `specs/vat-checklist.md`. ! document evaluation ∀ screen/interaction sequentially, check boxes only when proven by browser screenshot | computed style extraction. Mass-approving without tracker = severe process violation (rubber-stamping).
@@ -59,12 +68,11 @@ Read spec's **Input & Interaction Contract**. ∀ interaction:
 3. Verify expected result occurs & expected feedback
 
 #### Step 3.5: Design Token Verification (∃ `DESIGN.md` only)
-∃ `specs/DESIGN.md` → verify rendered UI uses design tokens. 
+∃ `specs/DESIGN.md` → verify the rendered UI uses its tokens — every token row, not a sample.
 
-∀ major component ∈ DESIGN.md `components:` section:
-1. Inspect computed styles
-2. Compare rendered `background-color`, `color`, `font-family`, `font-size`, `border-radius` vs DESIGN.md tokens
-3. Flag mismatch
+1. `node specs/.sdd/scripts/sdd.cjs token-audit --stage 06 > specs/logs/06-token-audit.md` — one row per component × state × property in DESIGN.md `components:`.
+2. ∀ row: find the element by its `data-testid`, put it in that state (hover, focus, disabled… via the browser's state forcing or the real interaction), read the **computed style** (`getComputedStyle`) for that property, write it in `Measured`, and `Match` ✅ | ❌ after normalizing units and color notation. A screenshot is not a measured value.
+3. Any ❌ → FAIL. `transition --completed 06` refuses while a row is missing, unmeasured or ❌.
 
 #### Step 4: Debug Artifact Scan
 Search visible DOM for elements ⊥ be exposed ∈ production:
@@ -78,17 +86,18 @@ Save ∀ screenshots taken during Screen Walk → `specs/logs/vat/<screen>.png` 
 
 ### Verdict Rules
 
-- **PASS:** Frozen UI specs green (0 failed, 0 flaky). ∀ screen walk components present + visible + has content + correct test ids and copy. ∀ tested interactions produce expected result. Zero token mismatches. Zero high-severity debug artifacts.
+- **PASS:** Frozen UI specs green (0 failed, 0 flaky), `@keyboard`/`@focus` repeat green. ∀ screen walk components present + visible + has content + correct test ids and copy. ∀ tested interactions produce expected result. Every token row measured and ✅. Zero high-severity debug artifacts.
 - **FAIL:** Any of the above fails.
+- **Not a FAIL:** a control or state the spec says is absent for this role / state (e.g. no Edit button for a viewer) is correct when absent — record it as PASS (absent by §x). A walker blocked by a shared limit is BLOCKED and re-run, not FAIL.
 
 **⛔ GATE:** VAT FAIL → ⊥ transition. Return to Stage 05 with the VAT report as the defect list: fix the code, re-run Stage 05's final evidence and reconciliation, then re-run this stage from Step 0. A failure the frozen visual contract cannot explain (two acceptable renderings, missing copy, undefined state) = spec gap → Stage 00.
 
 ## Outputs
 - `specs/vat-checklist.md`
 - `specs/VAT_REPORT.md` (format: `vat-report-format.md`, ending in a `**Verdict:** PASS | FAIL` line)
-- `specs/logs/ui-e2e.json`, `specs/logs/vat/*.png`
+- `specs/logs/ui-e2e.json`, `specs/logs/ui-repeat.json` (if tagged specs exist), `specs/logs/06-token-audit.md`, `specs/logs/vat/*.png`
 - `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)
 
 ### Handoff / Transitions
-1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 06` (refuses unless `vat-checklist.md` exists and `VAT_REPORT.md` says `**Verdict:** PASS`).
+1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 06 && git commit …` (refuses unless the UI specs and the keyboard/focus repeat are green, `06-token-audit.md` covers every token row with ✅, `vat-checklist.md` exists and `VAT_REPORT.md` says `**Verdict:** PASS`). ⊥ pipe the transition into `tail`/`head` before `&&` (WORKSPACE_ROUTING §Gate Commands).
 2. **Handoff:** Prompt user to proceed `07_verification_before_completion`.

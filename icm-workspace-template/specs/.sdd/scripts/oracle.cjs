@@ -384,6 +384,8 @@ async function cmdRun(p, args) {
   else if (!lock.lockValid) console.log('⚠ frozen set modified since the last freeze: results will not count as evidence (sdd.cjs verify)');
   await waitReady(cfg, target);
   const startedAt = new Date().toISOString();
+  // The tree being graded: `sdd.cjs phase --completed N` accepts a run only at a clean, committed HEAD.
+  const git = L.gitState(p.root);
   const results = [];
   for (const c of selected) {
     const r = await runCase(p, cfg, target, c, 'assert', L.newGenerator());
@@ -408,7 +410,8 @@ async function cmdRun(p, args) {
     baseUrl: target.baseUrl,
     ...lock,
     filtered: filtered || !!args.flags.bail,
-    filters: { phase: args.flags.phase, case: args.flags.case, suite: args.flags.suite },
+    filters: { phase: args.flags.phase, case: args.flags.case, suite: args.flags.suite, bail: !!args.flags.bail },
+    git: git ? { head: git.head, dirty: git.dirty.slice(0, 50), dirtyCount: git.dirty.length } : null,
     startedAt,
     finishedAt: new Date().toISOString(),
     total: selected.length,

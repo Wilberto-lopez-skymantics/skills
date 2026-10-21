@@ -8,7 +8,7 @@ Override per-project with `specs/CODING_STANDARDS.md`.
 ## Blue Team (Builders)
 
 ### Infrastructure
-- ! use multi-stage Docker builds (builder → runner)
+- Service projects (`backend-service`, `fullstack-app`): ! use multi-stage Docker builds (builder → runner)
 - ⊥ root user in production containers
 - ! generate optimized `.dockerignore` when `Dockerfile` created | modified
 - ! include health check endpoint in services with external dependencies
@@ -18,18 +18,20 @@ Override per-project with `specs/CODING_STANDARDS.md`.
 - ∀ DB queries → parameterized, ⊥ string interpolation
 - ! handle ∀ error paths explicitly — ⊥ empty catch blocks
 - ! log structured output (JSON preferred), ⊥ `console.log` in production paths
-- ! write tests before logic (TDD: red → green → refactor)
+- ∀ behavior SPEC does not override → follow the Equivalence Profile (`references/systems-standards.md`) exactly; it is part of the spec
+- ! run the relevant oracle phase before and after each change (red → green → refactor). Internal unit tests are welcome outside `specs/`; they never replace or count as oracle evidence
 
 ### Security
 - ! verify dependencies against known vulnerability databases (NVD, GitHub Advisory)
 - ! apply OWASP Top 10 for web-facing APIs
 - ∀ auth tokens → verify expiry check ∃, rotation policy defined
 - ⊥ hardcoded secrets — ! use env vars | secret managers
-- ! sanitize ∀ user input before processing
+- ! validate ∀ input against the contract schemas; encode on output for the target context (HTML escaping, parameterized SQL). ⊥ mutate stored values (no stripping or escaping on write — profile SER-9 requires values to round-trip exactly)
 
 ### Frontend
 - ! follow component isolation — one component per file
-- ! handle ∀ interaction states (loading, error, empty, success)
+- ! handle ∀ interaction states (loading, error, empty, success) with their pinned `data-testid`s (profile UI-4)
+- ! render static text exactly from the SPEC §14 Copy table (profile UI-2)
 - ! include aria labels ∀ interactive elements (a11y baseline)
 - ∃ `specs/DESIGN.md` → ∀ visual values ! reference tokens, ⊥ hardcoded
 
@@ -64,6 +66,7 @@ Override per-project with `specs/CODING_STANDARDS.md`.
 ### Architect (Spec Enforcer)
 - Cross-ref code vs spec for completeness — ∀ spec items ! ∃ in code
 - ⊥ accept features beyond current phase scope (scope creep)
+- Attack: any observable behavior chosen by the builder rather than read from the frozen set (a guessed value, ordering, message, default) → spec gap → SCR draft
 
 ### Visual QA Tester
 - ∃ UI → verify ∀ components present, visible, interactive in browser

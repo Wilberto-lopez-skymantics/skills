@@ -45,7 +45,7 @@ Skip any step = lying, not verifying
 
 ### Equivalence Certification
 
-Run in order; stop at the first failure and route it (Failure Routing).
+Run in order; stop at the first failure and route it (Failure Routing). The lock's `claim` (`sdd.cjs status`) says which level this freeze promised: `grader-ready` → L1, `two-build` → L2. Report the level the evidence reaches, never the one a summary hoped for.
 
 **L1 — Oracle-conformant** (always required)
 1. `node specs/.sdd/scripts/sdd.cjs verify` → frozen set intact.
@@ -155,5 +155,5 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 - `specs/.sdd/_config/sdd-state.json` (via `sdd.cjs transition`)
 
 ### Handoff / Transitions
-1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 07` (refuses unless the lock is intact, a fresh unfiltered oracle run is green, `EQUIVALENCE_REPORT.md` exists and — for target L2 — a fresh diff shows zero divergences).
+1. **Update state:** `node specs/.sdd/scripts/sdd.cjs transition --completed 07` (refuses unless the lock is intact, a fresh unfiltered oracle run is green, no SCR is open, `EQUIVALENCE_REPORT.md` exists and — for target L2 — a fresh diff shows zero divergences).
 2. **Handoff:** Report the certified level with its evidence. Present walkthrough. Next change: Class 0 → Stage 05, Class 1 → Stage 01, Class 2 → Stage 00.

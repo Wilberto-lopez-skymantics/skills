@@ -10,6 +10,7 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 - Layer 4 (working): `specs/DESIGN.md`
 - Layer 4 (working): `specs/SPEC.md`
 - Layer 4 (working): `specs/wireframes/*.html` (if exists)
+- Layer 4 (working): `specs/logs/02-deferred-ui.md` (UI-only findings Stage 02 deferred here, if any)
 - Layer 3 (reference): `../_config/visual-companion.md`
 - Layer 3 (reference): `../_config/references/systems-standards.md` §11 (UI-1…UI-4: test ids, copy, state ids)
 - Layer 3 (reference): `../_config/references/ui-state-matrix.md`
@@ -21,11 +22,15 @@ Bridge between requirements gathering (Stage 01) & production implementation (St
 ! complete in order:
 
 1. **Verify Prerequisites** — Read `specs/DESIGN.md` & `specs/SPEC.md` → extract layout rules, tokens, component hierarchy. Missing → flag to user.
+1b. **Test-id & copy preflight** (before the first screen) — per screen, list every SPEC §14 component, every UI State Matrix state id and every copy key it must show. Each component and state needs its test id (UI-1, UI-4) and each visible string a copy-table key (UI-2). A missing one → add it to SPEC/DESIGN now (user approval for new copy), not inside a wireframe.
 2. **Start Visual Server** — Launch local Visual Companion server.
 3. **Scaffold / Load Base HTML** — Load existing HTML files if they exist, or create new base HTML ∈ `specs/wireframes/` ∀ screens ∈ architecture.
 4. **Iterative Feedback Loop** — Present wireframes via Visual Companion, iterate on user feedback.
-5. **Finalization** — Save final HTML as definitive visual spec, fold every approved deviation back into `DESIGN.md` tokens, link the wireframes from `DESIGN.md`.
-6. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 03` (refuses without wireframes and a relative-linked `## Approved Wireframes` section).
+5. **Finalization** — Save final HTML as definitive visual spec, fold every approved deviation back into `DESIGN.md` tokens, link the wireframes from `DESIGN.md`, close every `specs/logs/02-deferred-ui.md` item (`- [x]` + where it landed).
+5b. **Exit audit** — the wireframe is still the artifact under approval, so contradictions with DESIGN and SPEC are caught here, not by a builder who copies it:
+   - **Tokens:** `node specs/.sdd/scripts/sdd.cjs token-audit --stage 03 > specs/logs/03-token-audit.md`, then fill `Measured` for every row from the wireframe CSS that styles that component's `data-testid` (and state: hover, focus, disabled…), and `Match` ✅ | ❌. A component with no rule for a tokened property (e.g. no background where DESIGN says `colors.surface`) is ❌. Fix the CSS (or, with the user, the token) until every row is ✅.
+   - **Named states:** every state SPEC, DESIGN's UI State Matrix and the UI spec name for a screen (e.g. an "archived" banner) appears in that screen's wireframe.
+6. **Update state** — `node specs/.sdd/scripts/sdd.cjs transition --completed 03` (refuses without wireframes and a relative-linked `## Approved Wireframes` section, when a DESIGN component / state id lacks a wireframe `data-testid`, a static copy string appears in no wireframe, `03-token-audit.md` is incomplete or has a ❌, or a deferred Stage 02 UI item is open).
 7. **Transition** — Prompt user to proceed to `04_writing_implementation_phases`.
 
 ### 1. Verify Prerequisites
@@ -46,12 +51,20 @@ specs/.sdd/scripts/start-server.sh --project-dir /path/to/project
 
 - Save `screen_dir` & `state_dir` from response.
 - Wireframes are served live from `specs/wireframes/`: tell the user to open `<url>/wireframes/<screen-name>.html`. The page reloads on every save.
+- **One server, one URL.** Start it from the orchestrator (not a subagent) with `--detach`, so it outlives each author. Running the script again with the same `--project-dir` returns the live server (`"reused": true`) or restarts on the recorded port; `specs/brainstorming/current-server.json` always holds the current URL. A response with `"port_changed": true` → send the new URL to the user and every author before the next edit. ⊥ cite a URL from an earlier session.
 
 *See `../_config/visual-companion.md` for detailed server instructions.*
 
 ### 3. Scaffold / Load Base HTML
 
 ! generate, iterate, finalize **one screen at a time**. ⊥ scaffold all screens ∈ single turn.
+
+**Deadline waves (off by default).** Only when a DECISION_LOG entry records a deadline and the user's choice to use waves:
+1. **Wave 1** — screens whose layout does not depend on another screen, one author each, each with its own CSS file.
+2. **Wave 2** — screens that reuse an approved wave-1 layout (e.g. a baseline view after the module view).
+3. **Merge** — the orchestrator merges shared CSS into the token-referencing stylesheet, re-runs the test-id preflight and the exit audit over all screens.
+4. **One user review** of the merged set; every change request goes back through Step 4 for that screen.
+Without that entry, one-screen approval is the rule.
 
 For the screen being built/modified:
 - **∃ Existing Wireframe**: If `specs/wireframes/<screen-name>.html` already exists, load and use it as the base. Identify spec modifications and plan targeted edits.

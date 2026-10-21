@@ -9,3 +9,4 @@ CRITICAL PIPELINE RULES:
 3. **Single grader**: Only `node specs/.sdd/scripts/oracle.cjs` (plus the frozen UI specs in `specs/fixtures/ui/`) decides pass/fail. Tests you write yourself never count as evidence.
 4. **The spec is the only channel**: When building (Stage 05), use only the frozen set. If you need information it does not contain, stop and raise a spec gap (Stage 00) instead of guessing.
 5. **Wireframe sync**: Before writing implementation phases for any visual change, update and verify `specs/wireframes/` (Stage 03).
+6. **One green phase at a time**: In Stage 05 a phase is done only when `node specs/.sdd/scripts/sdd.cjs phase --completed N` passes. Never start the next phase's files while a phase is red or a Spec Change Request is open, even when asked to run continuously. Never pipe a gate command into `tail`/`head` before `&&` — a refused gate must stop the commit that follows it.

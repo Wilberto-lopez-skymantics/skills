@@ -1,10 +1,13 @@
 # DESIGN.md Template & Standards
 
-This file defines the canonical template and validation rules for `specs/DESIGN.md`. It is referenced by:
-- `brainstorming/SKILL.md` — creates the initial DESIGN.md using this template
-- `spec-driven-development/SKILL.md` — verifies DESIGN.md exists and conforms
-- `interactive-wireframing/SKILL.md` — reads tokens to generate wireframes
-- `development-swarm/SKILL.md` — Frontend Engineer and Design Token Auditor use these tokens
+This file defines the canonical template and validation rules for `specs/DESIGN.md`. It is used by:
+- Stage 01 — creates the initial DESIGN.md using this template
+- Stage 02 — verifies DESIGN.md exists and conforms (spec self-review checks 8–11, 17–18)
+- Stage 03 — reads tokens to generate wireframes and folds approved deviations back into them
+- Stage 05 — Frontend Engineer and Design Token Auditor use these tokens
+- Stage 06 — compares rendered computed styles against these tokens
+
+**Token reference syntax:** a value may be a literal or a whole-value reference `"{group.name}"` to a token defined in this file. References are never concatenated or modified (`"{colors.accent}DD"` is invalid): a needed variant is its own token.
 
 ---
 
@@ -88,8 +91,11 @@ components:
     hover:
       backgroundColor: "#9A3222"
     focus:
-      outline: "2px solid {colors.accent}"
+      outlineColor: "{colors.accent}"
+      outlineWidth: "2px"
       outlineOffset: "2px"
+    active:
+      backgroundColor: "#7E2A1C"
     disabled:
       backgroundColor: "{colors.text-secondary}"
       textColor: "{colors.text-muted}"
@@ -97,7 +103,7 @@ components:
 ---
 
 ## Overview
-Rationale behind the design system. Note: This document is primarily used to bootstrap the interactive wireframing phase. Once wireframes are generated and approved, those wireframes supersede this document as the absolute visual source of truth for the development swarm.
+Rationale behind the design system. DESIGN.md and the approved wireframes never disagree: Stage 03 folds every user-approved wireframe deviation back into these tokens before finalizing. Both are part of the frozen set.
 
 ## Colors
 Explanation of the palette.
@@ -109,14 +115,14 @@ Explanation of font choices.
 Explanation of component placement and spatial rules.
 
 ## Approved Wireframes
-A structured list of approved HTML wireframes/mockups. Populated by the `interactive-wireframing` skill. For each screen (e.g., Main Menu, Gameplay HUD), include:
-- A clickable link to the approved wireframe file (e.g., `[main-menu.html](file:///absolute/path/to/specs/wireframes/main-menu.html)`).
-- A description of the HTML layout structure, elements, and CSS class names used.
+A structured list of approved HTML wireframes. Populated by Stage 03. For each screen (e.g., Main Menu, Gameplay HUD), include:
+- A relative link to the approved wireframe file (e.g., `[main-menu.html](wireframes/main-menu.html)`). ⊥ absolute `file:///` paths — they break on every other machine.
+- A description of the HTML layout structure, elements, `data-testid`s and CSS class names used.
 
 ## UI State Matrix
 | Component | Empty | Loading | Success | Error | Edge Case |
 |-----------|-------|---------|---------|-------|-----------|
-| Component Name | Description | Description | Description | Description | Description |
+| Component Name | Description (`<id>-empty`) | Description (`<id>-loading`) | Description | Description (`<id>-error`) | Description |
 ```
 
 ---
@@ -134,7 +140,7 @@ DESIGN.md CANNOT be written until every category below has defined tokens. The a
 | 3 | **Spacing** | xs, sm, md, lg, xl | ✅ Always |
 | 4 | **Border Radii** | sm, md, lg, full | ✅ Always |
 | 5 | **Elevation/Shadows** | shadow-sm, shadow-md, shadow-lg (or explicit "none" with justification) | Conditional: if project has depth/layering |
-| 6 | **Interaction States** | hover, focus, active, disabled for every interactive component | ✅ Always |
+| 6 | **Interaction States** | hover, focus, active, disabled for every interactive component (spec self-review #9 checks the same four) | ✅ Always |
 | 7 | **Transitions** | duration-fast, duration-normal, duration-slow, easing-default (or explicit "no animations" with reason) | ✅ Always |
 | 8 | **Iconography** | icon set name, default size, stroke width | ✅ Always |
 | 9 | **Data Visualization** | marker sizes, line weights, glow/shadow params | Conditional: if project has charts/maps |
@@ -152,21 +158,26 @@ components:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.on-accent}"
     hover:
-      backgroundColor: "{colors.accent}DD"
+      backgroundColor: "{colors.accent-hover}"
     focus:
-      outline: "2px solid {colors.accent}"
+      outlineColor: "{colors.accent}"
+      outlineWidth: "2px"
       outlineOffset: "2px"
+    active:
+      backgroundColor: "{colors.accent-active}"
     disabled:
-      backgroundColor: "{colors.secondary}"
+      backgroundColor: "{colors.text-secondary}"
       textColor: "{colors.text-muted}"
       cursor: "not-allowed"
 ```
+
+Every referenced token (`accent-hover`, `accent-active` above) ! be defined under `colors:`. An undefined reference = spec gap.
 
 ---
 
 ## Component Naming Convention (DESIGN.md ↔ SPEC.md)
 
-Component names in DESIGN.md's `components:` YAML section MUST use kebab-case versions of the PascalCase names in SPEC.md's Component Hierarchy:
+Component names in DESIGN.md's `components:` YAML section MUST use kebab-case versions of the PascalCase names in SPEC.md's Component Hierarchy. The same kebab-case name is the component's `data-testid` (profile UI-1):
 
 ```
 SPEC.md: ChatCard[user]  →  DESIGN.md: chat-card-user
@@ -174,4 +185,4 @@ SPEC.md: DragHandle      →  DESIGN.md: drag-handle
 SPEC.md: MapViewer        →  DESIGN.md: map-viewer
 ```
 
-**Hard Rule:** If a `DESIGN.md` exists, it is the authoritative source for all visual values. The Development Swarm MUST read it before generating any frontend component code.
+**Hard Rule:** If a `DESIGN.md` exists, it is the authoritative source for all visual values. The Development Swarm MUST read it before generating any frontend component code. Copy text is not a design token: it lives in the SPEC §14 Copy table.
