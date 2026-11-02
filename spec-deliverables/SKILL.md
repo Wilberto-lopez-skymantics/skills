@@ -20,9 +20,9 @@ The `design-package` skill is the fourth derived document (the systems engineer'
 All run from anywhere inside the project (`--root` otherwise); `--out` changes the `docs/` base.
 
 ```bash
-node .claude/skills/spec-deliverables/scripts/deliver.cjs build all --write     # api | manual | test-plan | all; without --write: a summary
-node .claude/skills/spec-deliverables/scripts/deliver.cjs compile all           # one index.html per deliverable (no scripts; the manual embeds the wireframes)
-node .claude/skills/spec-deliverables/scripts/deliver.cjs check                 # exit 1 when a deliverable is older than its inputs or the lock
+node <skills-dir>/spec-deliverables/scripts/deliver.cjs build all --write     # api | manual | test-plan | all; without --write: a summary
+node <skills-dir>/spec-deliverables/scripts/deliver.cjs compile all           # one index.html per deliverable (no scripts; the manual embeds the wireframes)
+node <skills-dir>/spec-deliverables/scripts/deliver.cjs check                 # exit 1 when a deliverable is older than its inputs or the lock
 ```
 
 The script uses the project's own pipeline library (`specs/.sdd/scripts/sdd-lib.cjs`) so the contracts parse exactly as the oracle reads them; `--lib` points at it when the project is an example inside a template.
@@ -53,4 +53,4 @@ The script uses the project's own pipeline library (`specs/.sdd/scripts/sdd-lib.
 
 ## Install
 
-Copy this folder to the project's `.claude/skills/spec-deliverables/` (or `~/.claude/skills/`). Node.js ≥ 18, no dependencies. Outputs are plain markdown plus HTML; commit them with the spec set they were built from.
+Copy this folder into the folder your coding agent reads skills from (`<skills-dir>` above: for example `.claude/skills/` or `.agents/skills/` in the project). Node.js ≥ 18, no dependencies. Outputs are plain markdown plus HTML; commit them with the spec set they were built from.

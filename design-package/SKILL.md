@@ -37,7 +37,7 @@ The package's value to its reader comes from three properties. Every run must pr
 
 ## The helper script
 
-`python3 .claude/skills/design-package/scripts/pkg.py <command>` (standard library only; run it from anywhere in the repo):
+`python3 <skills-dir>/design-package/scripts/pkg.py <command>` (`<skills-dir>` is the folder your agent reads skills from, for example `.claude/skills`) (standard library only; run it from anywhere in the repo):
 
 | Command | What it does | When |
 |---|---|---|

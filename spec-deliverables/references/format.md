@@ -28,7 +28,7 @@ Per operation: method and path with the summary (`summary`, else the first sente
 |---|---|
 | `README.md` | Title, audience (the role columns of the SPEC §3 permission matrix), contents, **Screens at a glance** (title, first paragraph, wireframe link), baseline |
 | `01-getting-started.md` | SPEC §14.2 verbatim through `readable()`; sign-in strings (copy keys matching login/sign-in/auth); link to the start-up screen |
-| `02-screens.md` | Per DESIGN.md §Approved Wireframes entry (`### Title: [name](wireframes/file.html)`): wireframe link and `<iframe>`; the entry's paragraphs; **States shown** = the wireframe's `<h2>` frames; **What each part does in every state** = UI State Matrix rows whose component key is a `data-testid` of the wireframe; **Strings on this screen** = copy keys mentioned there, resolved |
+| `02-screens.md` | Per DESIGN.md §Approved Wireframes entry (`### Title:` followed by a `[name](path)` link to `wireframes/<file>.html`): wireframe link and `<iframe>`; the entry's paragraphs; **States shown** = the wireframe's `<h2>` frames; **What each part does in every state** = UI State Matrix rows whose component key is a `data-testid` of the wireframe; **Strings on this screen** = copy keys mentioned there, resolved |
 | `03-roles-and-permissions.md` | SPEC §3 verbatim through `readable()` |
 | `04-concepts.md` | SPEC §2 table (term, meaning); each §4.x heading with its opening paragraph |
 | `05-messages.md` | The placeholders table of §14.4; the copy table split by key prefix (`platform`, `ui`, …) |
