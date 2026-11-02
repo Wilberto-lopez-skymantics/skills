@@ -150,7 +150,7 @@ Gaps columns: `| Gap | Topic | What is missing or inconsistent | Where | Found b
 
 - **Conventions:** the identifier table (section 2 above), plus a `manifest.json` row from adoption onward.
 - **Key numbers** (`| Item | Count |`). `check` reads the first number of these rows, so keep them first: `System requirements`, `TBR register entries` (open, e.g. "31 open of 33"), `Gaps` (open, e.g. "54 open of 56"), `Diagrams`. The other rows (invariants cited, decisions classified, design decision records, external interfaces) are restated from `pkg.py index`.
-- **Diagram index:** `| ID | Title | File | Kind |`, with File a relative link to `diagrams/<name>.drawio` in the usual `[name](path)` form.
+- **Diagram index:** `| ID | Title | File | Kind |`, with File a relative markdown link to `diagrams/<name>.drawio`.
 - **Revision history:** `| Revision | Date | Baseline | Summary |`, newest first, linking the CHANGELOG entry.
 
 ## 10. Statuses: withdrawn, closed, pending redraw
