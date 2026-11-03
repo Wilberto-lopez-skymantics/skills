@@ -6,8 +6,7 @@
   "required": [
     "projectType",
     "interfaces",
-    "artifacts",
-    "equivalenceTarget"
+    "artifacts"
   ],
   "additionalProperties": false,
   "properties": {
@@ -80,14 +79,15 @@
       }
     },
     "equivalenceTarget": {
-      "description": "1 = oracle-conformant (oracle 100% green). 2 = equivalence-verified (also requires a zero-divergence `oracle.cjs diff` / `diff-ui` between two independent builds). Lowering to 1 requires equivalenceTargetDecision.",
+      "description": "1 (default) = oracle-conformant: one build, oracle 100% green against the lock. 2 = equivalence-verified: a second build made from the frozen set alone plus a zero-divergence `oracle.cjs diff` / `diff-ui`; set it only when the user asks for the second build, since it repeats Stage 05.",
+      "default": 1,
       "enum": [
         1,
         2
       ]
     },
     "equivalenceTargetDecision": {
-      "description": "DECISION_LOG id recording the user's decision to certify only L1 (required when equivalenceTarget is 1).",
+      "description": "Optional DECISION_LOG id recording the user's choice of target (useful when it changes after the first freeze, or to say why L2 was asked for). Must cite an existing DECnnn when present.",
       "type": "string",
       "pattern": "^DEC[0-9]+$"
     },
@@ -97,7 +97,7 @@
       "enum": ["slice", "rolling"]
     },
     "equivalenceCadence": {
-      "description": "When L2 (dual build + zero-divergence diff) is required for an equivalenceTarget of 2. \"iteration\" (default): every slice. \"release\": intermediate slices certify L1 with an explicit \"L2 pending\" row in EQUIVALENCE_REPORT.md; L2 is certified with `transition --completed 07 --release` before a release. Never claim L2 for a pending slice.",
+      "description": "Applies only when equivalenceTarget is 2: when the second build and the zero-divergence diff are required. \"iteration\" (default): every slice. \"release\": intermediate slices certify L1 with an explicit \"L2 pending\" row in EQUIVALENCE_REPORT.md; L2 is certified with `transition --completed 07 --release` before a release. Never claim L2 for a pending slice.",
       "enum": [
         "iteration",
         "release"

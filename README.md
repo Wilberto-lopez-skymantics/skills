@@ -51,9 +51,9 @@ flowchart LR
 | 02 Prototype | you (demos) + agent (builds) | A working slice, one version row per demo, your acceptance recorded by the tool |
 | 03 Hardening | agent, prototype running; you answer batched policy questions | Machine contracts, a complete spec, Red Team rulings, captured wireframes (UI) |
 | 04 Oracle + freeze | agent; you approve the freeze | Oracle cases derived from the spec (two interpretations, zero disagreements), phases, `spec.lock.json` |
-| 05 Build | agent, spec-only | Build A continues the prototype; build B (for L2) starts from the frozen set alone |
+| 05 Build | agent, spec-only | Build A continues the prototype; a build B from the frozen set alone only when you asked for L2 |
 | 06 Visual acceptance | agent (UI only) | Screens graded against tokens, wireframes and frozen UI specs |
-| 07 Certification | agent reports to you | `EQUIVALENCE_REPORT.md`: L1 (oracle green on the lock) or L2 (two builds, zero divergences) |
+| 07 Certification | agent reports to you | `EQUIVALENCE_REPORT.md`: L1 (oracle green on the lock; the default, one build) or L2 (two builds, zero divergences; only when you ask for it) |
 | 00 Backprop | agent proposes, you approve | Spec Change Request, re-freeze; never a code patch |
 
 ## What a finished spec set contains

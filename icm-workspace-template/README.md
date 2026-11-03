@@ -46,8 +46,8 @@ Equivalence is therefore relative to the oracle and its probes — the stronger 
 
 | Level | Evidence |
 |---|---|
-| **L1 Oracle-conformant** | Frozen set intact + `oracle.cjs run` 100% green against the current lock |
-| **L2 Equivalence-verified** (default target) | L1 + a second build made from the frozen set alone, in a fresh agent session, and `oracle.cjs diff` (and `diff-ui` for UIs) reporting zero divergences between the two |
+| **L1 Oracle-conformant** (default target: one build) | Frozen set intact + `oracle.cjs run` 100% green against the current lock |
+| **L2 Equivalence-verified** (`manifest.equivalenceTarget: 2`, when the user asks for the second build) | L1 + a second build made from the frozen set alone, in a fresh agent session, and `oracle.cjs diff` (and `diff-ui` for UIs) reporting zero divergences between the two |
 
 Every divergence `diff` finds is an unconstrained degree of freedom the spec forgot to pin. It goes back into the spec (Stage 00), not into the code.
 
@@ -60,8 +60,8 @@ Most divergences start as ambiguous spec text, so v3 measures them at every stag
 | 02 | Every demo answer and feedback change edits the spec in the same step as the code; `check --spec` keeps the draft well-formed | Drift between what the user saw and what the spec says, while it is one line |
 | 03 | `check --contracts` (schemas, cross-references, spec structure, §11 ↔ manifest, operations named); prototype Decision Inventory (every observable choice cites the spec or becomes a `GAPS.md` row); Red Team rounds 1–3 with an **executed** Fork Test against the running prototype; sampled `diff-expect` by two spec-only authors (≥ one case per operation/command, gated) | Gaps a real builder hits, found against a product the user already accepted |
 | 04 | Two interpretations: A recorded from the accepted prototype, B predicted from the spec alone, `diff-expect` (gated); profile-generic cases generated, not hand-written; `gen-probes` widens the measured surface | Remaining ambiguity; places where the prototype decided what the spec did not |
-| 05 | Builder's decision inventory per phase; optional lockstep build B with `diff --phase N` | Gaps while little code depends on them |
-| 07 | Full dual-build `diff` / `diff-ui` (gated for L2; per slice, or per release with `equivalenceCadence: "release"`) | The evidence |
+| 05 | Builder's decision inventory per phase; under target L2, a lockstep build B with `diff --phase N` | Gaps while little code depends on them |
+| 07 | Fresh unfiltered oracle run on the lock (L1, the default); under target L2 the dual-build `diff` / `diff-ui` (per slice, or per release with `equivalenceCadence: "release"`) | The evidence |
 
 A predicting author writes `{"$unspecified": "…"}` where the spec does not decide a value; agreement without citations counts as a gap, because two identical guesses are still guesses. A value backed only by a `recorded:` citation ("the prototype did it") is also a gap.
 
@@ -80,9 +80,10 @@ v2 felt right to use: a short conversation, a theme chosen in the browser, one d
 - **`sdd.cjs dashboard` is the same map as a page.** `specs/logs/dashboard.html` is rewritten at every transition and on demand; it shows nothing the commands do not print, so it can be shared with people who never open a terminal.
 - **`sdd.cjs readiness` is the user's map** at every point — budgets against actuals, their open policy questions verbatim with the provisional answers, the stages left before a frozen spec in plain words, and the single next action that is theirs; counts, never a score.
 - **Iterations keep the old oracle as a guard** — on the next slice, Stage 02 prototypes on the certified build A, and every existing case must stay green through Stages 02 and 03 unless a decision-log entry names it as a declared behavior change.
-- **L2 cadence is a choice** — `manifest.json#equivalenceCadence: "release"` lets intermediate slices certify L1 with an explicit `L2 pending` row and a lockstep diff as early warning; L2 is certified with `transition --completed 07 --release` before a release. The default stays L2 on every slice.
+- **L2 cadence is a choice** — `manifest.json#equivalenceCadence: "release"` lets intermediate slices certify L1 with an explicit `L2 pending` row and a lockstep diff as early warning; L2 is certified with `transition --completed 07 --release` before a release.
+- **One build by default** — `equivalenceTarget` defaults to 1: Stage 07 certifies L1 from the single build and asks for no build B. The second, spec-only build (L2) costs a whole Stage 05 again, so it is set in the manifest only when the user asks for it.
 
-The guarantee is unchanged: L2 still requires a build B made from the frozen set alone, an L1 certificate on a prototype-derived build says so, and a pending slice is never called L2.
+The guarantee is unchanged: L2 still requires a build B made from the frozen set alone, an L1 certificate on a prototype-derived build says so (its "Build A origin" row), and a pending slice is never called L2.
 
 ### Reference example
 
@@ -259,7 +260,7 @@ v3 challenges several v2 decisions that worked against the equivalence goal:
 | Backprop edits spec, tests and code without approval | SCR + user approval + discrimination check; no code in Stage 00 | Backprop was a way around the lock |
 | "≥ 3 iterations, iteration 1 always fails" | Objective exit criteria (`check`, Outcome Table, sampled diff-expect); fork-only blocking findings; hard cap 3 rounds | Forced failures produce manufactured findings; "until zero findings" never converges |
 | State written, never read | `status` + gated `transition` | Gates that nothing checks are suggestions |
-| Equivalence asserted ("bisimulation proof") | Measured: L2 dual build + `oracle diff` | The claim needs evidence |
+| Equivalence asserted ("bisimulation proof") | Measured: L1 by the oracle run on the lock; L2, when asked for, by a dual build + `oracle diff` | The claim needs evidence |
 | Plumbing left to "industry standard" | Equivalence Profile with rule ids | "Standard" differs between builders |
 | Error envelope labelled RFC 9457 but non-compliant; three codes for OCC conflicts | RFC 9457 problem details; one canonical code table | A self-contradictory standard forks builders |
 | Pinned directory layout and dependencies | Pinned *observable* environment; internals free | Layout is not observable; DB collation is |

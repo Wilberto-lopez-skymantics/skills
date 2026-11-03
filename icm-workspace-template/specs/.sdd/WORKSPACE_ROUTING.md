@@ -12,8 +12,8 @@
 
 | Level | Evidence |
 |---|---|
-| L1 Oracle-conformant | Lock intact + `oracle.cjs run` 100% green against the current lock |
-| L2 Equivalence-verified (default target) | L1 + `oracle.cjs diff` between two independently built implementations reports zero divergences |
+| L1 Oracle-conformant (default target: one build) | Lock intact + `oracle.cjs run` 100% green against the current lock |
+| L2 Equivalence-verified (`manifest.equivalenceTarget: 2`, on the user's request) | L1 + `oracle.cjs diff` between two independently built implementations reports zero divergences |
 
 **Tools** (Node.js ≥ 18, zero dependencies):
 - `node specs/.sdd/scripts/sdd.cjs status | check [--contracts | --spec] | readiness | agenda | metrics | spec-outline | dashboard | freeze | verify | transition [--approved-by] [--release] | export [--update] | upgrade --from`
@@ -72,7 +72,7 @@ Map the request to a stage and **read its `CONTEXT.md` before doing anything els
 4. **`specs/.sdd/04_writing_implementation_phases/CONTEXT.md`**: **Oracle synthesis** (`specs/fixtures/`) from two interpretations (A recorded from the prototype, B predicted from the spec alone), phase breakdown, coverage check, zero open gaps, user-approved **freeze**.
 5. **`specs/.sdd/05_development_swarm/CONTEXT.md`**: Spec-only build, per phase: Decision Inventory → build → `oracle.cjs run --phase N` until green → one Red Team pass for what the oracle cannot see. Build A continues the accepted prototype; build B starts from `sdd.cjs export`. Builders never modify the frozen set.
 6. **`specs/.sdd/06_visual_acceptance_testing/CONTEXT.md`**: Browser-based visual QA against tokens, wireframes and frozen UI specs.
-7. **`specs/.sdd/07_verification_before_completion/CONTEXT.md`**: Fresh evidence + equivalence certification (L1/L2) → `specs/EQUIVALENCE_REPORT.md`; lists the deferred `GAPS.md` rows as next-slice candidates. With `manifest.equivalenceCadence: "release"`, intermediate slices certify L1 with an explicit `L2 pending` row and L2 is certified with `--release`.
+7. **`specs/.sdd/07_verification_before_completion/CONTEXT.md`**: Fresh evidence + equivalence certification (L1 by default; L2 only with `manifest.equivalenceTarget: 2`) → `specs/EQUIVALENCE_REPORT.md`; lists the deferred `GAPS.md` rows as next-slice candidates. With `manifest.equivalenceCadence: "release"`, intermediate slices certify L1 with an explicit `L2 pending` row and L2 is certified with `--release`.
 
 ## Core Rules
 

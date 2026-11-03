@@ -51,7 +51,7 @@ Make the frozen oracle pass using only the frozen spec set. Equivalence follows 
 
 `--phase N` is cumulative: earlier phases are re-graded as regressions. **Class 0 changes** (refactor, dependency bump): no new phases; the full oracle stays green and `sdd.cjs verify` passes unchanged.
 
-> **Lockstep build B (recommended for L2; required early warning under `equivalenceCadence: "release"`):** `sdd.cjs export ../<project>-eqb` after the freeze; a fresh session builds there phase by phase. Both green → `node specs/.sdd/scripts/oracle.cjs diff --phase N --b-root ../<project>-eqb`. A filtered diff is an early warning, not evidence; divergences → Stage 00, re-freeze, `sdd.cjs export ../<project>-eqb --update`.
+> **Lockstep build B (only when `manifest.equivalenceTarget` is 2 — recommended there, and the required early warning under `equivalenceCadence: "release"`; with the default target of 1 there is no build B):** `sdd.cjs export ../<project>-eqb` after the freeze; a fresh session builds there phase by phase. Both green → `node specs/.sdd/scripts/oracle.cjs diff --phase N --b-root ../<project>-eqb`. A filtered diff is an early warning, not evidence; divergences → Stage 00, re-freeze, `sdd.cjs export ../<project>-eqb --update`.
 
 ## Reconciliation (after all phases)
 `specs/dev-swarm-reconciliation.md` (format: `../_config/iteration-log-format.md` §Reconciliation): re-read SPEC and contracts against the code — endpoint fields/params/headers ↔ `openapi.yaml`; migrations ↔ `schema.sql`; frontend components exist with their `data-testid`s; SPEC §12 env vars referenced; new dependencies justified; full unfiltered `oracle.cjs run` pasted. Drift → fix the CODE; spec wrong → SCR. ⊥ edit a frozen file to match the code. **⛔ GATE:** zero ❌ rows.

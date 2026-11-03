@@ -271,12 +271,30 @@ test('02 on an iteration: existing cases must stay green unless DECISION_LOG nam
   assert.match(p.sdd('transition', '--completed', '02').out, /✓ iteration regression .*: 1\/2 passed; 1 declared behavior change\(s\)/);
 });
 
+test('07: default target L1 certifies one build with no diff; equivalenceTarget 2 asks for the dual-build diff', () => {
+  const p = project({ example: true });
+  freeze(p);
+  p.state({ lastCompletedStep: 6, stepName: '05_development_swarm' });
+  assert.match(p.sdd('check', '--contracts').out, /equivalence target: L1 \(one build\)/);
+  p.write('specs/EQUIVALENCE_REPORT.md', '# Equivalence Report\n| Certified level | L1 Oracle-conformant |\n');
+  const t = p.sdd('transition', '--completed', '07').out;
+  assert.match(t, /✓ equivalence target L1: one build \(default\); no second build or diff required/);
+  assert.doesNotMatch(t, /no oracle diff report/);
+  const m = p.json('specs/contracts/manifest.json');
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, equivalenceTarget: 2 }));
+  freeze(p);
+  assert.match(p.sdd('check', '--contracts').out, /equivalence target: L2 \(second build and diff at Stage 07\)/);
+  assert.match(p.sdd('transition', '--completed', '07').out, /✗ no oracle diff report between two independent builds/);
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, equivalenceTargetDecision: 'DEC999' }));
+  assert.match(p.sdd('check', '--contracts').out, /✗ manifest.equivalenceTargetDecision must cite a DECnnn entry/);
+});
+
 test('07: equivalenceCadence "release" certifies L1 with an explicit L2 pending row unless --release', () => {
   const p = project({ example: true });
   freeze(p);
   p.state({ lastCompletedStep: 6, stepName: '05_development_swarm' });
   const m = p.json('specs/contracts/manifest.json');
-  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, equivalenceCadence: 'release' }));
+  p.write('specs/contracts/manifest.json', JSON.stringify({ ...m, equivalenceTarget: 2, equivalenceCadence: 'release' }));
   freeze(p); // the manifest is frozen
   p.write('specs/EQUIVALENCE_REPORT.md', '# Equivalence Report\n| Certified level | L1 Oracle-conformant |\n');
   assert.match(p.sdd('transition', '--completed', '07').out, /✗ equivalenceCadence "release": EQUIVALENCE_REPORT.md must state "L2 pending"/);

@@ -1478,14 +1478,14 @@ prototypeCadence: "rolling" → prototype several slices before one hardening pa
         contractProse: `1. Verify the lock, then build each phase from the frozen set.
 2. Run the oracle after each phase; it is the only grader.
 3. Raise a spec gap through Stage 00 when the spec does not say; never fill the silence with a guess.
-4. For an L2 certification, build B starts from the frozen set in a separate tree.`
+4. Only when the user asked for L2: build B starts from the frozen set in a separate tree.`
       },
       '07': {
         name: '06_visual_acceptance / 07_certification',
         title: 'Visual Acceptance & Equivalence Certification',
         subtitle: 'UI graded against tokens, wireframes and frozen UI specs · L1 oracle run · L2 dual build + diff',
         badgeColor: 'var(--emerald)',
-        gate: '<strong>⛔ GATE:</strong> Completion is claimed only with <code>EQUIVALENCE_REPORT.md</code>: L1 = the oracle green against the lock\'s hashes; L2 = two independent builds, both green, with zero divergences in the sampled diff. Stage 06 (UI projects) grades the screens against <code>DESIGN.md</code>, the captured wireframes and the frozen UI specs first. Any divergence goes back through Stage 00.',
+        gate: '<strong>⛔ GATE:</strong> Completion is claimed only with <code>EQUIVALENCE_REPORT.md</code>: L1 (the default: one build) = the oracle green against the lock\'s hashes; L2 (only when the user asks for it, <code>equivalenceTarget: 2</code>) = two independent builds, both green, with zero divergences in the sampled diff. Stage 06 (UI projects) grades the screens against <code>DESIGN.md</code>, the captured wireframes and the frozen UI specs first. Any divergence goes back through Stage 00.',
         inputs: ['Built system(s)', 'specs/fixtures/* + spec.lock.json', 'specs/wireframes/ + fixtures/ui/ (UI)'],
         outputs: ['specs/EQUIVALENCE_REPORT.md (L1 or L2)', 'Oracle and diff logs (specs/logs/)', 'VAT screenshots (UI)', 'specs/logs/transitions.jsonl with metrics'],
         contractCaveman: `! Stage 06 (UI): screens vs tokens, wireframes, frozen UI specs

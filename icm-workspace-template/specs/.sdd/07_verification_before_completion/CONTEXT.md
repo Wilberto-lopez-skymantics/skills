@@ -47,7 +47,7 @@ Skip any step = lying, not verifying
 
 Run in order; stop at the first failure and route it (Failure Routing).
 
-**L1 — Oracle-conformant** (always required)
+**L1 — Oracle-conformant** (always required; with the default `equivalenceTarget` of 1 it is the whole certification: one build)
 1. `node specs/.sdd/scripts/sdd.cjs verify` → frozen set intact.
 2. `node specs/.sdd/scripts/sdd.cjs check` → contracts, fixtures, coverage clean.
 3. Build + typecheck (`tsc --noEmit` for TypeScript) → exit 0.
@@ -55,9 +55,9 @@ Run in order; stop at the first failure and route it (Failure Routing).
 5. UI projects: frozen UI specs → `specs/logs/ui-e2e.json` with 0 failed, 0 flaky; `VAT_REPORT.md` verdict PASS.
 6. `IMPLEMENTATION_PHASES.md`: every task `[x]`; `dev-swarm-reconciliation.md`: zero ❌.
 
-Build A that grew from the Stage 02 prototype passing L1 proves the CODE conforms to the oracle — not that the spec alone determines it (the oracle's expectations were partly recorded from that same code). An L1-only certificate ! say so in `EQUIVALENCE_REPORT.md` (row "Build A origin"). Only L2 — a spec-only build B — certifies the spec as sufficient.
+Build A that grew from the Stage 02 prototype passing L1 proves the CODE conforms to the oracle — not that the spec alone determines it (the oracle's expectations were partly recorded from that same code). An L1-only certificate ! say so in `EQUIVALENCE_REPORT.md` (row "Build A origin"). Only L2 — a spec-only build B — certifies the spec as sufficient. L1 is nevertheless the default: a second build repeats Stage 05, so the user asks for it (`equivalenceTarget: 2`) when the spec must be proven sufficient on its own, typically before a release or a hand-over.
 
-**L2 — Equivalence-verified** (required when `manifest.json#equivalenceTarget` = 2, the default)
+**L2 — Equivalence-verified** (only when `manifest.json#equivalenceTarget` = 2, set at the user's request; the default is 1)
 1. `node specs/.sdd/scripts/sdd.cjs export ../<project>-eqb` — copies ONLY the frozen set (plus unchecked phases and regenerated entry files) into a fresh directory. If build B ran in lockstep (Stage 05 tip), run `sdd.cjs export ../<project>-eqb --update` instead to bring it to the current lock.
 2. In a **fresh agent session** opened on that directory — no access to the first implementation, its git history or this conversation; a different model or seed when available — run Stage 05 to completion there.
 3. Start both builds against separate, empty storage, each with the frozen build environment (`eval "$(node specs/.sdd/scripts/oracle.cjs env)"`). Set the env vars that `oracle.config.json` targets `a` and `b` reference (e.g. `ORACLE_A_URL`, `ORACLE_B_URL`, their database URLs).
@@ -65,9 +65,9 @@ Build A that grew from the Stage 02 prototype passing L1 proves the CODE conform
 5. Browser interface: run the frozen UI suite against each build with `SDD_UI_OBS_FILE=specs/logs/ui-obs-a.jsonl` and `…-b.jsonl`, then `node specs/.sdd/scripts/oracle.cjs diff-ui --a specs/logs/ui-obs-a.jsonl --b specs/logs/ui-obs-b.jsonl --b-root ../<project>-eqb` → zero divergent observations.
 6. Every divergence is an unconstrained degree of freedom: route it to Stage 00 as class C, even when both builds pass the oracle. A spec gap that builder B raises is handled the same way — in THIS workspace, never in B's copy — and B is re-exported afterwards. Re-certify after the SCR is applied and both builds are fixed.
 
-Lowering the target to L1 requires a DECISION_LOG entry and setting `equivalenceTarget: 1` in the manifest (a frozen change → user-approved re-freeze).
+Raising the target to L2 is a manifest change (`equivalenceTarget: 2`; after the first freeze a frozen change → user-approved re-freeze), recorded in a DECISION_LOG entry cited by `equivalenceTargetDecision`. Lowering it back takes the same route. ⊥ raise it on the user's behalf.
 
-**Equivalence cadence** (`manifest.json#equivalenceCadence`, default `iteration`): with `iteration`, every slice certifies L2 before it is complete. With `release`, intermediate slices certify **L1 only**: run the L1 list, keep the lockstep build B green (`sdd.cjs export --update` after each re-freeze, `oracle.cjs diff --phase N` as an early warning), and write `L2 pending` in the report's Certified level row — the gate refuses the report without it. Before a release (or whenever the user asks), run the L2 list and complete with `transition --completed 07 --release`, which requires the fresh zero-divergence diff. ⊥ claim L2 for a slice certified under a pending row; ⊥ release on a pending row.
+**Equivalence cadence** (`manifest.json#equivalenceCadence`, default `iteration`; applies only when the target is 2): with `iteration`, every slice certifies L2 before it is complete. With `release`, intermediate slices certify **L1 only**: run the L1 list, keep the lockstep build B green (`sdd.cjs export --update` after each re-freeze, `oracle.cjs diff --phase N` as an early warning), and write `L2 pending` in the report's Certified level row — the gate refuses the report without it. Before a release (or whenever the user asks), run the L2 list and complete with `transition --completed 07 --release`, which requires the fresh zero-divergence diff. ⊥ claim L2 for a slice certified under a pending row; ⊥ release on a pending row.
 
 ### Equivalence Report
 
@@ -88,7 +88,7 @@ Write `specs/EQUIVALENCE_REPORT.md`:
 | Diff A vs B | <totalCases> cases, 0 divergent — `specs/logs/oracle/diff-a-b.json` @ <finishedAt>, B lock <hash12> |
 | UI diff A vs B | <n> observations, 0 divergent — `specs/logs/oracle/uidiff-a-b.json` (UI only) |
 | Declared degrees of freedom | <variablePaths + variable matchers summary> |
-| Certified level | L2 Equivalence-verified / L1 Oracle-conformant (DECnnn) / L1 Oracle-conformant, L2 pending (cadence `release`; lockstep diff: <n> cases, <d> divergent) |
+| Certified level | L1 Oracle-conformant (default: one build) / L2 Equivalence-verified (DECnnn) / L1 Oracle-conformant, L2 pending (cadence `release`; lockstep diff: <n> cases, <d> divergent) |
 | Deferred to next slice | <`GAPS.md` deferred rows: G-nnn (DECnnn), …> |
 ```
 

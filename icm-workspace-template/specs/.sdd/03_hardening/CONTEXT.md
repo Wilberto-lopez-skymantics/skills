@@ -19,7 +19,7 @@ Turn the accepted prototype and the draft spec into a complete, machine-checked 
 
 ### 1. Compile the contracts (Blue Team: Core Architect, Data Specialist, Security Auditor, UX/UI Lead)
 From the spec **and** the prototype: the Reconciler reads the code before anything is written; the contract says what the spec pins, the prototype is checked against it. Spec pins X, prototype does Y → fix the prototype now. Spec silent, prototype does Y → `GAPS.md` row (kind `builder`, draft assumption Y) — ⊥ promote Y to the contract because it already runs; step 3 lists it, step 4 rules on it.
-- `specs/contracts/manifest.json`: project type, interfaces, artifacts, `notApplicable`, `equivalenceTarget` (default 2), `equivalenceCadence`, `profileOverrides`, `coverageExempt` (+ classes), `budgets`, `sliceCap`.
+- `specs/contracts/manifest.json`: project type, interfaces, artifacts, `notApplicable`, `equivalenceTarget` (default 1: one build; 2 only when the user asked for the second build), `equivalenceCadence`, `profileOverrides`, `coverageExempt` (+ classes), `budgets`, `sliceCap`.
 - `openapi.yaml` (http): every operation with a unique `operationId`, strict schemas (`additionalProperties: false` on requests), headers, params, pagination, every response status enumerated. | `cli.json` | `api.d.ts` per the matrix.
 - `schema.sql` | `.prisma` | `storage.schema.json`: the prototype's DDL made explicit — pinned types, indices, FKs, OCC `version`, `COLLATE "C"` where strings sort.
 - `statecharts.json`: ∀ lifecycle entity — states, guarded transitions, terminal retention, illegal-transition error.

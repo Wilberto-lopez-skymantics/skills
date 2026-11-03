@@ -95,7 +95,7 @@ function checkContracts(p, r) {
   ctx.manifest = manifest;
   const typeDef = matrix.types[manifest.projectType];
   ctx.typeDef = typeDef;
-  r.note(`project type: ${manifest.projectType}; interfaces: ${manifest.interfaces.join(', ')}; equivalence target: L${manifest.equivalenceTarget}`);
+  r.note(`project type: ${manifest.projectType}; interfaces: ${manifest.interfaces.join(', ')}; equivalence target: L${manifest.equivalenceTarget || 1}${manifest.equivalenceTarget === 2 ? ' (second build and diff at Stage 07)' : ' (one build)'}`);
 
   for (const i of typeDef.defaultInterfaces) {
     if (!manifest.interfaces.includes(i)) r.warn(`manifest.interfaces omits "${i}" (default for ${manifest.projectType}); justify in SPEC.md §Equivalence Boundary`);
@@ -136,10 +136,7 @@ function checkContracts(p, r) {
   for (const o of overrides) {
     if (!cites(o.decision)) r.error(`profile override ${o.rule} cites ${o.decision}, which is not in specs/DECISION_LOG.md`);
   }
-  if (manifest.equivalenceTarget === 1) {
-    const d = manifest.equivalenceTargetDecision;
-    if (!d || !cites(d)) r.error('equivalenceTarget 1 requires manifest.equivalenceTargetDecision citing a DECnnn entry in specs/DECISION_LOG.md');
-  }
+  if (manifest.equivalenceTargetDecision && !cites(manifest.equivalenceTargetDecision)) r.error('manifest.equivalenceTargetDecision must cite a DECnnn entry in specs/DECISION_LOG.md');
   if (overrides.length) r.note(`${overrides.length} documented profile override(s)`);
   checkSpecText(p, ctx, r);
   return ctx;
@@ -1425,7 +1422,7 @@ function exitGates(stage, p, state, info, opts = {}) {
       add([exists(p.phases) && !open, exists(p.phases) ? (open ? `IMPLEMENTATION_PHASES.md has ${open} unchecked task(s)` : 'all implementation tasks checked') : 'missing specs/IMPLEMENTATION_PHASES.md']);
       if (info.ui) add([VERDICT_PASS.test(readText(path.join(p.specs, 'VAT_REPORT.md'))), 'VAT_REPORT.md verdict PASS (Stage 06)']);
       add(fileGate(p, 'specs/EQUIVALENCE_REPORT.md', 'Stage 07 report', freshAfter));
-      const target = info.manifest ? info.manifest.equivalenceTarget : 2;
+      const target = (info.manifest && info.manifest.equivalenceTarget) || 1; // one build unless the user asked for L2
       const cadence = (info.manifest && info.manifest.equivalenceCadence) || 'iteration';
       if (target === 2 && (cadence === 'iteration' || opts.release)) {
         if (nonBrowser) add(diffGate(p, v.lock, freshAfter, 'diff-', 'oracle diff'));
@@ -1436,7 +1433,7 @@ function exitGates(stage, p, state, info, opts = {}) {
         add([pending, pending ? 'equivalenceCadence "release": this slice certifies L1, report states "L2 pending" (pass --release when certifying L2)' : 'equivalenceCadence "release": EQUIVALENCE_REPORT.md must state "L2 pending" in its Certified level row (or pass --release and provide the dual-build diff)']);
         const ls = latestReport(p, 'diff-', x => x.lockHash === v.lock.hash);
         add([true, ls ? `lockstep diff on this lock: ${ls.a} vs ${ls.b}, ${ls.divergentCases} divergent case(s) at ${ls.finishedAt} (early warning, not evidence)` : 'no lockstep diff on this lock (Stage 05 tip: diff --phase N against an exported build B catches divergences early)']);
-      } else add([true, `equivalence target L1 (${info.manifest.equivalenceTargetDecision}; dual-build diff not required)`]);
+      } else add([true, `equivalence target L1: one build${info.manifest && info.manifest.equivalenceTargetDecision ? ` (${info.manifest.equivalenceTargetDecision})` : ' (default)'}; no second build or diff required (manifest.equivalenceTarget 2 asks for L2)`]);
       break;
     }
     default:
@@ -1913,8 +1910,8 @@ function dashboardData(p) {
     state: { lastCompletedStep: last, stepName: state.stepName || '', notes: state.notes || '', timestamp: state.timestamp || null, stage00: state.stepName === STAGES_00 },
     settings: {
       prototypeCadence: m.prototypeCadence || (info.manifest ? 'slice (default)' : 'not declared yet (the user chooses at each acceptance; Stage 03 writes it into manifest.json)'),
-      equivalenceCadence: m.equivalenceCadence || (info.manifest ? 'slice (default)' : '—'),
-      equivalenceTarget: m.equivalenceTarget ? `L${m.equivalenceTarget}` : (info.manifest ? '—' : 'L2 (default)'),
+      equivalenceCadence: (m.equivalenceTarget === 2 ? (m.equivalenceCadence || 'iteration (default: every slice)') : 'n/a (target L1)'),
+      equivalenceTarget: m.equivalenceTarget ? `L${m.equivalenceTarget}${m.equivalenceTarget === 2 ? ' (second build)' : ' (one build)'}` : 'L1 (default: one build)',
       sliceCap: m.sliceCap || DEFAULT_SLICE_CAP,
       budgets: b,
     },

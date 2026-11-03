@@ -2,7 +2,6 @@
   "$schema": "../../../../schemas/contract-manifest.schema.json",
   "projectType": "backend-service",
   "interfaces": ["http"],
-  "equivalenceTarget": 2,
   "artifacts": {
     "openapi": "openapi.yaml",
     "errors": "errors.json",
