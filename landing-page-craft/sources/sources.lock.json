@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "note": "Third-party skill files vendored unmodified. Do not edit anything under sources/<id>/; change the pin with scripts/update-sources.cjs. tree_sha256 covers every vendored file of the source (path, zero byte, content, zero byte, in code-unit path order).",
+  "sources": [
+    {
+      "id": "elaya",
+      "repo": "https://github.com/elayadesign/ai-design-skills",
+      "commit": "456d9e0d3e2d84c748bb143c6ca3d90c45e16213",
+      "commit_date": "2026-11-02T03:24:09+04:00",
+      "licence": "MIT",
+      "licence_file": "LICENSE",
+      "include": [
+        "skills/landing-page-design"
+      ],
+      "tree_sha256": "37af83ef014992d4a9fe63d34727a3e40745e5f536e3f578b82c1d15640ba896",
+      "files": {
+        "LICENSE": "5f9af6ce7083838497676a8dfa651ad8e2559fdabd4586afc73587beec476b0e",
+        "skills/landing-page-design/SKILL.md": "0c0ad9323121c0cc4f52b637f64a3a446016f065ae9ebf012dab210559f03d5f"
+      }
+    }
+  ]
+}

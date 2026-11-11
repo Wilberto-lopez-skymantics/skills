@@ -1,0 +1,91 @@
+{
+  "app": {
+    "name": "Example Shop",
+    "description": "A web shop where customers order groceries for home delivery and staff prepare the orders."
+  },
+  "viewports": [
+    { "id": "phone", "width": 375, "height": 812, "touch": true },
+    { "id": "tablet", "width": 768, "height": 1024, "touch": true },
+    { "id": "desktop", "width": 1280, "height": 800 }
+  ],
+  "personas": [
+    {
+      "id": "customer",
+      "viewport": "phone",
+      "description": "A customer in their sixties who orders once a week from a phone, usually in a hurry between other things. Not confident with technology: reads little, taps what looks most obvious, and phones the shop when stuck."
+    },
+    {
+      "id": "picker",
+      "viewport": "tablet",
+      "description": "A warehouse employee who prepares forty orders a shift on a shared tablet, standing up and wearing gloves. Knows the job well and wants each order off the screen fast."
+    }
+  ],
+  "judges": 2,
+  "units": [
+    {
+      "id": "customer-reorders-last-basket",
+      "persona": "customer",
+      "goal": "Order the same groceries as last week for delivery tomorrow morning.",
+      "weight": 3,
+      "viewports": ["phone", "desktop"],
+      "steps": [
+        { "id": "01-home", "do": "Opens the shop while signed in.", "expect": "Sees a way to repeat a past order." },
+        { "id": "02-past-order", "do": "Opens last week's order and chooses to order it again.", "expect": "The basket fills with the same items." },
+        { "id": "03-slot", "do": "Goes on to choose a delivery time.", "expect": "Sees which times are free and what each costs." },
+        { "id": "04-slot-error", "do": "Presses continue without having chosen a time.", "expect": "Is told what is missing, beside the choice." },
+        { "id": "05-confirm", "do": "Picks tomorrow morning and confirms the order.", "expect": "Sees that the order is placed, when it arrives and what was charged." },
+        { "id": "06-focus", "do": "Presses Tab until the confirm button has keyboard focus.", "roles": ["accessibility", "interaction"] }
+      ]
+    },
+    {
+      "id": "picker-prepares-order",
+      "persona": "picker",
+      "goal": "Prepare the next order and mark one item as out of stock.",
+      "weight": 2,
+      "viewports": ["tablet"],
+      "steps": [
+        { "id": "01-queue", "do": "Opens the order queue.", "expect": "Sees which order is next." },
+        { "id": "02-order", "do": "Opens the next order.", "expect": "Sees items in the order they are shelved." },
+        { "id": "03-out-of-stock", "do": "Marks one item as out of stock.", "expect": "Sees the item marked and the customer's substitute choice." },
+        { "id": "04-done", "do": "Completes the order.", "expect": "Sees it leave the queue." }
+      ]
+    },
+    {
+      "id": "whole-product-overview",
+      "persona": "customer",
+      "goal": "See whether the product looks and reads as one piece across its main screens.",
+      "weight": 1,
+      "viewports": ["desktop"],
+      "roles": ["visual", "content"],
+      "steps": [
+        { "id": "01-home", "do": "Views the home screen." },
+        { "id": "02-basket", "do": "Views the basket." },
+        { "id": "03-account", "do": "Views the account screen." },
+        { "id": "04-staff-queue", "do": "Views the staff order queue." }
+      ]
+    },
+    {
+      "id": "control-basket",
+      "persona": "customer",
+      "goal": "Check what is in the basket and go on to pay.",
+      "viewports": ["phone"],
+      "roles": ["accessibility", "responsive", "content", "user"],
+      "control": true,
+      "planted": [
+        { "id": "faint-prices", "role": "accessibility", "criterion": "A1", "step": "01-basket" },
+        { "id": "tiny-remove-button", "role": "responsive", "criterion": "R3", "step": "01-basket" },
+        { "id": "page-scrolls-sideways", "role": "responsive", "criterion": "R1", "step": "02-checkout" },
+        { "id": "jargon-pay-label", "role": "content", "criterion": "C2", "step": "02-checkout" },
+        { "id": "obscure-pay-label", "role": "user", "step": "02-checkout" }
+      ],
+      "clean": [
+        { "id": "fields-labelled", "role": "accessibility", "criterion": "A2" },
+        { "id": "basket-reads-clearly", "role": "user", "step": "01-basket" }
+      ],
+      "steps": [
+        { "id": "01-basket", "do": "Opens the basket." },
+        { "id": "02-checkout", "do": "Goes on towards paying." }
+      ]
+    }
+  ]
+}

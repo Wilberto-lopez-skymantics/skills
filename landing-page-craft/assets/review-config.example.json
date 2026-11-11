@@ -1,0 +1,47 @@
+{
+  "app": {
+    "name": "Example Ledger",
+    "description": "A page that offers a 30-day free trial of an invoicing service to people who work for themselves."
+  },
+  "rubric_set": "rubric-set",
+  "decisions": "../../../marketing/trial/page-brief.md",
+  "viewports": [
+    { "id": "phone", "width": 375, "height": 812, "touch": true },
+    { "id": "tablet", "width": 768, "height": 1024, "touch": true },
+    { "id": "desktop", "width": 1280, "height": 800 }
+  ],
+  "personas": [
+    {
+      "id": "freelancer",
+      "viewport": "phone",
+      "description": "An illustrator who works alone and sends about eight invoices a month from a document template. On a phone, on the sofa in the evening, with other tabs open. Knows what an invoice is, has never used accounting software and does not know its words. Doubts that software makes clients pay sooner. Gives a page a few seconds, scans the headings, and closes the tab at the first thing that looks like a long form or a sales call."
+    }
+  ],
+  "judges": 2,
+  "units": [
+    {
+      "id": "freelancer-from-search-ad",
+      "persona": "freelancer",
+      "goal": "Searched for an invoice template and pressed an advertisement that said: 'Invoices that get paid in days, not weeks. Send in a minute. Reminders go out on their own. Free for 30 days.' Wants to know whether this is for someone who works alone, what it costs, and to try it if it is.",
+      "weight": 3,
+      "steps": [
+        { "id": "01-arrive", "do": "Presses the advertisement and the page opens.", "expect": "Sees the same promise as the advertisement, and one way to start." },
+        { "id": "02-read", "do": "Scrolls down the page.", "expect": "Finds how it works, something that shows it is true, the price, and the way to start again at the end." },
+        { "id": "03-act", "do": "Presses the button to start the free trial.", "expect": "Is asked for an email address and a password, and nothing else." },
+        { "id": "04-refused", "do": "Presses the button to create the account with the email field empty.", "expect": "Is told what is missing, beside the field." },
+        { "id": "05-done", "do": "Types an email address and a password and creates the account.", "expect": "Sees that the trial has started and what to do first." }
+      ]
+    },
+    {
+      "id": "freelancer-from-newsletter",
+      "persona": "freelancer",
+      "goal": "Read in the newsletter of a freelancers' association that members get the first three months of an invoicing service at half price, and pressed the link. Wants to see what the service is and whether the member price is real.",
+      "weight": 1,
+      "viewports": ["phone", "desktop"],
+      "steps": [
+        { "id": "01-arrive", "do": "Presses the link in the newsletter and the page opens.", "expect": "Sees what the service is and that the member offer applies." },
+        { "id": "02-read", "do": "Scrolls down the page.", "expect": "Finds the price and the member offer stated plainly." }
+      ]
+    }
+  ]
+}

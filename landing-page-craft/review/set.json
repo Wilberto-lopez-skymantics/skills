@@ -1,0 +1,10 @@
+{
+  "name": "landing-page",
+  "specialists": {
+    "conversion": ["screens", "pages", "facts"],
+    "copy": ["screens", "pages", "facts"],
+    "brand": ["screens", "pages", "facts", "states", "motion", "frames"],
+    "accessibility": ["screens", "pages", "facts", "keyboard", "states", "motion"],
+    "responsive": ["screens", "pages", "facts"]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "base_url": "http://localhost:4321",
+  "units": {
+    "freelancer-from-search-ad": {
+      "window_steps": ["01-arrive"],
+      "motion_steps": ["03-act"],
+      "steps": {
+        "01-arrive": [{ "goto": "/trial?from=search" }, { "wait_for": "text=Start my free trial" }],
+        "02-read": [{ "scroll": "through" }],
+        "03-act": [{ "click": "text=Start my free trial" }, { "wait_for": "label=Email address" }],
+        "04-refused": [{ "click": "text=Create my account" }, { "wait_for": "[role=alert]" }],
+        "05-done": [
+          { "fill": ["label=Email address", "visitor@example.test"] },
+          { "fill": ["label=Password", "${TRIAL_TEST_PASSWORD}"] },
+          { "click": "text=Create my account" },
+          { "wait_for": "text=Your trial has started" }
+        ]
+      }
+    },
+    "freelancer-from-newsletter": {
+      "window_steps": ["01-arrive"],
+      "steps": {
+        "01-arrive": [{ "goto": "/trial?from=newsletter" }, { "wait_for": "text=Start my free trial" }],
+        "02-read": [{ "scroll": "through" }]
+      }
+    }
+  }
+}

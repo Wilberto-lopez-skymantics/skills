@@ -12,7 +12,7 @@ This repository holds the **Spec-Driven Development (SDD)** pipeline for AI codi
 | [`design-package/`](./design-package/) | Skill that derives a systems-engineering design package from a template-built spec set, with a review loop back into the spec. | Maintained |
 | [`spec-deliverables/`](./spec-deliverables/) | Skill that derives the API reference, the user manual and the test plan from a template-built spec set, as markdown plus one self-contained HTML page each, stamped with the lock. | Maintained |
 | `brainstorming/`, `sdd-adoption/`, `adversarial-swarm-analysis/`, `interactive-wireframing/`, `writing-implementation-phases/`, `development-swarm/`, `spec-driven-development/`, `shared/` | The v2 pipeline as global agent skills (release `2026.09.28-v2`). | **Legacy** — kept for projects that still use them; not maintained against v3 (no oracle, lock, prototype stage or gated transitions there) |
-| `verification-before-completion/`, `visual-acceptance-testing/`, `ubiquitous-language/`, `frontend-ui-design/`, `test-driven-development/`, `kubernetes-deployment/`, `interpretable-context-methodology/` | General-purpose skills that do not depend on the pipeline version. | Usable with either |
+| `verification-before-completion/`, `visual-acceptance-testing/`, `ubiquitous-language/`, `frontend-ui-design/`, `test-driven-development/`, `kubernetes-deployment/`, `interpretable-context-methodology/`, `ux-quality-score/`, `interface-craft/`, `landing-page-craft/` | General-purpose skills that do not depend on the pipeline version. | Usable with either |
 
 ## Quick start (the template)
 
@@ -91,7 +91,8 @@ skills/
 │   writing-implementation-phases/ development-swarm/ spec-driven-development/   # Legacy v2 pipeline skills
 ├── verification-before-completion/ visual-acceptance-testing/ ubiquitous-language/
 │   frontend-ui-design/ test-driven-development/ kubernetes-deployment/
-│   interpretable-context-methodology/                                            # General-purpose skills
+│   interpretable-context-methodology/ ux-quality-score/ interface-craft/
+│   landing-page-craft/                                                           # General-purpose skills
 └── sdd-icm-documentation.html     # Visual guide to the pipeline and the ICM idea (open in a browser)
 ```
 
@@ -109,6 +110,9 @@ Stage contracts use a compact notation (`!` = must, `⊥` = never, `∀` = for a
 | [`spec-deliverables`](./spec-deliverables/) | API reference, user manual and test plan derived from a spec set; `build`, `compile` to HTML, `check` for staleness against the lock (see above) |
 | [`verification-before-completion`](./verification-before-completion/) | Evidence before claims: run the command, read the output, then say it passes |
 | [`visual-acceptance-testing`](./visual-acceptance-testing/) | Browser-based visual QA: screen walk, interaction audit, token verification, debug-artifact scan (the template's Stage 06 is its pipeline form) |
+| [`ux-quality-score`](./ux-quality-score/) | UI and UX scoring and improvement loop: six blind reviewer roles with their own rubrics (accessibility, visual design, interaction, content, responsive, target user) each return a 0-100 score with reasons and issues, working from screenshots, page text, measurements and probes of keyboard order, control states and motion; a serious issue only one reviewer reported gets a second look from a fresh specialist; fix and re-review with fresh agents until every role reaches a threshold, stopping to ask the user at a plateau; planted-defect controls check the reviewers are neither too kind nor too harsh. A project can review another kind of screen with a reviewer set of its own (`rubric_set`) |
+| [`interface-craft`](./interface-craft/) | Design guidance for building, fixing and reviewing product interfaces (not landing pages): one entry point over specialist design references copied from three public repositories at pinned commits with their licences; it settles which reference owns each topic, which value wins where they disagree, how severe a problem is, and keeps the project's own design decisions in one file. Its review standards share criterion ids with `ux-quality-score`; neither skill needs the other |
+| [`landing-page-craft`](./landing-page-craft/) | Planning, writing, building, fixing and reviewing a landing page: a page with one offer, one audience and one action. Starts from a page brief the owner settles (offer, audience, where visitors come from, the action, the proof that exists, the brand's values); takes the strategy from a public landing-page skill copied at a pinned commit with its licence, and the look from the brand, never from the source. Ships a reviewer set for `ux-quality-score` (conversion, copy, brand, accessibility, responsive, and a first-time visitor) so the page can be worked on and reviewed in the same blind loop; usable without it |
 | [`ubiquitous-language`](./ubiquitous-language/) | Domain glossary: canonical terms, flagged ambiguities, consistent naming across specs |
 | [`interpretable-context-methodology`](./interpretable-context-methodology/) | How to work in any ICM-structured workspace (routing document, stage folders, contracts) |
 | [`frontend-ui-design`](./frontend-ui-design/), [`test-driven-development`](./test-driven-development/), [`kubernetes-deployment`](./kubernetes-deployment/) | Standalone engineering skills, independent of the pipeline |
