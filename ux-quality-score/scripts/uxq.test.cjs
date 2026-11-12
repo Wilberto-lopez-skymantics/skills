@@ -9,7 +9,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const UXQ = path.join(__dirname, 'uxq.cjs');
 const JUDGE = path.join(__dirname, '..', 'judge');
-const { ROLES, SPECIALISTS, EVIDENCE_KINDS, REBASE, disagree, reviewerResult, groupFindings, validateSpecialist, validateUser, validateVerdict, loadRubric, spawnPrompt } = require('./uxq.cjs');
+const { ROLES, SPECIALISTS, EVIDENCE_KINDS, REBASE, disagree, reviewerResult, groupFindings, validateSpecialist, validateUser, validateVerdict, numberedDecisions, loadRubric, spawnPrompt } = require('./uxq.cjs');
 const rubric = loadRubric();
 
 function uxq(args, { allowFail = false } = {}) {
@@ -614,6 +614,13 @@ test('each specialist is handed the evidence its role can judge and the project\
   fs.writeFileSync(t.configFile, JSON.stringify({ ...t.config, decisions: 'nowhere.md' }));
   assert.match(uxq(['new-run', '--config', t.configFile], { allowFail: true }).stderr, /decisions: must be the path of a file that exists/);
   fs.rmSync(t.root, { recursive: true, force: true });
+});
+
+test('the scorecard counts the decisions only where the file numbers them', () => {
+  assert.strictEqual(numberedDecisions('# Design decisions\n\n## Decisions\n\n### D-001 Tables stay dense\n\nRows are 32 px tall.\n\n### D-002 One accent\n'), 2);
+  // Any markdown file may record the decisions. One that keeps them as a list has no count to give, and
+  // the scorecard must not say that none were recorded.
+  assert.strictEqual(numberedDecisions('# Design decisions\n\n## Colour\n\n- **Gold in the light theme only.** Chosen on purpose.\n\n## Naming\n\n- **"Requests", not "Tickets".**\n'), null);
 });
 
 test('a verdict on a second look must say whether the claim holds and how serious it is', () => {

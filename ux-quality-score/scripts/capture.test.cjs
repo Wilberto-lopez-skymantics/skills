@@ -75,9 +75,34 @@ const LONG_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><m
 <script>new IntersectionObserver(function (entries) { entries.forEach(function (e) { if (e.isIntersecting) document.getElementById('proof').textContent = 'Shown once scrolled to'; }); }).observe(document.getElementById('late'));</script>
 </body></html>`;
 
+// A fourth page for what the measurements used to get wrong: colours the page mixes, native date and
+// time fields, and a footer that sticks inside a panel that scrolls.
+const MIXED_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mixed desk</title>
+<style>
+html,body{height:100%}
+body{font-family:sans-serif;margin:0;color:#111;background:#fff;overflow:hidden}
+.app{height:100vh;overflow-y:auto}
+.body{padding:16px;min-height:1400px}
+.dark{padding:12px;background:color-mix(in srgb, #000 92%, #fff)}
+.dark p{margin:0;color:#444}
+.soft{padding:12px;background:color-mix(in oklab, #0b5fff 12%, white)}
+.soft p{margin:0;color:#111}
+.foot{position:sticky;bottom:0;padding:8px 16px;background:#fff;border-top:1px solid #888}
+button,input{font-size:16px;min-height:44px;margin:8px 8px 8px 0}
+label{display:block}
+</style></head>
+<body><div class="app"><main class="body"><h1>Mixed desk</h1>
+<div class="dark"><p id="faint">Dark grey on a mixed near-black</p></div>
+<div class="soft"><p id="fine">Black on a mixed pale blue</p></div>
+<label for="day">Day</label><input id="day" type="date">
+<label for="hour">Hour</label><input id="hour" type="time">
+<div><button type="button">One</button><button type="button">Two</button><button type="button">Three</button><button type="button">Four</button></div>
+</main><div class="foot"><button type="button" id="save">Save</button></div></div>
+</body></html>`;
+
 function startServer() {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/long') ? LONG_PAGE : PAGE); });
+    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : PAGE); });
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
@@ -429,6 +454,80 @@ test('a long page: the first window pictured alone, scrolled through before the 
     plan.units.visit.window_steps = '01-arrive';
     writePlan();
     assert.match((await run(CAPTURE, args)).stderr, /window_steps must be a list of step ids/);
+  } finally {
+    server.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('mixed colours are measured, date and time fields do not stop the walk, a sticking footer is listed, and the walk can be made longer or shorter', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uxq-mixed-'));
+  try {
+    const home = path.join(root, 'quality', 'ux');
+    fs.mkdirSync(home, { recursive: true });
+    const config = {
+      app: { name: 'Mixed desk', description: 'A sample product for the test.' },
+      viewports: [{ id: 'phone', width: 375, height: 700, touch: true }, { id: 'desktop', width: 1000, height: 700 }],
+      personas: [{ id: 'member', description: 'A member who books a day now and then.', viewport: 'phone' }],
+      units: [{ id: 'book', persona: 'member', goal: 'Book a day.', steps: [{ id: '01-page', do: 'Opens the page.' }] }]
+    };
+    const plan = {
+      base_url: `http://127.0.0.1:${server.address().port}`, settle_ms: 50, probes: ['keyboard'],
+      units: { book: { steps: { '01-page': [{ goto: '/mixed' }, { wait_for: 'text=Mixed desk' }] } } }
+    };
+    const configFile = path.join(home, 'config.json');
+    const writePlan = () => fs.writeFileSync(path.join(home, 'capture.json'), JSON.stringify(plan));
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    writePlan();
+    const runDir = JSON.parse(spawnSync(process.execPath, [UXQ, 'new-run', '--config', configFile, '--commit', 'abc1234', '--date', '2026-01-15'], { encoding: 'utf8' }).stdout).run_dir;
+    const args = ['--config', configFile, '--run', runDir];
+    const first = await run(CAPTURE, args);
+    assert.strictEqual(first.status, 0, first.stderr + first.stdout);
+    const out = JSON.parse(first.stdout);
+    assert.deepStrictEqual([out.failures, out.probe_notes], [[], []]);
+    const ev = path.join(runDir, 'evidence', 'book');
+    const read = (file) => JSON.parse(fs.readFileSync(path.join(ev, file), 'utf8'));
+
+    // A background the page mixes is a colour like any other: text that is faint on it is reported, text
+    // that is plain on it is not, and neither is put down as unknown or measured against the page behind.
+    for (const size of ['phone', 'desktop']) {
+      const facts = read(`facts/01-page.${size}.json`);
+      assert.strictEqual(facts.text.contrast_unknown_background, 0, size);
+      const low = facts.text.below_required_contrast.examples;
+      assert.deepStrictEqual(low.map((x) => x.element), ['p#faint "Dark grey on a mixed near-black"'], size);
+      assert.ok(low[0].ratio > 1.5 && low[0].ratio < 2.3, `${low[0].ratio} to 1 against the mixed fill, not the white page`);
+
+      // The panel scrolls, so the window was grown and the footer is drawn at its end; the measurements
+      // still say it sticks to the bottom of the window.
+      assert.deepStrictEqual(facts.layout.stays_in_window_while_scrolling, { count: 1, examples: [{ element: 'div "Save"', how: 'sticky', edge: 'bottom', height: facts.layout.stays_in_window_while_scrolling.examples[0].height }] }, size);
+    }
+
+    // Tab walks the parts of a date field and of a time field before it leaves each: that is not focus stuck.
+    const keys = read('keyboard/01-page.desktop.json');
+    assert.deepStrictEqual(keys.stops.filter((s) => s.n).map((s) => s.element), ['input#day "Day"', 'input#hour "Hour"', 'button "One"', 'button "Two"', 'button "Three"', 'button "Four"', 'button#save "Save"']);
+    assert.match(keys.ended, /came back to stop 1/);
+
+    // The plan sets how far the walk goes, for the whole plan or for one journey.
+    plan.keyboard_stops = 5;
+    plan.units.book.keyboard_stops = 3;
+    writePlan();
+    assert.strictEqual((await run(CAPTURE, args)).status, 0);
+    const short = read('keyboard/01-page.desktop.json');
+    assert.strictEqual(short.ended, 'stopped after 3 stops; there are more');
+    assert.strictEqual(short.summary.stops, 3);
+    assert.match(short.how_to_read, /at most 3 stops/);
+    delete plan.units.book.keyboard_stops;
+    writePlan();
+    assert.strictEqual((await run(CAPTURE, args)).status, 0);
+    assert.strictEqual(read('keyboard/01-page.desktop.json').summary.stops, 5);
+    plan.keyboard_stops = 0;
+    writePlan();
+    assert.match((await run(CAPTURE, args)).stderr, /plan: keyboard_stops must be a whole number from 1 to 400/);
+    plan.keyboard_stops = 60;
+    plan.units.book.keyboard_stops = '90';
+    writePlan();
+    assert.match((await run(CAPTURE, args)).stderr, /unit book: keyboard_stops must be a whole number from 1 to 400/);
   } finally {
     server.close();
     fs.rmSync(root, { recursive: true, force: true });

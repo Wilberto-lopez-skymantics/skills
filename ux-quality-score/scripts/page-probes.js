@@ -51,9 +51,32 @@
   const openDialog = () => [...document.querySelectorAll('dialog[open], [aria-modal=true]')].filter(visible).pop() || null;
 
   // ---------------------------------------------------------------- colour
+  // A computed colour is rgb() or rgba() on most pages. Where the page mixes colours (color-mix) or names
+  // them in another colour space, the browser reports color(srgb ...), oklab(...) and the like: those are
+  // painted on one pixel and read back, so any colour the browser can draw is a colour that is measured.
+  const painted = new Map();
+  let ink = null;
+  const paint = (str) => {
+    if (painted.has(str)) return painted.get(str);
+    let colour = null;
+    try {
+      if (!ink) { const c = document.createElement('canvas'); c.width = 1; c.height = 1; ink = c.getContext('2d', { willReadFrequently: true }); }
+      // A string the canvas does not understand leaves the fill as it was: set it over two different fills.
+      ink.fillStyle = '#000'; ink.fillStyle = str; const one = ink.fillStyle;
+      ink.fillStyle = '#fff'; ink.fillStyle = str;
+      if (one === ink.fillStyle) {
+        ink.clearRect(0, 0, 1, 1); ink.fillRect(0, 0, 1, 1);
+        const d = ink.getImageData(0, 0, 1, 1).data;
+        colour = { r: d[0], g: d[1], b: d[2], a: Math.round((d[3] / 255) * 100) / 100 };
+      }
+    } catch (e) { colour = null; }
+    painted.set(str, colour);
+    return colour;
+  };
   const parseColor = (str) => {
-    const m = String(str).match(/rgba?\(([^)]+)\)/);
-    if (!m) return null;
+    const s = String(str || '').trim();
+    const m = s.match(/^rgba?\(([^)]+)\)$/);
+    if (!m) return s ? paint(s) : null;
     const parts = m[1].split(/[,/ ]+/).filter(Boolean).map(Number);
     return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
   };
@@ -68,7 +91,8 @@
       const cs = getComputedStyle(n);
       if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
       const c = parseColor(cs.backgroundColor);
-      if (c && c.a > 0) { layers.push(c); if (c.a >= 1) break; }
+      if (!c) return null; // a fill that cannot be read is an unknown background, not an absent one
+      if (c.a > 0) { layers.push(c); if (c.a >= 1) break; }
     }
     let colour = { r: 255, g: 255, b: 255, a: 1 };
     for (const layer of layers.reverse()) colour = blend(layer, colour);
@@ -164,7 +188,9 @@
   };
   const walkStep = async () => {
     const el = active();
-    if (el && el === W.prev) return { same: true, frame: el.tagName === 'IFRAME', element: describe(el) };
+    // A native date or time field is one element with several parts (day, month, year, the calendar
+    // button): Tab walks its parts before it leaves, and that is not focus being stuck.
+    if (el && el === W.prev) return { same: true, frame: el.tagName === 'IFRAME', parts: el.tagName === 'INPUT' && ['date', 'time', 'datetime-local', 'month', 'week'].includes(el.type), element: describe(el) };
     await calm([el, W.prev]);
     let previous = null;
     if (W.prev) previous = W.prev.isConnected ? indicator(W.prev, W.prevLook, look(W.prev)) : { kind: 'unknown', why: 'it was removed from the page when focus left it' };

@@ -37,7 +37,7 @@ the project does not commit images): a recaptured control starts a new series.
 | `judges` | no | Reviewers per role per journey: a number (default 2), or `{ "accessibility": 2, "user": 3, ... }`. In a config with `screening_judges`, this is the number for confirming runs. |
 | `screening_judges` | no | Reviewers per role per journey in a screening run, in the same form as `judges` (typically 1). Set, it makes every run a screening run (journeys only, no control units) unless opened with `new-run --confirm`, which uses `judges` and the control units; only a confirming run can meet a target. Unset, every run confirms, as before. |
 | `combine` | no | How a role's reviewers make its score for a journey: `"mean"` (default) or `"floor"`: the mean, held to the lowest ceiling any of the role's reviewers set with its issues. Floor is stricter where it matters: one reviewer's major holds the role to 74, a blocker to 24, whatever the others gave; minor and polish issues set no ceiling, so they only move the mean. Agreement (25 points) is checked either way. |
-| `decisions` | no | Path, relative to the config, of the file that records the design choices the project has made on purpose (its type, colour, spacing, shape, density, motion and voice, and a list of dated decisions; the `interface-craft` skill's `design-decisions.md` is one such file, and any markdown file will do). `new-run` copies it into the run and every specialist and every second look is handed that copy; the reviewer playing the user never is. It is not part of the config hash: see section 9. A path that names no file is refused. |
+| `decisions` | no | Path, relative to the config, of the file that records the design choices the project has made on purpose (its type, colour, spacing, shape, density, motion and voice, and a list of dated decisions; the `interface-craft` skill's `design-decisions.md` is one such file, and any markdown file will do; the scorecard states how many decisions were handed over only where the file numbers them as `### D-001` headings). `new-run` copies it into the run and every specialist and every second look is handed that copy; the reviewer playing the user never is. It is not part of the config hash: see section 9. A path that names no file is refused. |
 | `rubric_set` | no | Path, relative to the config, of a folder holding a reviewer set of its own: other roles, with their own rubrics, for a kind of screen the six shipped roles were not written for (a landing page, for example). See section 12. Unset, the six shipped roles review. A different set is a different yardstick, so it starts a new series. |
 | `control_threshold` | no | Default 0.67. Reviewers who report a smaller share of the planted defects are marked too kind. |
 | `false_alarm_threshold` | no | Default 0.34. Reviewers who report a larger share of the `clean` entries as wrong are marked too harsh. |
@@ -197,7 +197,8 @@ Capture rules that keep runs comparable:
 `page-facts.js` is an expression that returns an object. Evaluate its text in the page and write the
 result as JSON. It only reads the page. Beside contrast, sizes, labels and structure it records what
 is in front of someone before they scroll (`first_window`: its headings, buttons and links, and how
-many form fields), how many windows tall the page is (`layout.screens_tall`), links that lead nowhere
+many form fields), how many windows tall the page is (`layout.screens_tall`), what stays in the window
+while the page scrolls (`layout.stays_in_window_while_scrolling`), links that lead nowhere
 (`links.lead_nowhere`: no address, `#`, or a script), text that was never filled in
 (`text.never_filled_in`: `{{...}}` markers and lorem ipsum), and what the page says about itself to a
 search engine and a link preview (`head`: title, description, canonical address, robots, sharing card,
@@ -413,6 +414,8 @@ orchestrator-side: no reviewer ever sees it.
 | `reduce_motion` | Default true: asks the page for reduced motion so animations do not blur a picture. The probe pass always runs with motion on. |
 | `probes` | Default true: after its screenshots, each journey is replayed once more for what a still picture cannot show (below). `false` turns the probe pass off; a list picks kinds: `["keyboard", "states", "motion", "frames"]`. |
 | `units.<id>.probes` | The same, for one journey; it overrides the plan's. |
+| `keyboard_stops` | How many stops the walk with the Tab key records at a step before it gives up. Default 60, at most 400. Raise it for a screen with more controls than that (a grid, a long table with a control in every row): a walk that ends with "stopped after 60 stops; there are more" never reached the rest, and the keyboard criteria were judged on the part it did reach. |
+| `units.<id>.keyboard_stops` | The same, for one journey; it overrides the plan's. |
 | `units.<id>.motion_steps` | Step ids of this journey where something moves that matters. While the last click, key, hover or selection of such a step plays out, pictures are taken for up to 600 ms (at most seven kept, identical ones dropped) and saved under `frames/`. |
 | `units.<id>.window_steps` | Step ids of this journey that are pictured as the window alone, exactly as tall as the configured screen, and not the whole page: what someone sees on arrival, before they scroll. For the first step of a page where that decides whether a visitor stays. The measurements of such a step still cover the whole page. |
 | `dialogs` | `"dismiss"` to cancel native alert and confirm boxes; default is to accept them. Either way they are listed in the output, since they cannot be photographed. |
@@ -450,7 +453,10 @@ Things to know:
   field, and screenshots show password fields masked.
 - **Pictures are the full page from the top**, at the configured width, except for a step named under `window_steps`, which is the window alone. A page that reveals its sections as they are scrolled to is pictured with them still hidden unless the step scrolls through it first (`{ "scroll": "through" }`). An application whose window never scrolls but whose main panel does (a panel at least 60 % of the width and 40 % of the height) is photographed with the window grown by what that panel hides, so the picture shows the whole screen; the output lists it as `panel_grown_by`. A header that sticks to the
   top is drawn once, at the top. A bar fixed to the bottom of the window is drawn where it sits on the
-  first screenful, not at the end of the page. Pages taller than 12000 pixels are cut there.
+  first screenful, not at the end of the page. A footer that sticks inside a panel that was grown is
+  drawn at the end of that panel. So a picture alone does not show that such a bar stays within reach
+  while the page scrolls: the measurements list what does (`layout.stays_in_window_while_scrolling`
+  in `facts/`, with the edge each one keeps to). Pages taller than 12000 pixels are cut there.
 - **Test fixtures are not the product.** A demo or development mode may show sign-in shortcuts for
   seeded accounts, a form already filled in with a test account, a debug bar. Reviewers report what
   they see, so anything of that kind is scored as a defect of the product and can sink trust on its
@@ -465,7 +471,7 @@ Things to know:
 - **The probe pass.** After a journey's screenshots, it is replayed once more in a fresh private
   window, with motion on, at the journey's first screen size without touch (or its first size), so
   the journey runs one more time than it has sizes. At each step it records the walk with the Tab key
-  (`keyboard/`, at most 60 stops), the looks of up to four main controls not yet pictured in the
+  (`keyboard/`, at most 60 stops unless `keyboard_stops` says otherwise), the looks of up to four main controls not yet pictured in the
   journey at rest, hovered, focused and pressed, and of disabled ones (`states/`), the movement the
   page declares (`motion/`), and frames for the `motion_steps` (`frames/`). It never changes a
   screenshot. A probe that fails is listed under `probe_notes` in the output and in

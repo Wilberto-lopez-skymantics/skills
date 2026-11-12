@@ -29,7 +29,21 @@
 (() => {
   const plants = Array.isArray(window.__uxqPlants) ? window.__uxqPlants : [];
   const set = (el, props) => { for (const [k, v] of Object.entries(props)) el.style.setProperty(k, v, 'important'); };
-  const parse = (str) => { const m = String(str).match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[,/ ]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+  // rgb() and rgba() are read as written; any other colour the browser reports (color(srgb ...), oklab(...),
+  // which is what color-mix computes to) is painted on one pixel and read back.
+  let ink = null;
+  const paint = (str) => {
+    try {
+      if (!ink) { const c = document.createElement('canvas'); c.width = 1; c.height = 1; ink = c.getContext('2d', { willReadFrequently: true }); }
+      ink.fillStyle = '#000'; ink.fillStyle = str; const one = ink.fillStyle;
+      ink.fillStyle = '#fff'; ink.fillStyle = str;
+      if (one !== ink.fillStyle) return null;
+      ink.clearRect(0, 0, 1, 1); ink.fillRect(0, 0, 1, 1);
+      const d = ink.getImageData(0, 0, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
+    } catch (e) { return null; }
+  };
+  const parse = (str) => { const s = String(str || '').trim(); const m = s.match(/^rgba?\(([^)]+)\)$/); if (!m) return s ? paint(s) : null; const p = m[1].split(/[,/ ]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
   const backgroundOf = (el) => {
     for (let n = el; n; n = n.parentElement) { const c = parse(getComputedStyle(n).backgroundColor); if (c && c.a >= 0.5) return c; }
     return { r: 255, g: 255, b: 255, a: 1 };

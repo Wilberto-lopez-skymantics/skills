@@ -35,9 +35,32 @@
     }
     return true;
   };
+  // A computed colour is rgb() or rgba() on most pages. Where the page mixes colours (color-mix) or names
+  // them in another colour space, the browser reports color(srgb ...), oklab(...) and the like: those are
+  // painted on one pixel and read back, so any colour the browser can draw is a colour that is measured.
+  const painted = new Map();
+  let ink = null;
+  const paint = (str) => {
+    if (painted.has(str)) return painted.get(str);
+    let colour = null;
+    try {
+      if (!ink) { const c = document.createElement('canvas'); c.width = 1; c.height = 1; ink = c.getContext('2d', { willReadFrequently: true }); }
+      // A string the canvas does not understand leaves the fill as it was: set it over two different fills.
+      ink.fillStyle = '#000'; ink.fillStyle = str; const one = ink.fillStyle;
+      ink.fillStyle = '#fff'; ink.fillStyle = str;
+      if (one === ink.fillStyle) {
+        ink.clearRect(0, 0, 1, 1); ink.fillRect(0, 0, 1, 1);
+        const d = ink.getImageData(0, 0, 1, 1).data;
+        colour = { r: d[0], g: d[1], b: d[2], a: Math.round((d[3] / 255) * 100) / 100 };
+      }
+    } catch (e) { colour = null; }
+    painted.set(str, colour);
+    return colour;
+  };
   const parseColor = (str) => {
-    const m = String(str).match(/rgba?\(([^)]+)\)/);
-    if (!m) return null;
+    const s = String(str || '').trim();
+    const m = s.match(/^rgba?\(([^)]+)\)$/);
+    if (!m) return s ? paint(s) : null;
     const parts = m[1].split(/[,/ ]+/).filter(Boolean).map(Number);
     return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
   };
@@ -53,7 +76,8 @@
       const cs = getComputedStyle(n);
       if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
       const c = parseColor(cs.backgroundColor);
-      if (c && c.a > 0) { layers.push(c); if (c.a >= 1) break; }
+      if (!c) return null; // a fill that cannot be read is an unknown background, not an absent one
+      if (c.a > 0) { layers.push(c); if (c.a >= 1) break; }
     }
     let colour = { r: 255, g: 255, b: 255, a: 1 };
     for (const layer of layers.reverse()) colour = blend(layer, colour);
@@ -74,6 +98,28 @@
       if (r.right > vw + 1 && r.width <= docWidth && !el.querySelector('*:not(br)')) overflowing.push({ element: describe(el), right_edge: Math.round(r.right) });
     }
   }
+
+  // What stays in the window while the page scrolls: a bar fixed to an edge, a footer that sticks. The
+  // picture of a step is the whole page, where such a bar is drawn once, at one place, and a panel that
+  // scrolls is drawn at its full height, so its sticking footer appears at its end. Only this says it is
+  // within reach the whole way down.
+  const pinned = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+    if (!visible(el) || pinned.some((p) => p.el.contains(el))) continue;
+    const r = el.getBoundingClientRect();
+    let edge = null;
+    if (cs.position === 'sticky') {
+      if (r.width < vw * 0.5) continue; // a sticking cell or column heading, not a bar
+      edge = cs.top !== 'auto' ? 'top' : cs.bottom !== 'auto' ? 'bottom' : null;
+    } else {
+      if (r.width >= vw * 0.8 && r.height >= vh * 0.8) continue; // a layer over the whole window: see open_dialogs
+      edge = r.top <= 1 && r.bottom < vh * 0.5 ? 'top' : r.bottom >= vh - 1 && r.top > vh * 0.5 ? 'bottom' : 'elsewhere';
+    }
+    if (edge) pinned.push({ el, element: describe(el), how: cs.position, edge, height: Math.round(r.height) });
+  }
+  const staysInWindow = pinned.map(({ el, ...rest }) => rest);
 
   // Targets: interactive elements and their size.
   const interactive = [...document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=tab], [role=checkbox], [role=switch], [role=menuitem], [onclick], [tabindex]:not([tabindex="-1"])')].filter(visible);
@@ -202,7 +248,7 @@
 
   return {
     measured_at: { url_path: location.pathname + location.hash, title: document.title, viewport: { width: vw, height: vh }, device_pixel_ratio: window.devicePixelRatio },
-    layout: { document_width: docWidth, scrolls_sideways: docWidth > vw + 1, overflowing_elements: overflowing, page_height: document.documentElement.scrollHeight, screens_tall: Math.round((document.documentElement.scrollHeight / vh) * 10) / 10 },
+    layout: { document_width: docWidth, scrolls_sideways: docWidth > vw + 1, overflowing_elements: overflowing, page_height: document.documentElement.scrollHeight, screens_tall: Math.round((document.documentElement.scrollHeight / vh) * 10) / 10, stays_in_window_while_scrolling: cut(staysInWindow) },
     targets: { interactive_count: interactive.length, smaller_than_24px: cut(under24), between_24_and_44px: cut(under44) },
     labels: { form_fields: fields.length, fields_without_label: cut(unlabeled), fields_with_placeholder_only: cut(placeholderOnly), controls_without_name: cut(unnamedControls), images: images.length, images_without_alt: cut(imagesWithoutAlt), field_edges_below_3_to_1: cut(faintEdges), field_edges_unknown: edgesUnknown, field_types: fieldTypes },
     text: { elements_measured: textElements.length, smallest_font_px: smallest === null ? null : round1(smallest), smaller_than_12px: cut(smallText), sentences_smaller_than_16px: cut(sentencesUnder16), contrast_checked: contrastChecked, contrast_unknown_background: contrastUnknown, below_required_contrast: cut(lowContrast), meets_minimum_but_below_7_to_1: cut(below7), never_filled_in: cut(unfilled) },

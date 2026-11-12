@@ -33,7 +33,8 @@ const ACTIONS = ['use', 'goto', 'click', 'hover', 'fill', 'select', 'press', 'wa
 const IF_FOUND = ['stop', 'hide'];
 const PROBES = ['keyboard', 'states', 'motion', 'frames'];
 const MOVERS = ['click', 'press', 'hover', 'select'];
-const MAX_STOPS = 60;
+const MAX_STOPS = 60; // of the keyboard walk, unless the plan says otherwise (keyboard_stops)
+const MOST_STOPS = 400;
 const MAX_CONTROLS = 4;
 const FRAME_WINDOW_MS = 600;
 const MAX_FRAMES = 5;
@@ -311,13 +312,18 @@ function loadPlan(file) {
     if (value === undefined || typeof value === 'boolean') return;
     if (!Array.isArray(value) || value.some((k) => !PROBES.includes(k))) problems.push(`${where}: probes must be true, false or a list of ${PROBES.join(', ')}`);
   };
+  const checkStops = (value, where) => {
+    if (value !== undefined && !(Number.isInteger(value) && value >= 1 && value <= MOST_STOPS)) problems.push(`${where}: keyboard_stops must be a whole number from 1 to ${MOST_STOPS}`);
+  };
   checkProbes(plan.probes, 'plan');
+  checkStops(plan.keyboard_stops, 'plan');
   for (const [name, list] of Object.entries(plan.flows || {})) checkList(list, `flow ${name}`);
   for (const [unit, u] of Object.entries(plan.units || {})) {
     if (u.start !== undefined) checkList(u.start, `unit ${unit} start`);
     if (u.keep_not_product !== undefined && typeof u.keep_not_product !== 'boolean') problems.push(`unit ${unit}: keep_not_product must be true or false`);
     for (const [step, list] of Object.entries(u.steps || {})) checkList(list, `unit ${unit} step ${step}`);
     checkProbes(u.probes, `unit ${unit}`);
+    checkStops(u.keyboard_stops, `unit ${unit}`);
     if (u.window_steps !== undefined) {
       if (!Array.isArray(u.window_steps)) problems.push(`unit ${unit}: window_steps must be a list of step ids`);
       else for (const step of u.window_steps) if (!Array.isArray((u.steps || {})[step])) problems.push(`unit ${unit}: window_steps names "${step}", which has no actions in the plan`);
@@ -503,19 +509,19 @@ function probesFor(plan, unitPlan) {
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`); };
 const examples = (list) => ({ count: list.length, examples: list.slice(0, 8) });
 
-async function walkKeyboard(page) {
+async function walkKeyboard(page, most = MAX_STOPS) {
   const start = await page.evaluate('window.__uxq.walkStart()');
   const stops = [];
   let open = null; // the stop whose focus indicator is read once focus has moved on
   let same = 0; let left = 0; let real = 0;
-  let ended = `stopped after ${MAX_STOPS} stops; there are more`;
+  let ended = `stopped after ${most} stops; there are more`;
   const close = (shownBy) => { if (open && shownBy) open.focus_shown_by = shownBy; open = null; };
-  for (let presses = 0; presses < MAX_STOPS + 40 && real < MAX_STOPS; presses += 1) {
+  for (let presses = 0; presses < most + 40 && real < most; presses += 1) {
     await page.press('Tab', 1, false);
     const r = await page.evaluate('window.__uxq.walkStep()');
     if (r.same) {
       same += 1;
-      if (same >= (r.frame ? 25 : 2)) { ended = r.frame ? 'focus stayed inside an embedded frame' : `focus is stuck on ${r.element}: Tab does not leave it`; break; }
+      if (same >= (r.frame ? 25 : r.parts ? 8 : 2)) { ended = r.frame ? 'focus stayed inside an embedded frame' : `focus is stuck on ${r.element}: Tab does not leave it`; break; }
       continue;
     }
     same = 0;
@@ -546,7 +552,7 @@ async function walkKeyboard(page) {
   }
   const label = (s) => `stop ${s.n} ${s.element}`;
   return {
-    how_to_read: `Tab was pressed from where the step left focus, until focus came back to a stop already visited (at most ${MAX_STOPS} stops). "focus_shown_by" is the strongest visible difference between the element with focus and without it; "none" means nothing a sighted person could see changed. Positions are in page pixels from the top left.`,
+    how_to_read: `Tab was pressed from where the step left focus, until focus came back to a stop already visited (at most ${most} stops). "focus_shown_by" is the strongest visible difference between the element with focus and without it; "none" means nothing a sighted person could see changed. Positions are in page pixels from the top left.`,
     ...start, ended,
     summary: {
       stops: visited.length,
@@ -688,7 +694,7 @@ function writeFrames(outDir, name, filmed) {
 }
 
 async function probePass(page, ctx, o) {
-  const { unit, unitPlan, viewport, outDir, expected, kinds, current, summary } = o;
+  const { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, keyboardStops } = o;
   const seen = new Set();
   for (const kind of PROBES) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true });
   const measuredAt = { size: viewport.id, viewport: { width: viewport.width, height: viewport.height }, motion: 'on' };
@@ -720,7 +726,7 @@ async function probePass(page, ctx, o) {
       if (states) writeJson(path.join(outDir, 'states', `${name}.json`), { measured_at: measuredAt, ...states });
     }
     if (kinds.includes('keyboard')) {
-      const keyboard = await attempt('keyboard', () => walkKeyboard(page));
+      const keyboard = await attempt('keyboard', () => walkKeyboard(page, keyboardStops));
       if (keyboard) writeJson(path.join(outDir, 'keyboard', `${name}.json`), { measured_at: measuredAt, ...keyboard });
     }
     steps += 1;
@@ -829,7 +835,7 @@ async function main() {
           await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
           if (kinds) {
             await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
-            await probePass(page, ctx, { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, probesSource, settleMs, notProduct: plan.not_product || [] });
+            await probePass(page, ctx, { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, probesSource, settleMs, notProduct: plan.not_product || [], keyboardStops: unitPlan.keyboard_stops || plan.keyboard_stops || MAX_STOPS });
             continue;
           }
           if (plan.reduce_motion !== false) await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });

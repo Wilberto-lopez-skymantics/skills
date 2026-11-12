@@ -1001,7 +1001,7 @@ function computeScorecard(cfg, rubric, run) {
   if (unprobed.length) warnings.push(`the capture could not record all of the keyboard walk, control states and motion for ${unprobed.map((u) => `\`${u}\``).join(', ')} (see probe_notes in capture-notes.json); keyboard, state and motion criteria were judged there on less than the full evidence`);
   const decisionsFile = path.join(run.dir, 'decisions.md');
   const decisions = run.meta.decisions_sha
-    ? { sha: run.meta.decisions_sha, entries: fs.existsSync(decisionsFile) ? (fs.readFileSync(decisionsFile, 'utf8').match(/^###\s+D-\d+/gm) || []).length : null }
+    ? { sha: run.meta.decisions_sha, entries: fs.existsSync(decisionsFile) ? numberedDecisions(fs.readFileSync(decisionsFile, 'utf8')) : null }
     : null;
 
   // Fix order: each problem once, however many reviewers reported it. Grouping never changes a score.
@@ -1039,6 +1039,12 @@ function computeScorecard(cfg, rubric, run) {
     issue_counts: Object.fromEntries(SEVERITIES.map((s) => [s, allIssues.filter((f) => f.severity === s).length])),
     fix_list: fixList, issues: allIssues
   };
+}
+
+// How many decisions the file records, where it numbers them (`### D-001`). Any markdown file may be the
+// decisions file: one that does not number its entries has no count to give, which is not a count of none.
+function numberedDecisions(text) {
+  return (text.match(/^###\s+D-\d+/gm) || []).length || null;
 }
 
 function readLedger(cfg) {
@@ -1434,4 +1440,4 @@ if (require.main === module) {
 }
 
 // The roles and their evidence are read when asked for: they are the set's once a config names one.
-module.exports = { get ROLES() { return ROLES; }, get SPECIALISTS() { return SPECIALISTS; }, get EVIDENCE_KINDS() { return EVIDENCE_KINDS; }, REBASE, disagree, reviewerResult, validateVerdict, groupFindings, validateSpecialist, validateUser, loadRubric, loadConfig, loadRun, expectedScreens, spawnPrompt, CAP, FINISHED_CAP, OUTCOME_SEVERITY, SEVERITY_WEIGHT };
+module.exports = { get ROLES() { return ROLES; }, get SPECIALISTS() { return SPECIALISTS; }, get EVIDENCE_KINDS() { return EVIDENCE_KINDS; }, REBASE, disagree, reviewerResult, validateVerdict, numberedDecisions, groupFindings, validateSpecialist, validateUser, loadRubric, loadConfig, loadRun, expectedScreens, spawnPrompt, CAP, FINISHED_CAP, OUTCOME_SEVERITY, SEVERITY_WEIGHT };
