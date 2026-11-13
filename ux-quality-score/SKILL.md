@@ -42,6 +42,7 @@ that measures their expectations, not the interface. So the work is split:
 | A specialist | Its own rubric and one journey's screens | Scores its area, says why, lists the issues |
 | A user | Who they are, what they want, and the screens in order | Says how each step went, gives a score and says why |
 | A checker | One claimed issue, the rubric it was filed under, and that journey's evidence | Says whether the issue is there and how serious it is (a second look) |
+| A comparison reviewer | The task, and several arrangements of the same screens under letters | Ranks the arrangements for that person and says why (a layout study) |
 | `scripts/uxq.cjs` | The arithmetic | Builds the reviewer folders, validates results, combines scores, ranks fixes, writes the ledger |
 
 A reviewer must not know that it is part of a loop, that other reviewers exist, that an earlier review
@@ -102,6 +103,10 @@ name and prints the exact prompt to use. Your part is to add nothing.
 6. **A second look is a reviewer like any other.** The agent that checks a claim is fresh, gets the
    prompt `challenge` printed and nothing else, works in its own folder and is used once. Its verdict
    stands as written, whether or not it agrees with you.
+7. **So is a comparison reviewer** in a layout study: fresh, the prompt `study bundle` printed and
+   nothing else, its own folder, used once. Never tell one which arrangement the product has, which
+   you built or which you expect to be chosen, and never put a candidate's name, a branch name or a
+   note about a candidate where a screenshot would show it.
 
 Start all the reviewers of a step in a single message so they run in parallel. Before the first spawn
 of a run, tell the user how many agents it will start: `new-run` prints it as `reviewers_per_full_run`
@@ -117,7 +122,8 @@ agent for each major or blocker that one reviewer alone reported, usually a hand
   later be lifted out as a skill of its own.
 - `judge/reviewer-brief.md`: what every specialist is told: the evidence, the score scale, severity,
   how to treat recorded decisions, the result format. `judge/user-brief.md`: what the user is told.
-  `judge/check-brief.md`: what the specialist giving a second look is told. The script copies the
+  `judge/check-brief.md`: what the specialist giving a second look is told. `judge/compare-brief.md`:
+  what the reviewer comparing arrangements in a layout study is told. The script copies the
   right brief and rubric into each folder. Everything under `judge/` is reviewer-facing: keep it free
   of any mention of loops, rounds, ledgers, planted defects or other reviewers.
 - A reviewer set of its own. The six roles were written for the screens of an application. For
@@ -315,6 +321,11 @@ get there:
    finish, fix each hand-off yourself or give it to one named owner, before you commit. A problem that
    passes between areas without an owner is not fixed.
 
+   **When the same screen keeps coming back.** If `progress` lists a step under `layout_studies.due`,
+   reviewers have reported how that screen is arranged in two reviews running, and fixing it in
+   place has not answered them. Do not fix it a third time the same way: run a layout study of it
+   ("Layout studies" below) and go on with the other problems meanwhile.
+
    **What a fix is made from.** A fix that only answers the reviewer's sentence tends to trade one
    issue for another. Make each fix from the project's own design system and its recorded decisions,
    and give every fix agent the same grounding. If the `interface-craft` skill is installed, hand it
@@ -351,7 +362,8 @@ get there:
    unlikely to move the score, and going on is the user's call, also when they said to run
    unattended. Stop and put the four choices to them, with the standing issues and what
    `improve.md` records as tried: accept the scores as they stand; try a different approach (say what
-   would change); lower the target; or go through the standing issues by hand (`findings.md` of the
+   would change; a layout study of the screens `progress` lists under `layout_studies` is one, see
+   "Layout studies" below); lower the target; or go through the standing issues by hand (`findings.md` of the
    last run) and choose which are worth fixing. Record the answer in `improve.md` before any more
    fixing, and follow it; `progress` goes on reporting the plateau until a new run is scored.
 3. **Every journey together.** When no journey is left to work on singly, run all of them in one run
@@ -371,6 +383,145 @@ something only the user can give (an approval, a decision between two designs), 
 with work that does not depend on it, and bring it to the user with the round's behaviour gaps (see
 "Behaviour gaps go to the user after every round" above) rather than holding it to the end.
 
+### Layout studies: when the arrangement itself is in question
+
+Fixing in place answers a reviewer's sentence: a label moves, a gap widens, a panel gets a heading.
+It never asks whether the screen should be arranged another way, and no reviewer can say, because each
+one sees a single arrangement. When reviewers who never saw the earlier review report the arrangement
+of the same step again (what is most prominent, what is grouped with what, whether what the person
+needs is in view where they decide, how the screen is rebuilt at each size), more fixes to that screen
+mostly trade one issue for another. A layout study settles it the other way round: build the
+alternatives, have fresh reviewers compare them blind, and let the user choose.
+
+`progress` lists the steps where this has happened under `layout_studies.due`, most reported first,
+and says so in `then`: a step of a journey still below target with arrangement issues (not polish) in
+both of the journey's last two reviews, or in the last review of a stalled journey. It counts the
+reviews of the present series only; the user can ask for a study of any screen at any time, and
+`study open` does not wait for the list. A study is a choice, not a measurement: it writes no score
+and no ledger line, and changes no series.
+
+1. **Read what was reported, propose the arrangements, then open it.** `UXQ study issues --config CFG
+   --unit <journey> --steps <step,step>` prints what the reviewers of the journey's last two reviews
+   said of the arrangement of those steps, in their words. It reads every review in the ledger, so it
+   still answers after a change to the config or the rubric began a new series, where `progress`
+   starts again and lists nothing. From that, think out two to four other arrangements (step 2 says
+   what makes them different) and put them to the user, each in a sentence, with what a study costs:
+   the building of those arrangements of one screen and three comparison reviewers; no scoring run.
+   Then, unless `improve.md` records that the user does not want studies or wants to agree to each
+   one first, open it: `UXQ study open --config CFG --unit <journey> --steps <step,step> --candidates
+   <name,name>`. It takes the candidates' names, which is why they are thought out before the study
+   exists. Take the first one or two screens of the list, one study per journey at a time. The
+   arrangement the product has is always in the study as `current`.
+2. **Build the candidates as real screens, apart from the product.** Each on a branch or worktree of
+   its own, all cut from one commit, the one `current` is captured from; nothing is merged before
+   the choice. Every candidate
+   holds the same content, offers the same actions and follows the same journey steps with the same
+   data, finished with the same design system: they differ in arrangement only. Make them different
+   ideas, not three spacings of one: what comes first, one column or two panes, a list with its detail
+   beside it or one thing at a time, a table or cards, what stays pinned, what the small screen leads
+   with. Write `candidates.md` in the study folder: for each, the idea in a sentence, what it gives
+   up, and two lists kept apart:
+   - **What moved:** the arrangement, which is what the study compares.
+   - **What else changed:** a label or a sentence reworded, a figure, a line or a control added,
+     dropped or renamed. This list should be empty. Whoever builds a candidate writes it as they
+     build, and it goes to the user before anything is captured: they accept each entry (note it,
+     with their name), or it is taken out of the candidate. A reviewer shown a reworded candidate may
+     prefer the wording, and the study cannot tell which it was. A rewording worth having is made in
+     `current` and in every candidate alike, or kept for after the choice.
+
+   A candidate that needs another step, another operation or other data is a behaviour change:
+   it goes to the user first, like any behaviour gap.
+3. **Capture every candidate, `current` included, the same way.** `node <this skill>/scripts/capture.cjs
+   --config CFG --study DIR --candidate <id> --base-url <its address>` walks the whole journey from
+   its first step, as a run does, and pictures every step; the reviewers are handed the study's steps
+   only. What makes the captures comparable is that each starts from the same state, not that they
+   are taken together:
+   - **One after another is fine.** Serve one candidate, capture it, stop it, serve the next. Nothing
+     needs every build running at once.
+   - **Fresh data and a fresh clock for each.** Each candidate is served from the same known data,
+     reset just before its capture. Where the capture plan pins the time (`clock`), start that
+     candidate's server seconds before its capture, as for a run: the pages' clock runs on from the
+     pinned time for as long as the server has been up, and a candidate captured later shows a later
+     moment. The capture refuses a candidate whose server has been up for more than a minute; start
+     it again, or set `clock.max_past_s` in the plan when the wait changes nothing on these screens.
+   - **`--base-url` moves the pages only.** The plan's `reset_command` and `clock.since_file` are
+     used as written. A candidate that runs a server of its own behind its pages (its own data, its
+     own clock) therefore needs a capture plan of its own: a copy of `capture.json` with its address,
+     its reset command and its clock file, saved as `candidates/<id>/capture.json` in the study
+     folder, where the capture finds it (or passed with `--plan`). The same goes for an arrangement
+     reached by other selectors. The journey's steps stay those of the config. The capture prints
+     which `plan` it used, and a warning when `--base-url` left a reset command or clock file behind.
+   - **A screen longer than its window is pictured twice.** `<step>.<size>.png` shows the whole
+     screen, as scrolling would; `<step>.<size>.window.png` beside it shows the window alone, as the
+     person finds it on arrival. The first cannot show what is in view before scrolling, and where a
+     panel scrolls inside a window that does not, it draws what is pinned to the bottom of the window
+     lower than the person sees it. The capture lists both kinds (`window_pictures`, `grown`), and the
+     reviewers are given both pictures. Nothing needs adding to the plan; `window_steps` is for runs.
+
+   Look at the pictures of each as you would for a run, and at the same step across candidates:
+   the data on screen (names, amounts, times) must be the same in all of them. Then run `UXQ study
+   text --config CFG --study DIR`: it holds what each candidate's pages say against what the pages of
+   `current` say, at the steps compared, and prints every line found in one and not in the other, and
+   every figure that differs (exit code 2 when there is any). A line that is not an entry the user
+   accepted in `candidates.md` is taken out and that candidate captured again; a figure that differs
+   means the data or the moment was not the same. It reads the words on the page, not the pictures: an
+   icon, an image or a chart that changed is for your eyes.
+4. **Compare.** `UXQ study bundle --config CFG --study DIR` prints one entry per comparison reviewer.
+   Each folder holds the task, and the arrangements under the letters `A`, `B`, `C`, in a different
+   order for each reviewer; nothing in it says which one the product has. Start one fresh agent per
+   entry, in one message, each with exactly its `prompt`: the isolation rules hold in full. `UXQ study
+   collect` validates and stores the comparisons (`--discard-bad`, then `study bundle`, replaces a
+   reviewer that never reported), and `UXQ study tally` writes `result.md`: how each reviewer ranked
+   them and why, what the one each ranked first still gets wrong, and, arrangement by arrangement,
+   what it does better and worse than the others, with the screens that show it. A point several
+   reviewers made is listed once, under all of them; every reviewer's own words stay in
+   `comparisons/`. An arrangement is **preferred** when more than half of the reviewers ranked it
+   first; otherwise the study is **split**, and the report says so. `study bundle` refuses a screen
+   longer than its window that has no picture of the window alone beside it (a candidate captured
+   by an earlier version of this skill: capture it again), and warns when the candidates' pages do
+   not say what the pages of `current` say; `result.md` then lists those lines under "Besides the
+   arrangement", for whoever chooses.
+5. **The user chooses.** Show them `result.md` and `side-by-side.html`, which `study tally` writes
+   beside it: one row per step and size, one column per arrangement, under their names. It links to
+   the screens in the study folder; `UXQ study sheet --config CFG --study DIR --embed` writes it with
+   the pictures inside, to send as one file (`study sheet` also writes it before the comparison, to
+   look the captures over). It names the arrangements, so it is for the user and never for a
+   reviewer. The choice is theirs and need not be the reviewers': they may take the preferred one,
+   keep `current`, or, after a split, ask for one more candidate that joins what the reviewers liked
+   (a new study).
+   Record it with `UXQ study pick --config CFG --study DIR --candidate <id> --by "<their name>" --why
+   "<their reason>"`, in `improve.md`, and in the decisions file where the project keeps one, so that
+   later reviewers are handed the choice.
+6. **Bring the chosen arrangement in through the project's own change process.** Finish it to the
+   standard of the rest, commit, open a run and review the journey with new reviewers: its score is
+   measured like any other, and the study promised none. Where the project specifies or freezes how
+   its screens are built (a specification, approved wireframes, an accepted prototype), a new
+   arrangement is a change to that specification, never a way round it: follow the project's
+   procedure for changing it before the code. In a project run with the `icm-workspace-template`
+   pipeline that is a Class 1 iteration: the arrangement goes through the prototype stage, the
+   wireframes are captured again from it, and the user approves the freeze. Delete the branches of
+   the candidates not chosen; the study folder keeps their screens.
+
+**Doing a comparison again.** When the reviewers turn out to have been shown the wrong thing (a
+candidate reworded, data or a clock that differed, a picture that hid what is in view on arrival),
+the comparison is done again in the same study, not in a new one: `UXQ study redo --config CFG
+--study DIR --why "<what was wrong with what they were shown>" --recapture <all|id,id>`. It works
+from the first reviewer started until the user's choice is recorded, after a tally included. It sets
+the comparisons, the result and the named candidates' screens aside in `earlier/<n>/` of the study
+folder (nothing is deleted, and `result.md` of the new comparison says that it replaces one, and
+why), and the study is open again: fix what was wrong, capture the candidates named, `study text`,
+`study bundle`, and reviewers that never saw the earlier pictures. Three things it is not for. A
+result nobody likes is not a reason: the user may choose against the reviewers, and `--why` is about
+what the reviewers were shown. Fresh reviewers on the same pictures are not a second opinion, which
+is why `--recapture` is required. And a choice already recorded is not compared again: another
+candidate, other steps or a change of mind is a new study. Tell the user before doing it, since it
+costs the reviewers again.
+
+A step whose study is open is no longer listed as due; one whose study is settled is given two reviews
+before it can be listed again. `UXQ study status --config CFG` says where every study stands and what
+comes next. The details, and how a reviewer set of its own names its arrangement criteria, are in
+`references/config.md`, section 13.
+
 ### Stopping and picking up again
 
 A long effort will be cut off: a usage limit, a closed session, a crash. Everything needed to carry on
@@ -382,17 +533,26 @@ is in files, so any later session can continue without the conversation that sta
   reviewer that had not written its result is gone: `collect --discard-bad`, then `bundle` again and
   start the entries printed. Results already written are kept; no reviewer is ever asked twice.
 - **Where the effort stands:** `UXQ progress` as above, from the ledger alone.
+- **Where a layout study stands:** `UXQ study status --config CFG`, with what to do in `next`. The
+  candidates' branches are not in the study folder: note each one's branch and address in `improve.md`.
+  A study's id, like a run's, takes the date of the machine it was opened on, in local time.
 - **What only you know:** keep `improve.md` in the review home, and update it at every step, not at the
   end. It holds the user's instruction in their words (target, scope, reviewer model, limits), the run
   now open and what it is for, what each round changed and in which commit, ideas tried that did not
   help, and anything waiting on the user. Write it for a reader who has seen nothing else.
 - **Commit after every fix** (locally, by the project's rules) before opening the run that measures it,
   so the run's commit is the state it measured and nothing is lost with the session. Commit the
-  config, capture plan, ledger, `improve.md` and each run's `scorecard.md`, `scorecard.json` and
-  `findings.md`; keep screenshots, page text and measurements (`runs/*/evidence/`) out of version
-  control, since any run can be captured again from its commit. The control screens are the one
-  exception to recapturing: keep them (backed up, or committed if the project allows), because a
-  recaptured control starts a new series.
+  config, capture plan, ledger, `improve.md`, each run's `scorecard.md`, `scorecard.json` and
+  `findings.md`, and each study's `study.json`, `candidates.md`, `comparisons/`, `result.json`,
+  `result.md`, any candidate's own `capture.json` and, after a comparison was done again, `earlier/`; keep screenshots, page text and measurements
+  (`runs/*/evidence/`) out of version control, since any run can be captured again from its commit.
+  `bundles.json` and `check-bundles.json`, of a run or a study, name temporary folders of this
+  machine and are never committed; nothing later needs them once the results are collected. Two
+  kinds of pictures cannot be taken again and are kept (committed if the project allows images,
+  backed up otherwise): the control screens, because a recaptured control starts a new series, and
+  a study's candidates' screens, because the branches of the candidates not chosen are deleted.
+  Nothing here writes the project's ignore file: add the lines yourself when the review home is set
+  up (`references/config.md`, section 1, lists them).
 
 On starting or resuming, read `improve.md`, run `progress`, then `status` on the open run, and do what
 they say. Do not rely on memory of the conversation for any of it.
@@ -418,6 +578,8 @@ A number today should mean what it meant a year ago.
 - **Control screens never change.** They are the fixed yardstick. If the model behind the reviewers
   changes, the share of planted defects caught and of false alarms raised is how you tell a different
   reviewer from a different product.
+- **A layout study is not a score.** It is outside the rubric hash and the ledger. Whether the chosen
+  arrangement is better is shown by the next run, by the same reviewers' rules as before.
 - **The ledger is append-only.** Never rewrite or delete a line. A corrected score is a new line
   (`--rescore`). `UXQ trend --config CFG` prints the history.
 
@@ -439,7 +601,9 @@ comparable run. In the loop, add where each journey stands against the target. T
 - what `regress` showed against the capture before, and whether the design decisions handed to the
   specialists changed;
 - anything the capture hid as not part of the product, since the reviewers did not see the pages as
-  they were.
+  they were;
+- layout studies: the screens one is due on, and for each study run, how the reviewers ranked the
+  arrangements, what the user chose and why, and what the chosen one still gets wrong.
 
 Say what the scores cannot see. The user reviewer is a model playing a person: it is a disciplined
 walkthrough, not a usability test, and it does not replace watching real people. Reviewers work from

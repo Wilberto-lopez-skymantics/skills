@@ -107,6 +107,14 @@ Three rules for the worker:
   better, the worker cannot fix that with words. Say what is missing and ask.
 - **Never answer "nothing proves this" by inventing proof.** A missing fact is a question for the
   owner. The copy reviewer compares every fact on the page with the brief.
+- **When the structure keeps coming back, compare structures.** The set names its arrangement
+  criteria (`arrangement` in `review/set.json`: one action in the first window, proof near the
+  promise, the order of the argument, the action within reach, the eye's path, headings that carry
+  the argument, the small screen, and a visitor asked for too much). When reviewers report them at
+  the same step in two reviews running, the review skill's `progress` lists a layout study as due:
+  two or three other structures of the same page, with the same offer, proof and action from the
+  brief, compared blind, and the owner chooses. The layout types of the source's A3 are the natural
+  candidates. The owner's choice is recorded in the brief's Layout section and its Decisions.
 
 ## Control units
 

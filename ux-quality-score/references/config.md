@@ -3,7 +3,8 @@
 Contents: 1. Review home. 2. config.json. 3. Designing journeys. 4. Personas. 5. Control units.
 6. Evidence layout, who is handed what, comparing two captures. 7. What a reviewer folder contains,
 including a second look. 8. Scoring arithmetic. 9. Ledger and progress. 10. Run directory.
-11. Capture plan, the probe pass and what the probes cannot show.
+11. Capture plan, the probe pass and what the probes cannot show. 12. Reviewer sets. 13. Layout
+studies.
 
 ## 1. Review home
 
@@ -18,13 +19,31 @@ quality/ux/
                      changed, what is waiting on the user (SKILL.md, "Stopping and picking up again")
   controls/<unit>/   evidence of control units, captured once
   runs/<run-id>/     evidence, results, scorecard
+  studies/<study-id>/  layout studies: candidates' screens, comparisons, result (section 13)
 ```
 
 The directory that contains `config.json` is the review home. Commit `config.json`, `capture.json`, `ledger.jsonl`
 and `improve.md`, and of each run `scorecard.md`, `scorecard.json` and `findings.md`. Keep screenshots,
 page text and measurements (`runs/*/evidence/`) out of version control unless the project wants them:
 any run can be captured again from its commit. Keep `controls/` too (committed, or backed up where
-the project does not commit images): a recaptured control starts a new series.
+the project does not commit images): a recaptured control starts a new series. What is committed of
+a layout study is in section 13.
+
+No command writes the project's ignore file. When the review home is set up, add these lines to it
+yourself (shown for Git, with the review home at `quality/ux`; put the project's own path in front):
+
+```
+quality/ux/runs/*/evidence/
+quality/ux/runs/*/bundles.json
+quality/ux/runs/*/check-bundles.json
+quality/ux/studies/*/bundles.json
+quality/ux/studies/*/side-by-side.html
+```
+
+`bundles.json` and `check-bundles.json` name temporary folders of one machine; nothing later needs
+them once the results are collected. Where the project does not commit images, add
+`quality/ux/controls/` and `quality/ux/studies/*/candidates/*/evidence/` as well, and back both up:
+neither can be captured again.
 
 ## 2. config.json
 
@@ -420,7 +439,7 @@ orchestrator-side: no reviewer ever sees it.
 | `units.<id>.window_steps` | Step ids of this journey that are pictured as the window alone, exactly as tall as the configured screen, and not the whole page: what someone sees on arrival, before they scroll. For the first step of a page where that decides whether a visitor stays. The measurements of such a step still cover the whole page. |
 | `dialogs` | `"dismiss"` to cancel native alert and confirm boxes; default is to accept them. Either way they are listed in the output, since they cannot be photographed. |
 | `reset_command` | Optional shell command run before every journey and screen size, for example to reseed the data. |
-| `clock` | Optional `{ "at": "<ISO instant>", "since_file": "<path>" }`: every page's `Date` runs from `at`, counted from the epoch in ms that `since_file` holds (written when the application's server started with the same instant), so captures on different days and hours see the same day and hour. Without it, pages use the real time. |
+| `clock` | Optional `{ "at": "<ISO instant>", "since_file": "<path>", "max_past_s": <seconds> }`: every page's `Date` runs from `at`, counted from the epoch in ms that `since_file` holds (written when the application's server started with the same instant; a path relative to the review home), so captures on different days and hours see the same day and hour. Without it, pages use the real time. The clock runs on from `at` for as long as the server has been up, so a capture started late shows a later moment. With `max_past_s`, a capture is refused when the server has already been up longer than that when it starts. Without it, a run's capture goes through and prints a warning past 60 seconds (`warnings`, with `clock_past_s`), and a layout study's capture is refused past 60 seconds, since its candidates must all show the same moment. Start the server just before the capture. |
 | `not_product` | Optional list of things that can appear on screen but are not part of the product: `{ "selector": "<CSS selector>", "what": "<a few words>", "if_found": "stop" or "hide" }`. See below. |
 
 Actions, one per object:
@@ -451,7 +470,7 @@ Things to know:
 - **Passwords stay out of the plan.** `${NAME}` in a `goto`, `fill` or `select` value is read from the
   environment at run time and is never printed. The measurements never record what is typed into a
   field, and screenshots show password fields masked.
-- **Pictures are the full page from the top**, at the configured width, except for a step named under `window_steps`, which is the window alone. A page that reveals its sections as they are scrolled to is pictured with them still hidden unless the step scrolls through it first (`{ "scroll": "through" }`). An application whose window never scrolls but whose main panel does (a panel at least 60 % of the width and 40 % of the height) is photographed with the window grown by what that panel hides, so the picture shows the whole screen; the output lists it as `panel_grown_by`. A header that sticks to the
+- **Pictures are the full page from the top**, at the configured width, except for a step named under `window_steps`, which is the window alone. A page that reveals its sections as they are scrolled to is pictured with them still hidden unless the step scrolls through it first (`{ "scroll": "through" }`). An application whose window never scrolls but whose main panel does (a panel at least 60 % of the width and 40 % of the height) is photographed with the window grown by what that panel hides, so the picture shows the whole screen; the output lists every such screen under `grown`, with how much taller the window was made. That picture does not mark where the first window ends: where what is in view on arrival is the point of a step, name it under `window_steps`. (A layout study needs no such entry: there, every screen longer than its window is pictured a second time as the window alone, section 13.) A header that sticks to the
   top is drawn once, at the top. A bar fixed to the bottom of the window is drawn where it sits on the
   first screenful, not at the end of the page. A footer that sticks inside a panel that was grown is
   drawn at the end of that panel. So a picture alone does not show that such a bar stays within reach
@@ -535,6 +554,8 @@ rubric-set/
 ```
 
 - **`name`**: lowercase letters, digits, `-` or `_`. `run.json` records it as `rubric_set`.
+- **`arrangement`**, optional: the ids of the criteria that are about how a screen is arranged, from
+  any of the set's rubrics. `progress` uses them to say when a layout study is due (section 13).
 - **`specialists`**: each role id (lowercase letters only) with the kinds of evidence it is handed.
   `screens` is always among them; the others are `pages`, `facts`, `keyboard`, `states`, `motion` and
   `frames` (section 6). `user` cannot be listed: it is the person, in every set, and is handed its own
@@ -565,3 +586,209 @@ opened, and a changed set starts a new series, exactly as a changed `judge/` doe
 different sets are never compared.
 
 The `landing-page-craft` skill, where it is installed, ships such a set under `review/`.
+
+## 13. Layout studies
+
+A layout study compares several arrangements of the same screens and ends in a choice by the user
+(SKILL.md, "Layout studies"). It gives no score: nothing is written to the ledger, and neither
+`rubric_sha` nor `config_sha` changes.
+
+### When one is due
+
+`progress` prints `layout_studies`:
+
+```json
+{
+  "due": [
+    { "journey": "customer-reorders-last-basket", "step": "03-slot", "reports": 4, "reports_before": 2,
+      "criteria": ["I9", "V1"], "why": "arrangement issues were reported at this step in both of the last two reviews of the journey" }
+  ],
+  "open": [{ "study": "quality/ux/studies/20260403-customer-checks-out", "journey": "customer-checks-out", "steps": ["02-pay"], "state": "comparing" }]
+}
+```
+
+- An **arrangement issue** is an issue of a review, of any severity but `polish`, filed under one of
+  the arrangement criteria. For the shipped rubrics these are `V1` hierarchy, `V2` grouping, `I9`
+  information at hand, `I10` next step, `R2` complete at the smallest size, `R5` reshaped not shrunk,
+  `R7` designed for each size, `U1` the person did not know what to do or where to look, `U5` the
+  person was asked for more than the task should need.
+- A step is **due** when its journey is below target or stalled and arrangement issues were reported
+  at that step in both of the journey's last two scored runs, or in the last one when the journey is
+  stalled. Issues that name no step are counted together, with `"step": null`: a study of those covers
+  the journey's main steps. What the person reported is counted at the step they were on.
+- A step with a study still open is not due. A step whose study was settled is not due again until
+  the journey has been scored twice after the run that was the last one when that study opened.
+- `due` is ordered by the number of reports in the last run, then by the journey's weight.
+
+A reviewer set of its own (section 12) says which of its criteria are about arrangement, in `set.json`:
+
+```json
+"arrangement": ["K2", "K5", "S6"]
+```
+
+Every id must be a criterion of one of the set's rubrics. The key is not part of `rubric_sha`, so
+adding or changing it does not start a new series. A set without it gets no suggestions
+(`layout_studies.note` says so); a study can still be opened by hand.
+
+### The commands
+
+| Command | Does |
+|---|---|
+| `study issues --unit <journey> [--steps <a,b>] [--runs <n>]` | Prints the arrangement issues of the journey's last scored runs (two unless `--runs` says otherwise), per run and in the reviewers' words: step, criterion, severity, role, size, statement and the fix proposed. It reads every scored run in the ledger, whatever series it belongs to: `present_series` is `false` for a run measured with an earlier rubric or config, whose issues still describe the screens while its scores no longer compare. Needs each run's `scorecard.json`. What the candidates are thought out from. |
+| `study open --unit <journey> [--steps <a,b>] --candidates <x,y[,z]> [--judges <n>] [--date <yyyy-mm-dd>]` | Creates the study folder and prints, per candidate, where its screens go. Two to four names; `current`, the arrangement the product has, is added. Without `--steps`, every step of the journey. Three reviewers unless `--judges` gives another odd number. Refused while a study of one of the same steps is open. The id takes `--date`, or today's date in local time. |
+| `capture.cjs --study <dir> --candidate <id> [--base-url <address>] [--plan <file>]` | Captures the study's journey for one candidate, into the study: the whole journey from its first step, every step at the same sizes as a run, screens, page text and measurements, no probe pass. A screen longer than its window gets a second picture, the window alone ("Long screens" below). `--base-url` is the address of that candidate's pages when it is not the plan's; it must be local unless `--allow-remote` is given. It moves the pages only: see "A candidate with a server of its own" below. The output names the `plan` used and, where the plan pins the clock, `clock_past_s`. |
+| `study text --study <dir>` | Holds the page text of each candidate against that of `current`, at the steps and sizes compared, and prints per candidate: `only_in_candidate` and `only_in_current` (lines of one that the other does not have, with the screens they are on), `figures` (lines that differ in their numbers only), `clock` (lines that differ only in a clock showing its seconds: listed, never counted), `same_words_other_lines` (screens that say the same in lines broken elsewhere, which is not a difference) and `not_read` (screens with no page text). Exit code 2 when anything differs. Writes nothing. See "Words that differ" below. |
+| `study bundle --study <dir> [--tmp <dir>]` | Builds one folder per comparison reviewer still wanted and prints `dir`, `prompt` and, when the config sets one, `model`. Refused until every candidate has every screen, when two candidates' screens are identical (one build captured twice), and when a screen is longer than its window and has no picture of the window alone beside it. Warns, on the error stream, when `study text` would list anything. |
+| `study collect --study <dir> [--discard-bad]` | Validates and stores each `comparison.json`, deletes its folder. Exit code 2 while any is `missing` or `invalid`; `--discard-bad` retires those reviewers so that `study bundle` replaces them. |
+| `study tally --study <dir>` | Needs every comparison. Writes `result.json`, `result.md` and `side-by-side.html`. |
+| `study redo --study <dir> --why "<reason>" --recapture <all\|id,id> [--date <yyyy-mm-dd>]` | Sets a comparison aside to do it again: see "A comparison done again" below. From the first reviewer started until the choice is recorded. |
+| `study sheet --study <dir> [--embed]` | Writes `side-by-side.html` in the study folder: one row per step and size, one column per candidate under its name, with how many reviewers ranked it first once there is a result, and the choice once it is made. The pictures are linked from the study folder; with `--embed` they are inside the file, so it can be sent on its own. Works at any state of the study; a screen not yet captured is shown as such and listed in `not_captured`. It names the candidates: for the user, never for a reviewer. |
+| `study pick --study <dir> --candidate <id> --by "<name>" [--why "<reason>"]` | Records the user's choice. Needs the result; once only. |
+| `study status [--study <dir>]` | Every study, or one: its state (`open`, `captured`, `comparing`, `collected`, `compared`, `picked`, `out of date`), the screens still missing and, in `next`, what to do. |
+
+All take `--config`. A study belongs to the config it was opened under: when the config changes, the
+study is `out of date` and a new one is opened.
+
+### The study folder
+
+```
+studies/<yyyymmdd>-<journey>[-n]/
+  study.json           the journey, steps, candidates, number of reviewers, config hash, the order
+                       the arrangements are dealt in, and, once made, the choice
+  candidates.md        yours: for each candidate, the idea in a sentence, what it gives up, what
+                       moved and, apart, anything else that changed and who accepted it
+  candidates/<id>/evidence/<journey>/screens/<step>.<size>.png   (and pages/, facts/)
+  candidates/<id>/evidence/<journey>/screens/<step>.<size>.window.png   the window alone, where the
+                       screen is longer than its window
+  candidates/<id>/capture.json   optional: that candidate's own capture plan (below)
+  bundles.json         reviewer folders and the order of arrangements each was given; not committed
+  comparisons/judge-<n>.json     with the names in place of the letters, and the letters each reviewer had
+  result.json, result.md
+  side-by-side.html    the candidates' screens in rows, for the user; written again by `study sheet`
+  earlier/<n>/         after `study redo`: the comparisons, the result and the screens set aside
+```
+
+Commit `study.json`, `candidates.md`, `comparisons/`, `result.json`, `result.md`, any candidate's
+own `capture.json` and `earlier/` (its screens as the project treats the others). Do not commit `bundles.json`: it names temporary folders of one machine, and a
+checkout without it reads the reviewers and the order each was dealt from `comparisons/`. Keep the
+screens of a study where the project allows images (or back them up): unlike a run's, they cannot be
+captured again once the branches of the candidates not chosen are deleted. `side-by-side.html` is
+written again at any time and need not be kept.
+
+### A candidate with a server of its own
+
+`--base-url` changes where the pages are fetched from, and nothing else. Two things in a capture plan
+belong to the application behind the pages: `reset_command`, which puts its data back, and
+`clock.since_file`, which says when its server started. Where every candidate is the same server
+with other pages in front, the plan of the review home serves them all. Where each candidate runs a
+server of its own (its own data, its own clock), captured with `--base-url` alone it would have its
+pages pictured while the product's data was reset and the product's clock was read.
+
+Give such a candidate a plan of its own: a copy of `capture.json` with its `base_url`, its
+`reset_command` and its `clock.since_file`, saved as `candidates/<id>/capture.json` in the study
+folder. The capture uses it when it is there (`--plan <file>` still overrides), and needs no
+`--base-url`. Paths in it are still read from the review home, and the journey's steps stay those of
+the config. A capture made with `--base-url` and the home's plan prints a warning when that plan has
+a reset command or a clock file.
+
+Candidates need not run at the same time. Serve one, capture it, stop it, serve the next: what makes
+their screens comparable is the same data, freshly reset, and the same moment on the clock. Where
+the plan pins the clock, each candidate's server is started just before its capture; a capture that
+starts more than 60 seconds after the server did is refused (`clock.max_past_s` changes the limit).
+
+### Long screens
+
+A picture of a whole screen is as long as the screen, so it cannot show what the person has in view
+before they scroll. Where the window does not scroll and a panel inside it does, the picture is taken
+in a window made taller by what the panel hides (section 11), and a bar pinned to the bottom of the
+window is drawn at the bottom of that taller window: lower than the person sees it. In a run each
+screen is scored on its own and the measurements say what stays in the window. In a study, reviewers
+argue from what is in view ("the button is there on arrival", "the total is below the first screen"),
+and the pictures have to carry it.
+
+So a capture into a study writes, for every screen longer than its window, `<step>.<size>.window.png`
+beside `<step>.<size>.png`: the window alone, at the configured size, taken on arrival before anything
+is scrolled or grown. The output lists these files under `window_pictures`, and the screens whose
+window was grown under `grown`. A screen that fits its window has one picture, and a second one left
+by an earlier capture is removed. `study bundle` hands the reviewers both, `judge/compare-brief.md`
+tells them which to take what from, a point may cite either, and `side-by-side.html` shows the window
+alone first. A study whose long screens have no second picture was captured by an earlier version:
+`study bundle` refuses it and names the screens; capture those candidates again.
+
+### Words that differ
+
+The candidates are meant to hold the same content. A candidate that also rewords a label, drops a
+line or shows another figure can be preferred for that, and nothing in the comparison tells the two
+apart. Two things guard against it:
+
+- `candidates.md` lists, per candidate, what moved and, apart, everything else that changed. The
+  second list goes to the user before capture: each entry accepted by name, or taken out.
+- `study text` reads what was captured. It compares `pages/<step>.<size>.txt` of each candidate with
+  that of `current`, line by line and regardless of order, so that content moved is not content
+  changed. Lines that differ only in their numbers are listed as `figures`: usually the data or the
+  clock was not the same, and the candidate is captured again. A clock on the page that shows its
+  seconds (`10:04:31`, `1004:31`) reads a little later in each capture; those lines are listed under
+  `clock` and are not a difference. Text that is the same but broken into other lines is not one
+  either.
+
+Run it after the captures and before `study bundle`. Every line it prints should be an entry the
+user accepted; anything else is taken out and the candidate captured again. `study tally` writes the
+count per candidate to `result.json` (`words_differ`) and the lines to `result.md`, under "Besides
+the arrangement", so that whoever chooses knows what else a reviewer may have been preferring. It
+reads words only: a changed icon, image or chart is not in the page text.
+
+### A comparison done again
+
+`study redo` is for a comparison whose reviewers were shown the wrong thing. It is refused before any
+reviewer was started (capture the candidate again; nothing needs setting aside) and once the user's
+choice is recorded (open a new study). `--why` is required and says what was wrong with what was
+shown; `--recapture` is required and names the candidates to capture again, or `all`. It:
+
+- moves `comparisons/`, `result.json`, `result.md` and the named candidates' `evidence/` into
+  `earlier/<n>/`, and removes `bundles.json` and `side-by-side.html`;
+- records in `study.json`, under `redone`, the date, the reason, the candidates captured again, how
+  many reviewers had reported, and the result there was, if any;
+- leaves the study `open`, the named candidates missing their screens. Reviewer numbers start again
+  at 1, and the order the arrangements are dealt in is kept.
+
+`study status` says that the comparison is being done again, and the new `result.md` says that it
+replaces an earlier one, on what date and for what reason, and where that one is kept. The candidates
+not named keep their pictures, so those captured again must show the same data at the same moment.
+It is never a way to draw other reviewers for the same pictures, or to try again for another result.
+
+### What a comparison reviewer is handed, and returns
+
+A folder under a random neutral name with `README.md` (`judge/compare-brief.md`), `task.md` (the
+product in a sentence, the person, their goal, the steps compared, the screen sizes, and which size
+is the person's own) and one folder per arrangement, `A/`, `B/`, `C/`..., each holding
+`screens/<step>.<size>.png` and, for a screen longer than its window, `<step>.<size>.window.png`.
+Only screenshots: a comparison is made by eye, for the person. The
+candidates are dealt in one random order, turned by one place for each reviewer, so each arrangement
+is `A` for one reviewer, `B` for the next, and so on; a replacement reviewer takes the next turn.
+
+The reviewer writes `comparison.json`: `ranking` (every letter once, best first), `margin` (`clear`
+or `close`), `reason`, per arrangement the points it does `better` and `worse` than the others, and
+`still_wrong` for the one ranked first. Every point cites a screenshot of the arrangement it is
+about; the first has at least one `better`, the last at least one `worse`. `collect` stores it with
+the candidates' names and the paths of the real files in place of the letters.
+
+### The result
+
+`result.json` holds, per candidate, how many reviewers ranked it first and last, its mean rank, and
+the candidates it was ranked ahead of by more than half of the reviewers. `outcome` is `clear` when
+one candidate was ranked first by more than half, and `preferred` names it; otherwise `split`, with
+`preferred` null. `current_preferred` says whether the preferred one is the arrangement the product
+already has; `called_close` counts the reviewers who said first and second were close. Three
+reviewers settle a preference, not a measurement: read the reasons in `result.md` before the count.
+`words_differ` lists the candidates whose pages do not say what the pages of `current` say, with the
+number of lines and figures ("Words that differ" above); `earlier` repeats `redone` of `study.json`
+when the comparison was done again.
+
+`result.md` gives the outcome and the table, then each reviewer's ranking and reason and what the one
+they ranked first still gets wrong, then each arrangement's points, better and worse. Two reviewers'
+points are listed as one, under both, in the words of the first, when they are about the same
+arrangement, on the same side, cite a screen in common (either picture of it) and share enough of
+their distinctive words.
+A reviewer's own points are never joined to each other, and `comparisons/` keeps every point as
+written. It ends with "Besides the arrangement": the lines and figures that differ from `current`,
+candidate by candidate, or a sentence saying that there are none.

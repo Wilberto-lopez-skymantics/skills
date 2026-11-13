@@ -533,3 +533,137 @@ test('mixed colours are measured, date and time fields do not stop the walk, a s
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('a candidate of a layout study is captured from its own address, into the study, with the same steps and sizes', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const t = setup(server.address().port);
+  try {
+    const opened = JSON.parse(spawnSync(process.execPath, [UXQ, 'study', 'open', '--config', t.configFile, '--unit', 'sign-in', '--candidates', 'wide,narrow', '--date', '2026-01-16'], { encoding: 'utf8' }).stdout);
+    // The plan points at the product as it is; each candidate is a build of its own, at its own address.
+    const elsewhere = { ...t.plan, base_url: 'http://127.0.0.1:9' };
+    fs.writeFileSync(path.join(t.home, 'capture.json'), JSON.stringify(elsewhere));
+    const args = ['--config', t.configFile, '--study', opened.study_dir];
+    const address = `http://127.0.0.1:${server.address().port}`;
+    const done = await run(CAPTURE, [...args, '--candidate', 'wide', '--base-url', address], { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(done.status, 0, done.stderr + done.stdout);
+    const out = JSON.parse(done.stdout);
+    assert.deepStrictEqual([out.study, out.candidate, out.address, out.captured, out.failures], ['20260116-sign-in', 'wide', address, 6, []]);
+    assert.ok(!done.stdout.includes(SECRET));
+    const ev = opened.candidates.find((c) => c.id === 'wide').evidence;
+    assert.strictEqual(path.relative(opened.study_dir, ev), path.join('candidates', 'wide', 'evidence', 'sign-in'));
+    assert.deepStrictEqual(fs.readdirSync(path.join(ev, 'screens')).sort(), ['01-form.desktop.png', '01-form.phone.png', '02-welcome.desktop.png', '02-welcome.phone.png', '03-focus.desktop.png', '03-focus.phone.png']);
+    assert.strictEqual(pngSize(path.join(ev, 'screens', '01-form.phone.png')).width, 375);
+    // A comparison is made from the screens: no keyboard walk, no response times, no frames.
+    for (const kind of ['keyboard', 'controls', 'motion', 'frames']) assert.ok(!fs.existsSync(path.join(ev, kind)), `${kind}/ is not collected for a candidate`);
+    assert.ok(!fs.existsSync(path.join(t.runDir, 'evidence', 'sign-in', 'screens', '01-form.phone.png')), 'nothing is written into a run');
+    const status = () => JSON.parse(spawnSync(process.execPath, [UXQ, 'study', 'status', ...args], { encoding: 'utf8' }).stdout)[0];
+    assert.deepStrictEqual(Object.keys(status().missing), ['current', 'narrow']);
+
+    assert.deepStrictEqual([out.plan, out.warnings, out.clock_past_s, out.window_pictures, out.grown], [path.join(t.home, 'capture.json'), undefined, undefined, undefined, undefined]);
+
+    // --base-url moves the pages only. A plan that also resets data and reads the server's clock still
+    // does both where it says: the capture goes through, and says so.
+    const started = path.join(t.home, 'started');
+    const resets = () => (fs.existsSync(path.join(t.home, 'resets.log')) ? fs.readFileSync(path.join(t.home, 'resets.log'), 'utf8').length : 0);
+    const withServer = { reset_command: `"${process.execPath}" -e "require('fs').appendFileSync('resets.log','x')"`, clock: { at: '2026-01-16T09:00:00Z', since_file: 'started' } };
+    fs.writeFileSync(path.join(t.home, 'capture.json'), JSON.stringify({ ...elsewhere, ...withServer }));
+    fs.writeFileSync(started, String(Date.now()));
+    const moved = await run(CAPTURE, [...args, '--candidate', 'narrow', '--base-url', address], { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(moved.status, 0, moved.stderr + moved.stdout);
+    const movedOut = JSON.parse(moved.stdout);
+    assert.strictEqual(movedOut.warnings.length, 1);
+    assert.match(movedOut.warnings[0], /^--base-url moved the pages only: reset_command and clock\.since_file of .*capture\.json were used as written\..*a capture plan of its own at .*candidates[\\/]narrow[\\/]capture\.json/);
+    assert.ok(movedOut.clock_past_s < 60 && resets() === 2, 'the data is reset before each size');
+
+    // A candidate with a server of its own keeps a plan of its own in the study; it is used when it is there.
+    const own = path.join(opened.study_dir, 'candidates', 'narrow', 'capture.json');
+    fs.writeFileSync(own, JSON.stringify({ ...t.plan, ...withServer }));
+    fs.writeFileSync(started, String(Date.now()));
+    const owned = await run(CAPTURE, [...args, '--candidate', 'narrow'], { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(owned.status, 0, owned.stderr + owned.stdout);
+    assert.deepStrictEqual([JSON.parse(owned.stdout).plan, JSON.parse(owned.stdout).address, JSON.parse(owned.stdout).warnings], [own, address, undefined]);
+    assert.deepStrictEqual(Object.keys(status().missing), ['current']);
+
+    // The pages' clock runs on from the pinned time for as long as the server has been up. Candidates
+    // must all show the same moment: a capture started late is refused, unless the plan allows the wait.
+    fs.writeFileSync(started, String(Date.now() - 150000));
+    const late = await run(CAPTURE, [...args, '--candidate', 'narrow'], { UXQ_TEST_SECRET: SECRET });
+    assert.notStrictEqual(late.status, 0);
+    assert.match(late.stderr, /the application's clock has already run 15\d s past clock\.at, and the limit is 60 s \(the default for a layout study.*Start the application's server again and capture straight away, or raise clock\.max_past_s/);
+    assert.strictEqual(resets(), 4, 'refused before anything is reset or captured');
+    fs.writeFileSync(own, JSON.stringify({ ...t.plan, ...withServer, clock: { ...withServer.clock, max_past_s: 30 } }));
+    fs.writeFileSync(started, String(Date.now() - 45000));
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'narrow'], { UXQ_TEST_SECRET: SECRET })).stderr, /run 4\d s past clock\.at, and the limit is 30 s \(clock\.max_past_s\)/);
+    fs.writeFileSync(own, JSON.stringify({ ...t.plan, ...withServer, clock: { ...withServer.clock, max_past_s: 0 } }));
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'narrow'], { UXQ_TEST_SECRET: SECRET })).stderr, /clock\.max_past_s must be a number of seconds above 0/);
+    fs.writeFileSync(own, JSON.stringify({ ...t.plan, ...withServer, clock: { ...withServer.clock, max_past_s: 600 } }));
+    fs.writeFileSync(started, String(Date.now() - 150000));
+    const allowed = await run(CAPTURE, [...args, '--candidate', 'narrow'], { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(allowed.status, 0, allowed.stderr + allowed.stdout);
+    assert.ok(JSON.parse(allowed.stdout).clock_past_s >= 150 && !JSON.parse(allowed.stdout).warnings);
+    // In a run nothing is compared side by side: a late start is said, not refused.
+    fs.writeFileSync(path.join(t.home, 'capture.json'), JSON.stringify({ ...t.plan, ...withServer, probes: false }));
+    const inRun = await run(CAPTURE, ['--config', t.configFile, '--run', t.runDir, '--unit', 'sign-in'], { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(inRun.status, 0, inRun.stderr + inRun.stdout);
+    assert.deepStrictEqual([JSON.parse(inRun.stdout).warnings.length, JSON.parse(inRun.stdout).plan], [1, undefined]);
+    assert.match(JSON.parse(inRun.stdout).warnings[0], /^The application's clock had run 15\d s past clock\.at when this capture started.*Set clock\.max_past_s/);
+
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'tall', '--base-url', address])).stderr, /--candidate must be one of current, wide, narrow/);
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'narrow', '--run', t.runDir])).stderr, /pass --run or --study, not both/);
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'narrow', '--base-url', 'https://example.com'])).stderr, /example\.com is not a local address/);
+    assert.match((await run(CAPTURE, [...args, '--candidate', 'narrow', '--base-url', 'nowhere'])).stderr, /not an address: nowhere/);
+  } finally {
+    server.close();
+    fs.rmSync(t.root, { recursive: true, force: true });
+  }
+});
+
+test('a candidate screen longer than its window is pictured twice: the whole screen, and the window alone on arrival', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const t = setup(server.address().port);
+  try {
+    const opened = JSON.parse(spawnSync(process.execPath, [UXQ, 'study', 'open', '--config', t.configFile, '--unit', 'sign-in', '--candidates', 'tall,short', '--date', '2026-01-17'], { encoding: 'utf8' }).stdout);
+    const args = ['--config', t.configFile, '--study', opened.study_dir, '--candidate', 'tall'];
+    const ev = opened.candidates.find((c) => c.id === 'tall').evidence;
+    // One step scrolls inside a panel, one scrolls the page, one fits the window.
+    const own = path.join(opened.study_dir, 'candidates', 'tall', 'capture.json');
+    const steps = { '01-form': [{ goto: '/mixed' }, { wait_for: 'text=Mixed desk' }], '02-welcome': [{ goto: '/long' }, { wait_for: 'text=One offer, said once' }], '03-focus': [{ use: 'open' }] };
+    fs.writeFileSync(own, JSON.stringify({ ...t.plan, units: { 'sign-in': { steps } } }));
+    const done = await run(CAPTURE, args);
+    assert.strictEqual(done.status, 0, done.stderr + done.stdout);
+    const out = JSON.parse(done.stdout);
+    const long = ['01-form.desktop', '01-form.phone', '02-welcome.desktop', '02-welcome.phone'];
+    assert.deepStrictEqual(fs.readdirSync(path.join(ev, 'screens')).sort(), [...long.flatMap((x) => [`${x}.png`, `${x}.window.png`]), '03-focus.desktop.png', '03-focus.phone.png']);
+    for (const x of long) {
+      const [width, height] = x.endsWith('phone') ? [375, 700] : [1000, 700];
+      assert.deepStrictEqual(pngSize(path.join(ev, 'screens', `${x}.window.png`)), { width, height }, `${x}: the window alone`);
+      assert.ok(pngSize(path.join(ev, 'screens', `${x}.png`)).height > 1300, `${x}: the whole screen`);
+    }
+    assert.match(out.window_pictures.note, /longer than their window\. Each has a second picture beside the first, the window alone as the person finds it on arrival/);
+    assert.deepStrictEqual(out.window_pictures.files.slice().sort(), long.map((x) => `sign-in/screens/${x}.window.png`));
+    // Where a panel scrolls and the window does not, the long picture was taken in a taller window: said.
+    assert.deepStrictEqual(out.grown.screens.map((g) => [g.step, g.size, g.taller_by > 600]), [['01-form', 'phone', true], ['01-form', 'desktop', true]]);
+    assert.match(out.grown.note, /anything pinned to the bottom of the window is drawn lower than the person sees it, and the first window is not marked on it\.$/);
+    // The two pictures differ: on arrival the bar pinned to the window is in view, 700 px down at most.
+    assert.notDeepStrictEqual(fs.readFileSync(path.join(ev, 'screens', '01-form.phone.window.png')), fs.readFileSync(path.join(ev, 'screens', '01-form.phone.png')));
+
+    // Captured again with screens that fit, nothing of the earlier capture is left beside them.
+    fs.writeFileSync(own, JSON.stringify(t.plan));
+    const fits = await run(CAPTURE, args, { UXQ_TEST_SECRET: SECRET });
+    assert.strictEqual(fits.status, 0, fits.stderr + fits.stdout);
+    assert.deepStrictEqual([JSON.parse(fits.stdout).window_pictures, JSON.parse(fits.stdout).grown], [undefined, undefined]);
+    assert.deepStrictEqual(fs.readdirSync(path.join(ev, 'screens')).filter((f) => f.includes('.window.')), []);
+
+    // In a run the screens are scored one by one, not compared: one picture each, and the taller window is said.
+    fs.writeFileSync(path.join(t.home, 'capture.json'), JSON.stringify({ ...t.plan, probes: false, units: { 'sign-in': { steps } } }));
+    const inRun = await run(CAPTURE, ['--config', t.configFile, '--run', t.runDir, '--unit', 'sign-in']);
+    assert.strictEqual(inRun.status, 0, inRun.stderr + inRun.stdout);
+    assert.deepStrictEqual(fs.readdirSync(path.join(t.runDir, 'evidence', 'sign-in', 'screens')).filter((f) => f.includes('.window.')), []);
+    assert.strictEqual(JSON.parse(inRun.stdout).window_pictures, undefined);
+    assert.deepStrictEqual(JSON.parse(inRun.stdout).grown.screens.map((g) => `${g.unit}/${g.step}.${g.size}`), ['sign-in/01-form.phone', 'sign-in/01-form.desktop']);
+    assert.match(JSON.parse(inRun.stdout).grown.note, /name the step under window_steps in the capture plan\.$/);
+  } finally {
+    server.close();
+    fs.rmSync(t.root, { recursive: true, force: true });
+  }
+});

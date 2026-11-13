@@ -9,7 +9,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const UXQ = path.join(__dirname, 'uxq.cjs');
 const JUDGE = path.join(__dirname, '..', 'judge');
-const { ROLES, SPECIALISTS, EVIDENCE_KINDS, REBASE, disagree, reviewerResult, groupFindings, validateSpecialist, validateUser, validateVerdict, numberedDecisions, loadRubric, spawnPrompt } = require('./uxq.cjs');
+const { ROLES, SPECIALISTS, EVIDENCE_KINDS, REBASE, disagree, reviewerResult, groupFindings, joinPoints, validateSpecialist, validateUser, validateVerdict, numberedDecisions, loadRubric, spawnPrompt } = require('./uxq.cjs');
 const rubric = loadRubric();
 
 function uxq(args, { allowFail = false } = {}) {
@@ -157,6 +157,25 @@ test('reports of the same problem are grouped by the words they share, and only 
   const ids = (groups) => groups.map((g) => g.members.map((m) => m.id).sort().join('+')).sort();
   assert.deepStrictEqual(ids(groupFindings(findings)), ['d1+d2', 'd3', 'd4', 'u1+u2', 'u3']);
   assert.deepStrictEqual(ids(groupFindings(findings, { 'Home screen on the phone': ['d3', 'd4'] })), ['d1+d2', 'd3+d4', 'u1+u2', 'u3']);
+});
+
+test('points of a comparison are joined when different reviewers made the same one of the same arrangement, on the same screen', () => {
+  const P = 'screens/02-pay.phone.png'; const D = 'screens/02-pay.desktop.png';
+  const pt = (id, judge, candidate, side, what, evidence = [P]) => ({ id, judge, candidate, side, what, evidence });
+  const points = [
+    pt('a1', 1, 'split', 'better', 'The amount owed sits directly beside the pay button, so the person confirms the sum without scrolling.'),
+    pt('a2', 2, 'split', 'better', 'On the phone the amount owed stays next to the pay button: the person can check the sum and pay without scrolling.'),
+    pt('a3', 3, 'split', 'better', 'The amount owed is beside the pay button, so the sum is confirmed where the person decides.'),
+    // The same reviewer's second point, a point about another arrangement, the other side, another screen: all kept apart.
+    pt('b1', 1, 'split', 'better', 'The list of earlier payments is folded away until asked for, leaving the form short.'),
+    pt('c1', 2, 'stacked', 'better', 'The amount owed sits directly beside the pay button, so the person confirms the sum without scrolling.'),
+    pt('d1', 3, 'split', 'worse', 'The amount owed sits beside the pay button but the due date is pushed below the fold.'),
+    pt('e1', 2, 'split', 'better', 'The amount owed sits directly beside the pay button, so the person confirms the sum without scrolling.', [D]),
+    pt('f1', 3, 'split', 'better', 'Earlier payments are shown as a table with dates, which reads faster than the cards.')
+  ];
+  const groups = joinPoints(points).map((g) => g.map((x) => x.id).join('+'));
+  assert.deepStrictEqual(groups, ['a1+a2+a3', 'b1', 'c1', 'd1', 'e1', 'f1']);
+  assert.deepStrictEqual(joinPoints([]), []);
 });
 
 test('results that do not follow the rules are rejected', () => {
@@ -911,6 +930,17 @@ test('a config can name a reviewer set of its own: its roles, rubrics and eviden
   assert.strictEqual(result.overall_score, 91, 'the mean of the set\'s three roles');
   const line = JSON.parse(fs.readFileSync(path.join(t.home, 'ledger.jsonl'), 'utf8').trim().split('\n').pop());
   assert.deepStrictEqual([line.rubric_version, line.rubric_sha], ['0.1.0', meta.rubric_sha]);
+  // A set says which of its criteria are about how a screen is arranged; until it does, no layout study
+  // is suggested from what its reviewers report. Saying so changes no score and starts no new series.
+  const studies = () => json(uxq(['progress', '--config', t.configFile, '--target', '95']));
+  assert.match(studies().layout_studies.note, /names no arrangement criteria/);
+  const setFile = path.join(setDir, 'set.json');
+  const plainSet = fs.readFileSync(setFile, 'utf8');
+  fs.writeFileSync(setFile, JSON.stringify({ ...JSON.parse(plainSet), arrangement: ['O2', 'P1'] }));
+  assert.deepStrictEqual([studies().layout_studies, studies().journeys[0].rounds], [{ due: [], open: [] }, 1]);
+  fs.writeFileSync(setFile, JSON.stringify({ ...JSON.parse(plainSet), arrangement: ['O2', 'V1'] }));
+  assert.match(uxq(['progress', '--config', t.configFile, '--target', '95'], { allowFail: true }).stderr, /"arrangement" names criteria that no rubric under .* has: V1/);
+  fs.writeFileSync(setFile, plainSet);
 
   // A brief the set words differently is used and is part of the yardstick; the others fall back to the shipped ones.
   customSet(t.home, { withBrief: true });
@@ -946,5 +976,356 @@ test('a config can name a reviewer set of its own: its roles, rubrics and eviden
   const plainMeta = JSON.parse(fs.readFileSync(path.join(plainRun.run_dir, 'run.json'), 'utf8'));
   assert.deepStrictEqual([plainMeta.rubric_sha, plainMeta.rubric_set], [rubric.sha, undefined]);
   fs.rmSync(plain.root, { recursive: true, force: true });
+  fs.rmSync(t.root, { recursive: true, force: true });
+});
+
+test('a layout study: due when arrangement issues come back, candidates compared under letters, the user picks, no score is touched', () => {
+  const t = setup();
+  const cfgArgs = ['--config', t.configFile];
+  const progress = () => json(uxq(['progress', ...cfgArgs, '--target', '90']));
+  const P = 'screens/02-pay.phone.png';
+  // A round of pay-invoice: the visual reviewers report one minor issue at the pay step, under the criterion given.
+  const round = (day, criterion, people) => {
+    const r = json(uxq(['new-run', ...cfgArgs, '--commit', `c${day}`, '--date', `2026-04-${day}`]));
+    writeEvidence(path.join(r.run_dir, 'evidence', 'pay-invoice'), r.capture['pay-invoice']);
+    for (const b of json(uxq(['bundle', ...cfgArgs, '--run', r.run_dir, '--unit', 'pay-invoice', '--tmp', t.tmp]))) {
+      const data = b.role === 'visual' ? spec(80, [issue(criterion, 'minor', 'The amount sits far from the button.', P, { step: '02-pay' })])
+        : b.role === 'user' && people ? person([['smooth'], ['hesitated', [['U1', 'I could not find the amount.']]]], 'sure', 80)
+          : b.role === 'user' ? easy(2) : spec(95);
+      fs.writeFileSync(path.join(b.dir, 'judgment.json'), JSON.stringify(owed(data, b.role)));
+    }
+    uxq(['collect', ...cfgArgs, '--run', r.run_dir]);
+    uxq(['score', ...cfgArgs, '--run', r.run_dir]);
+    return r;
+  };
+
+  // One review that reports the arrangement is not yet a reason: the fix has not been tried.
+  round('01', 'V2');
+  let p = progress();
+  assert.deepStrictEqual(p.layout_studies, { due: [], open: [] });
+  assert.ok(!/layout study/.test(p.then));
+  // A finishing issue at the same step, review after review, is no reason either.
+  // Reported again by reviewers who never saw the first review: now the arrangement itself is in question.
+  const second = round('02', 'V1', true);
+  p = progress();
+  assert.deepStrictEqual(p.layout_studies.due, [{
+    journey: 'pay-invoice', step: '02-pay', reports: 4, reports_before: 2, criteria: ['U1', 'V1'],
+    why: 'arrangement issues were reported at this step in both of the last two reviews of the journey'
+  }], 'two visual reviewers and two people; the polish notes of the others, also under V1, do not count');
+  assert.match(p.then, /^Work on pay-invoice .* A layout study is due on 1 screen \(layout_studies\), first pay-invoice 02-pay: .*tell the user what a study costs.*study open\.$/);
+  const ledger = () => fs.readFileSync(path.join(t.home, 'ledger.jsonl'), 'utf8');
+  const before = ledger();
+
+  // What the reviewers said of the arrangement, review by review: what the candidates are proposed from.
+  const issuesOf = (extra, opts) => uxq(['study', 'issues', ...cfgArgs, ...extra], opts);
+  const said = json(issuesOf(['--unit', 'pay-invoice', '--steps', '02-pay']));
+  assert.deepStrictEqual([said.journey, said.steps, said.criteria.includes('V1'), said.earlier_series], ['pay-invoice', ['02-pay'], true, undefined]);
+  assert.deepStrictEqual(said.reviews.map((r) => [r.date, r.present_series, r.issues.length]), [['2026-04-01', true, 2], ['2026-04-02', true, 4]]);
+  assert.deepStrictEqual(said.reviews[1].issues.map((i) => [i.step, i.criterion, i.role]).sort(), [['02-pay', 'U1', 'user'], ['02-pay', 'U1', 'user'], ['02-pay', 'V1', 'visual'], ['02-pay', 'V1', 'visual']]);
+  assert.ok(said.reviews[1].issues.every((i) => i.statement && i.severity), 'in the reviewers\' words');
+  assert.deepStrictEqual(json(issuesOf(['--unit', 'pay-invoice', '--steps', '01-open', '--runs', '1'])).reviews.map((r) => r.issues), [[]]);
+  assert.match(issuesOf(['--unit', 'pay-invoice', '--steps', '09-none'], { allowFail: true }).stderr, /not a step of pay-invoice: 09-none/);
+  assert.match(issuesOf(['--unit', 'control-form'], { allowFail: true }).stderr, /--unit <journey> is required/);
+
+  // Opening one: two to four other arrangements, and the one the product has is always in it.
+  const open = (extra, opts) => uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', ...extra], opts);
+  assert.match(open(['--candidates', 'split'], { allowFail: true }).stderr, /name 2 to 4 other arrangements/);
+  assert.match(open(['--candidates', 'split,current'], { allowFail: true }).stderr, /"current" is taken/);
+  assert.match(open(['--candidates', 'split,stacked', '--steps', '09-none'], { allowFail: true }).stderr, /not a step of pay-invoice: 09-none/);
+  assert.match(open(['--candidates', 'split,stacked', '--judges', '4'], { allowFail: true }).stderr, /odd number/);
+  assert.match(uxq(['study', 'open', ...cfgArgs, '--unit', 'control-form', '--candidates', 'a,b'], { allowFail: true }).stderr, /--unit <journey> is required/);
+  const opened = json(open(['--candidates', 'split,stacked', '--steps', '02-pay', '--date', '2026-04-03']));
+  const study = opened.study_dir;
+  const sArgs = [...cfgArgs, '--study', study];
+  assert.strictEqual(path.relative(t.home, study), path.join('studies', '20260403-pay-invoice'));
+  assert.deepStrictEqual(opened.candidates.map((c) => c.id), ['current', 'split', 'stacked']);
+  assert.deepStrictEqual(opened.capture, ['screens/02-pay.phone.png', 'screens/02-pay.desktop.png']);
+  assert.strictEqual(opened.reviewers, 3);
+  const meta = () => JSON.parse(fs.readFileSync(path.join(study, 'study.json'), 'utf8'));
+  assert.strictEqual(meta().after_run, path.basename(second.run_dir));
+  assert.deepStrictEqual([...meta().base_order].sort(), ['current', 'split', 'stacked']);
+  assert.match(open(['--candidates', 'a,b'], { allowFail: true }).stderr, /a study of these steps is still open/);
+  // While it is open, the step is no longer reported as due; the study is listed instead.
+  p = progress();
+  assert.deepStrictEqual(p.layout_studies, { due: [], open: [{ study, journey: 'pay-invoice', steps: ['02-pay'], state: 'open' }] });
+  const state = () => json(uxq(['study', 'status', ...sArgs]))[0];
+  assert.match(state().next, /Capture the candidates still missing screens .*: current, split, stacked\./);
+  assert.match(opened.then, /a capture plan of its own, at candidates\/<id>\/capture\.json in the study folder: --base-url moves the pages only/);
+
+  // Reviewers are started only when every candidate is captured, and each from its own build.
+  assert.match(uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp], { allowFail: true }).stderr, /not every candidate is captured:[\s\S]*stacked: screens\/02-pay\.phone\.png, screens\/02-pay\.desktop\.png/);
+  const shots = (id, mark) => { for (const f of opened.capture) fs.writeFileSync(path.join(opened.candidates.find((c) => c.id === id).evidence, f), `png:${mark}:${f}`); };
+  shots('current', 'now'); shots('split', 'split'); shots('stacked', 'split');
+  assert.match(uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp], { allowFail: true }).stderr, /split and stacked show exactly the same screens/);
+  shots('stacked', 'stacked');
+  assert.strictEqual(state().state, 'captured');
+  const bundles = json(uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp]));
+  assert.strictEqual(bundles.length, 3);
+  const map = () => JSON.parse(fs.readFileSync(path.join(study, 'bundles.json'), 'utf8'));
+  // Each candidate is shown as A to one reviewer, as B to another and as C to the third.
+  for (const pos of [0, 1, 2]) assert.deepStrictEqual(map().map((b) => b.order[pos]).sort(), ['current', 'split', 'stacked']);
+  for (const b of bundles) {
+    assert.strictEqual(b.prompt, spawnPrompt(b.dir));
+    assert.deepStrictEqual(fs.readdirSync(b.dir).sort(), ['A', 'B', 'C', 'README.md', 'task.md']);
+    assert.deepStrictEqual(fs.readdirSync(path.join(b.dir, 'B', 'screens')).sort(), ['02-pay.desktop.png', '02-pay.phone.png']);
+    const told = readAllMarkdown(b.dir);
+    assert.ok(!told.includes('{{'), 'no unfilled placeholders');
+    assert.ok(told.includes('3 arrangements') && told.includes('`a`, `b`, `c`'));
+    assert.ok(told.includes('settle the open bill') && told.includes('expected-outcome-text two') && !told.includes('expected-outcome-text one'), 'the task, and only the steps compared');
+    assert.ok(told.includes('the `phone` size below'), 'the person\'s own size is named');
+    // Nothing says which arrangement is which, where the folder came from, or what the reviews found.
+    for (const word of ['current', 'split', 'stacked', 'pay-invoice', 'study', ...FORBIDDEN]) assert.ok(!new RegExp(`\\b${word}\\b`).test(told), `a comparison folder must not contain "${word}"`);
+    assert.ok(!b.dir.includes(t.home));
+  }
+
+  // A comparison ranks every arrangement and shows each point on a screen of that arrangement.
+  const letterOf = (b, id) => 'ABC'[map().find((x) => x.judge === b.judge).order.indexOf(id)];
+  const comparison = (b, ranked, margin = 'clear') => {
+    const L = ranked.map((id) => letterOf(b, id));
+    const point = (l, what) => ({ what, evidence: [`${l}/screens/02-pay.phone.png`] });
+    return {
+      ranking: L, margin, reason: `${L[0]} keeps the amount beside the button.`,
+      arrangements: Object.fromEntries(L.map((l, i) => [l, { better: i === 0 ? [point(l, 'The amount is beside the button.')] : [], worse: i === 2 ? [point(l, 'The amount is a screen away from the button.')] : [] }])),
+      still_wrong: [point(L[0], 'The button is below the fold on the phone.')]
+    };
+  };
+  const put = (b, data) => fs.writeFileSync(path.join(b.dir, 'comparison.json'), JSON.stringify(data));
+  put(bundles[0], comparison(bundles[0], ['split', 'stacked', 'current']));
+  const bad = comparison(bundles[1], ['split', 'current', 'stacked'], 'close');
+  const [first, , last] = bad.ranking;
+  put(bundles[1], { ...bad, ranking: [first, first, last], arrangements: { ...bad.arrangements, [last]: { better: [], worse: [{ what: 'Shown on another arrangement.', evidence: [`${first}/screens/02-pay.phone.png`] }] } } });
+  let collected = uxq(['study', 'collect', ...sArgs], { allowFail: true });
+  assert.strictEqual(collected.status, 2);
+  assert.deepStrictEqual(json(collected).map((r) => r.status), ['collected', 'invalid', 'missing']);
+  assert.deepStrictEqual(json(collected)[1].errors, ['ranking must list each of A, B, C once, best first', `arrangements.${last}.worse 1: evidence must cite at least one screen of arrangement ${last} that exists in the folder`, 'still_wrong must be a list'].slice(0, 2));
+  assert.ok(!fs.existsSync(bundles[0].dir), 'a folder is removed once its comparison is in');
+  assert.match(uxq(['study', 'tally', ...sArgs], { allowFail: true }).stderr, /1 of 3 comparisons are in/);
+  assert.match(uxq(['study', 'pick', ...sArgs, '--candidate', 'split', '--by', 'Ada'], { allowFail: true }).stderr, /no result yet/);
+  put(bundles[1], bad);
+  // The third reviewer never reports: it is replaced by a fresh one, which gets the turn of the order that comes next.
+  put(bundles[2], { not: 'a comparison' });
+  uxq(['study', 'collect', ...sArgs, '--discard-bad']);
+  assert.match(state().next, /study bundle|not reported/);
+  const extra = json(uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp]));
+  assert.deepStrictEqual(extra.map((b) => b.judge), [4]);
+  put(extra[0], comparison(extra[0], ['stacked', 'split', 'current']));
+  assert.deepStrictEqual(json(uxq(['study', 'collect', ...sArgs])).map((r) => r.status), ['collected', 'collected', 'collected']);
+  assert.strictEqual(state().state, 'collected');
+  // What is kept names the candidates and the real files, whatever letters each reviewer saw.
+  const kept = JSON.parse(fs.readFileSync(path.join(study, 'comparisons', 'judge-2.json'), 'utf8'));
+  assert.deepStrictEqual([kept.ranking, kept.margin], [['split', 'current', 'stacked'], 'close']);
+  assert.deepStrictEqual(kept.arrangements.split.better[0].evidence, ['candidates/split/evidence/pay-invoice/screens/02-pay.phone.png']);
+  assert.ok(fs.existsSync(path.join(study, kept.still_wrong[0].evidence[0])));
+
+  // The tally: preferred means ranked first by more than half. It writes a result, and nothing in the ledger.
+  const tally = json(uxq(['study', 'tally', ...sArgs]));
+  assert.deepStrictEqual([tally.outcome, tally.preferred, tally.current_preferred, tally.reviewers, tally.called_close], ['clear', 'split', false, 3, 1]);
+  assert.deepStrictEqual(tally.table.map((r) => [r.candidate, r.first, r.last, r.mean_rank]), [['split', 2, 0, 1.33], ['stacked', 1, 1, 2], ['current', 0, 2, 2.67]]);
+  assert.deepStrictEqual(tally.table[0].ahead_of, ['current', 'stacked']);
+  assert.match(tally.then, /2 of 3 reviewers ranked split first; 1 of them called it close\..*The choice is theirs/);
+  const md = fs.readFileSync(tally.result, 'utf8');
+  assert.match(md, /\*\*Preferred: `split`\*\*, ranked first by 2 of 3\./);
+  assert.match(md, /\| `current` \(as it is now\) \| 0 of 3 \| 2 of 3 \| 2\.67 \| none \|/);
+  // A point two reviewers made is listed once, under both; the screens are named by file, and the page beside it shows them.
+  assert.match(md, /### `split`\n\n\*\*Better than the others\*\*\n\n- \*\*Reviewers 1 and 2\.\*\* The amount is beside the button\. \(`02-pay\.phone\.png`\)/);
+  assert.strictEqual(md.split('The amount is beside the button.').length - 1, 2, 'once for split, once for stacked');
+  assert.match(md, /What `split` still gets wrong:\n\n- The button is below the fold on the phone\. \(`candidates\/split\/evidence\/pay-invoice\/screens\/02-pay\.phone\.png`\)/);
+  assert.match(md, /side by side: `side-by-side\.html`/);
+  assert.strictEqual(ledger(), before, 'a study gives no score');
+  assert.strictEqual(state().state, 'compared');
+  // The page for whoever chooses: every candidate by name, the same step and size in a row.
+  const SHEET = path.join(study, 'side-by-side.html');
+  assert.strictEqual(tally.sheet, SHEET);
+  const page = () => fs.readFileSync(SHEET, 'utf8');
+  for (const id of ['current', 'split', 'stacked']) assert.ok(page().includes(`<a href="candidates/${id}/evidence/pay-invoice/screens/02-pay.phone.png">`), id);
+  assert.match(page(), /<figcaption>split <span>ranked first by 2 of 3<\/span><\/figcaption>/);
+  assert.match(page(), /<figcaption>current <span>as it is now<\/span> <span>ranked first by 0 of 3<\/span><\/figcaption>/);
+  assert.match(page(), /<h2>02-pay <span>phone, \d+ x \d+<\/span><\/h2>/);
+  for (const word of ['loop', 'ledger', 'round']) assert.ok(!new RegExp(`\\b${word}\\b`).test(page()));
+  // bundles.json names temporary folders and is not committed: a checkout without it reads the same result.
+  fs.rmSync(path.join(study, 'bundles.json'));
+  assert.strictEqual(state().state, 'compared');
+  assert.strictEqual(fs.readFileSync(json(uxq(['study', 'tally', ...sArgs])).result, 'utf8'), md);
+  // It can be written to be sent on its own, and says what is not captured.
+  fs.rmSync(path.join(study, 'candidates', 'stacked', 'evidence', 'pay-invoice', 'screens', '02-pay.desktop.png'));
+  const sent = json(uxq(['study', 'sheet', ...sArgs, '--embed']));
+  assert.deepStrictEqual([sent.sheet, Object.keys(sent.not_captured)], [SHEET, ['stacked']]);
+  assert.ok(page().includes('src="data:image/png;base64,') && !page().includes('<a href=') && page().includes('<p class="none">not captured</p>'));
+
+  // The choice is the user's, recorded with their name, once. It need not be the reviewers'.
+  assert.match(uxq(['study', 'pick', ...sArgs, '--candidate', 'split'], { allowFail: true }).stderr, /--by "<name>" is required/);
+  assert.match(uxq(['study', 'pick', ...sArgs, '--candidate', 'nope', '--by', 'Ada'], { allowFail: true }).stderr, /--candidate must be one of current, split, stacked/);
+  const picked = json(uxq(['study', 'pick', ...sArgs, '--candidate', 'stacked', '--by', 'Ada', '--why', 'Fits the phone better.', '--date', '2026-04-04']));
+  assert.deepStrictEqual(picked.picked, { candidate: 'stacked', by: 'Ada', date: '2026-04-04', why: 'Fits the phone better.', reviewers_preferred: 'split' });
+  assert.match(picked.then, /Bring stacked into the product through the project's own change process/);
+  assert.ok(page().includes('<span>chosen by Ada</span>') && page().includes('src="data:image/png;base64,'), 'the page names the choice, written the way it was');
+  assert.match(uxq(['study', 'pick', ...sArgs, '--candidate', 'split', '--by', 'Ada'], { allowFail: true }).stderr, /already settled: Ada picked stacked/);
+  assert.match(uxq(['study', 'bundle', ...sArgs], { allowFail: true }).stderr, /this study is settled/);
+  assert.deepStrictEqual([state().state, state().next], ['picked', undefined]);
+  // A settled step is given two reviews before another study of it is suggested.
+  p = progress();
+  assert.deepStrictEqual(p.layout_studies, { due: [], open: [] });
+  round('05', 'V1');
+  assert.deepStrictEqual(progress().layout_studies.due, []);
+  round('06', 'V1');
+  assert.deepStrictEqual(progress().layout_studies.due.map((d) => [d.step, d.reports]), [['02-pay', 2]]);
+
+  // A study with no majority is a split, and one the present arrangement wins says so.
+  const other = json(uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', '--steps', '01-open', '--candidates', 'rail,tabs', '--date', '2026-04-07']));
+  const oArgs = [...cfgArgs, '--study', other.study_dir];
+  for (const c of other.candidates) for (const f of other.capture) fs.writeFileSync(path.join(c.evidence, f), `png:${c.id}:${f}`);
+  const run2 = (orders) => {
+    const bs = json(uxq(['study', 'bundle', ...oArgs, '--tmp', t.tmp]));
+    const letters = JSON.parse(fs.readFileSync(path.join(other.study_dir, 'bundles.json'), 'utf8'));
+    bs.forEach((b, i) => {
+      const L = orders[i].map((id) => 'ABC'[letters.find((x) => x.judge === b.judge).order.indexOf(id)]);
+      const point = (l) => ({ what: 'A point.', evidence: [`${l}/screens/01-open.phone.png`] });
+      put(b, { ranking: L, margin: 'clear', reason: 'A reason.', arrangements: Object.fromEntries(L.map((l) => [l, { better: [point(l)], worse: [point(l)] }])), still_wrong: [] });
+    });
+    uxq(['study', 'collect', ...oArgs]);
+    return json(uxq(['study', 'tally', ...oArgs]));
+  };
+  const split = run2([['rail', 'tabs', 'current'], ['tabs', 'current', 'rail'], ['current', 'rail', 'tabs']]);
+  assert.deepStrictEqual([split.outcome, split.preferred], ['split', null]);
+  assert.match(split.then, /the study is split.*keep the arrangement the product has.*a candidate that joins what the reviewers preferred/);
+  assert.match(fs.readFileSync(split.result, 'utf8'), /\*\*Split:\*\* no arrangement was ranked first by more than half/);
+  const stays = json(uxq(['study', 'pick', ...oArgs, '--candidate', 'current', '--by', 'Ada']));
+  assert.match(stays.then, /The arrangement stays as it is/);
+
+  // A study belongs to the journeys as they were when it opened.
+  const third = json(uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', '--steps', '01-open', '--candidates', 'rail,tabs', '--date', '2026-04-07']));
+  assert.strictEqual(path.basename(third.study_dir), '20260407-pay-invoice-2');
+  t.config.units[0].steps[0].do = 'Opens the list of open bills.';
+  fs.writeFileSync(t.configFile, JSON.stringify(t.config));
+  assert.match(uxq(['study', 'bundle', ...cfgArgs, '--study', third.study_dir], { allowFail: true }).stderr, /the config changed since this study was opened/);
+  assert.strictEqual(json(uxq(['study', 'status', ...cfgArgs])).find((s) => s.study === third.study_dir).state, 'out of date');
+  // The change began a new series, where progress starts again. What the reviewers said before it is still read.
+  const across = json(issuesOf(['--unit', 'pay-invoice', '--steps', '02-pay']));
+  assert.deepStrictEqual(across.reviews.map((r) => [r.date, r.present_series, r.issues.length]), [['2026-04-05', false, 2], ['2026-04-06', false, 2]]);
+  assert.match(across.earlier_series, /measured with an earlier rubric or config/);
+  assert.match(uxq(['study', 'nope', ...cfgArgs], { allowFail: true }).stderr, /usage: uxq\.cjs study <issues\|open\|text\|bundle\|collect\|tally\|sheet\|pick\|redo\|status>/);
+  fs.rmSync(t.root, { recursive: true, force: true });
+});
+
+test('a layout study: the window alone beside a long screen, words that differ from the present arrangement, and a comparison done again', () => {
+  const t = setup();
+  const cfgArgs = ['--config', t.configFile];
+  const opened = json(uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', '--steps', '02-pay', '--candidates', 'split,stacked', '--date', '2026-04-03']));
+  const study = opened.study_dir;
+  const sArgs = [...cfgArgs, '--study', study];
+  const ev = (id) => opened.candidates.find((c) => c.id === id).evidence;
+  const u32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b; };
+  const png = (width, height, mark) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]), Buffer.from('IHDR'), u32(width), u32(height), Buffer.from(mark)]);
+  const capture = (id, phoneHeight, words) => {
+    fs.writeFileSync(path.join(ev(id), 'screens', '02-pay.phone.png'), png(375, phoneHeight, id));
+    fs.writeFileSync(path.join(ev(id), 'screens', '02-pay.desktop.png'), png(1280, 800, id));
+    fs.mkdirSync(path.join(ev(id), 'pages'), { recursive: true });
+    for (const size of ['phone', 'desktop']) fs.writeFileSync(path.join(ev(id), 'pages', `02-pay.${size}.txt`), `${words.join('\n')}\n`);
+  };
+  capture('current', 812, ['Invoice 42', '0900:30 UTC', 'Amount due', '120.00', 'Pay now']);
+  capture('split', 1112, ['Invoice 42', '0900:41 UTC', 'Amount due   120.00', 'Pay now']);
+  capture('stacked', 812, ['Invoice 42', '0900:30 UTC', 'Amount due', '125.00', 'Settle the bill']);
+  const state = () => json(uxq(['study', 'status', ...sArgs]))[0];
+  assert.match(state().next, /study text, to see that the candidates say what current says; then study bundle/);
+
+  // A picture longer than its window does not show what is in view on arrival: the window alone must be beside it.
+  const refused = uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp], { allowFail: true });
+  assert.match(refused.stderr, /longer than their window and have no picture of the window alone beside them[\s\S]*\n {2}- split: screens\/02-pay\.phone\.png \(1112 px, in a window of 812\)\nCapture those candidates again/);
+  assert.ok(!/current:|stacked:/.test(refused.stderr), 'a screen that fits its window needs no second picture');
+  fs.writeFileSync(path.join(ev('split'), 'screens', '02-pay.phone.window.png'), png(375, 812, 'split on arrival'));
+
+  // What the candidates' pages say that the present arrangement's do not, before a reviewer sees them.
+  const text = uxq(['study', 'text', ...sArgs], { allowFail: true });
+  assert.strictEqual(text.status, 2);
+  const [split, stacked] = json(text).candidates;
+  // A clock showing its seconds is the moment of the capture: listed, and not counted as a difference.
+  assert.deepStrictEqual(split, { candidate: 'split', only_in_candidate: [], only_in_current: [], figures: [], clock: [{ current: '0900:30 UTC', candidate: '0900:41 UTC', screens: ['02-pay.phone', '02-pay.desktop'] }], same_words_other_lines: ['02-pay.phone', '02-pay.desktop'], not_read: [], same: true });
+  assert.deepStrictEqual([stacked.only_in_candidate, stacked.only_in_current, stacked.same], [[{ text: 'Settle the bill', screens: ['02-pay.phone', '02-pay.desktop'] }], [{ text: 'Pay now', screens: ['02-pay.phone', '02-pay.desktop'] }], false]);
+  assert.deepStrictEqual(stacked.figures, [{ current: '120.00', candidate: '125.00', screens: ['02-pay.phone', '02-pay.desktop'] }]);
+  assert.match(json(text).then, /Hold each against candidates\.md.*captured again before a reviewer is started.*Figures that differ/);
+
+  // The reviewers are given both pictures of a long screen, and told which is which.
+  const started = uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp]);
+  assert.match(started.stderr, /the pages of stacked do not say what the pages of current say.*study text/);
+  const bundles = json(started);
+  const order = () => JSON.parse(fs.readFileSync(path.join(study, 'bundles.json'), 'utf8'));
+  const letterOf = (b, id) => 'ABC'[order().find((x) => x.judge === b.judge).order.indexOf(id)];
+  for (const b of bundles) {
+    assert.deepStrictEqual(fs.readdirSync(path.join(b.dir, letterOf(b, 'split'), 'screens')).sort(), ['02-pay.desktop.png', '02-pay.phone.png', '02-pay.phone.window.png']);
+    assert.deepStrictEqual(fs.readdirSync(path.join(b.dir, letterOf(b, 'current'), 'screens')).sort(), ['02-pay.desktop.png', '02-pay.phone.png']);
+    const told = readAllMarkdown(b.dir);
+    assert.ok(told.includes('`screens/<step>.<size>.window.png` beside every screen that is longer than its window'));
+    assert.match(told, /the window alone as\s+the person finds it on arrival/);
+    for (const word of ['current', 'split', 'stacked', 'study', ...FORBIDDEN]) assert.ok(!new RegExp(`\\b${word}\\b`).test(told), `a comparison folder must not contain "${word}"`);
+  }
+  // A point may be shown on either picture; the two pictures of one screen are one screen.
+  const comparison = (b, ranked, file) => {
+    const L = ranked.map((id) => letterOf(b, id));
+    const point = (id, what, f = '02-pay.phone.png') => ({ what, evidence: [`${letterOf(b, id)}/screens/${f}`] });
+    return {
+      ranking: L, margin: 'clear', reason: 'The amount and the button are in view together.',
+      arrangements: Object.fromEntries(ranked.map((id, i) => [letterOf(b, id), { better: i === 0 ? [point(id, 'The amount is beside the button on arrival.', id === 'split' ? file : undefined)] : [], worse: i === 2 ? [point(id, 'The amount is a screen away from the button.')] : [] }])),
+      still_wrong: []
+    };
+  };
+  const put = (b, data) => fs.writeFileSync(path.join(b.dir, 'comparison.json'), JSON.stringify(data));
+  put(bundles[0], comparison(bundles[0], ['split', 'stacked', 'current'], '02-pay.phone.window.png'));
+  put(bundles[1], comparison(bundles[1], ['split', 'current', 'stacked'], '02-pay.phone.png'));
+  put(bundles[2], comparison(bundles[2], ['stacked', 'split', 'current']));
+  assert.deepStrictEqual(json(uxq(['study', 'collect', ...sArgs])).map((r) => r.status), ['collected', 'collected', 'collected']);
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(study, 'comparisons', 'judge-1.json'), 'utf8')).arrangements.split.better[0].evidence, ['candidates/split/evidence/pay-invoice/screens/02-pay.phone.window.png']);
+  const tally = json(uxq(['study', 'tally', ...sArgs]));
+  assert.strictEqual(tally.preferred, 'split');
+  assert.deepStrictEqual(tally.words_differ, [{ candidate: 'stacked', only_in_candidate: 1, only_in_current: 1, figures: 1 }]);
+  let md = fs.readFileSync(tally.result, 'utf8');
+  assert.match(md, /- \*\*Reviewers 1 and 2\.\*\* The amount is beside the button on arrival\. \(`02-pay\.phone\.window\.png`, `02-pay\.phone\.png`\)/);
+  assert.match(md, /## Besides the arrangement\n\nThe arrangements were to hold the same content\..*a reviewer may have preferred a wording, a figure or a piece of content, not an arrangement\..*\n\n- `stacked` says, and `current` does not: "Settle the bill"\n- `current` says, and `stacked` does not: "Pay now"\n- `stacked`: figures differ on 2 screen\(s\), for example "120\.00" in `current` and "125\.00" here\./);
+  assert.ok(!/`split` says|does not: .*Amount due/.test(md), 'the same words set out in other lines are not a difference');
+  // Whoever chooses sees the window alone first, then the whole screen.
+  const page = fs.readFileSync(tally.sheet, 'utf8');
+  assert.match(page, /<figcaption>split[^\n]*<p class="what">On arrival, the window alone<\/p><a href="candidates\/split\/evidence\/pay-invoice\/screens\/02-pay\.phone\.window\.png">[^\n]*<p class="what">The whole screen, as scrolling shows it\.[^\n]*<a href="candidates\/split\/evidence\/pay-invoice\/screens\/02-pay\.phone\.png">/);
+  assert.strictEqual(page.split('On arrival, the window alone').length - 1, 1);
+
+  // The comparison is done again because the reviewers were shown the wrong thing, never for another draw.
+  const redo = (extra) => uxq(['study', 'redo', ...sArgs, ...extra], { allowFail: true });
+  assert.match(redo(['--recapture', 'stacked']).stderr, /--why "<what was wrong with what the reviewers were shown>" is required.*never because its result is unwelcome/);
+  assert.match(redo(['--why', 'Reworded.']).stderr, /--recapture <all\|id,id> is required.*\(current, split, stacked\).*a second draw/);
+  assert.match(redo(['--why', 'Reworded.', '--recapture', 'tall']).stderr, /--recapture <all\|id,id> is required/);
+  assert.ok(fs.existsSync(path.join(study, 'result.json')), 'nothing is moved by a refusal');
+  const again = json(redo(['--why', 'The stacked candidate reworded the button.', '--recapture', 'stacked', '--date', '2026-04-05']));
+  assert.deepStrictEqual([again.recaptured, again.reviewers_reported, again.result, again.preferred, again.kept], [['stacked'], 3, true, 'split', 'earlier/1']);
+  assert.match(again.then, /Tell the user that the comparison is being done again, and why\. Capture stacked again.*never a reviewer that saw the earlier pictures/);
+  // What was shown and what was said is set aside, not deleted.
+  for (const kept of ['comparisons/judge-1.json', 'comparisons/judge-3.json', 'result.json', 'result.md', 'candidates/stacked/evidence/pay-invoice/screens/02-pay.phone.png', 'candidates/stacked/evidence/pay-invoice/pages/02-pay.phone.txt']) assert.ok(fs.existsSync(path.join(study, 'earlier', '1', kept)), kept);
+  for (const gone of ['comparisons', 'result.json', 'result.md', 'bundles.json', 'side-by-side.html', 'earlier/1/candidates/split']) assert.ok(!fs.existsSync(path.join(study, gone)), gone);
+  assert.ok(fs.existsSync(path.join(ev('split'), 'screens', '02-pay.phone.window.png')), 'a candidate not named keeps its pictures');
+  let s = state();
+  assert.deepStrictEqual([s.state, Object.keys(s.missing), s.reviewers, s.redone.length], ['open', ['stacked'], { wanted: 3, started: 0, reported: 0 }, 1]);
+  assert.match(s.next, /^The comparison is being done again\. Capture the candidates still missing screens .*: stacked\.$/);
+  assert.match(uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp], { allowFail: true }).stderr, /not every candidate is captured:[\s\S]*stacked/);
+  assert.match(uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', '--steps', '02-pay', '--candidates', 'a,b'], { allowFail: true }).stderr, /a study of these steps is still open/);
+
+  capture('stacked', 812, ['Invoice 42', '0900:52 UTC', 'Amount due', '120.00', 'Pay now']);
+  const clean = uxq(['study', 'text', ...sArgs]);
+  assert.ok(json(clean).candidates.every((c) => c.same));
+  assert.match(json(clean).then, /Every candidate says what current says\..*look at the screens too/);
+  const fresh = uxq(['study', 'bundle', ...sArgs, '--tmp', t.tmp]);
+  assert.strictEqual(fresh.stderr, '');
+  assert.deepStrictEqual(json(fresh).map((b) => b.judge), [1, 2, 3]);
+  json(fresh).forEach((b, i) => put(b, comparison(b, [['stacked', 'split', 'current'], ['stacked', 'current', 'split'], ['split', 'stacked', 'current']][i])));
+  uxq(['study', 'collect', ...sArgs]);
+  const second = json(uxq(['study', 'tally', ...sArgs]));
+  assert.deepStrictEqual([second.preferred, second.words_differ, second.earlier.length], ['stacked', [], 1]);
+  md = fs.readFileSync(second.result, 'utf8');
+  assert.match(md, /This comparison replaces an earlier one, set aside on 2026-04-05\. The reason given: "The stacked candidate reworded the button\." Captured again: `stacked`\. The earlier comparisons and their result \(`split` preferred\) are in `earlier\/1\/`\./);
+  assert.match(md, /## Besides the arrangement\n\nAt the steps compared, the pages of every candidate say what the pages of `current` say, line for line\./);
+  uxq(['study', 'pick', ...sArgs, '--candidate', 'stacked', '--by', 'Ada']);
+  assert.match(redo(['--why', 'Again.', '--recapture', 'all']).stderr, /this study is settled: Ada picked stacked.*A choice already made is not compared again/);
+
+  // Before any reviewer is started there is nothing to set aside.
+  const other = json(uxq(['study', 'open', ...cfgArgs, '--unit', 'pay-invoice', '--steps', '01-open', '--candidates', 'rail,tabs']));
+  assert.match(uxq(['study', 'redo', ...cfgArgs, '--study', other.study_dir, '--why', 'Wrong branch.', '--recapture', 'all'], { allowFail: true }).stderr, /no reviewer has been started for this study/);
+  // Pages that were never captured are said, not taken as the same.
+  assert.deepStrictEqual(json(uxq(['study', 'text', ...cfgArgs, '--study', other.study_dir], { allowFail: true })).candidates.map((c) => [c.same, c.not_read.length]), [[false, 2], [false, 2]]);
   fs.rmSync(t.root, { recursive: true, force: true });
 });

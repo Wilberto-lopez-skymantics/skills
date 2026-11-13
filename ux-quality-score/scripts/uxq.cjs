@@ -20,6 +20,12 @@
  *   node uxq.cjs status   --config <config.json> --run <run-dir> [--unit <id>]     where a run stands, what to do next
  *   node uxq.cjs progress --config <config.json> --target <N>                      where each journey stands against the user's target
  *   node uxq.cjs trend    --config <config.json>
+ *   node uxq.cjs study open   --config <config.json> --unit <journey> --candidates <a,b[,c]> [--steps <s1,s2>] [--judges N] [--date YYYY-MM-DD]   other arrangements of a screen, set beside the one it has
+ *   node uxq.cjs study bundle --config <config.json> --study <study-dir> [--judges N] [--tmp <dir>]
+ *   node uxq.cjs study collect --config <config.json> --study <study-dir> [--discard-bad]
+ *   node uxq.cjs study tally  --config <config.json> --study <study-dir>
+ *   node uxq.cjs study pick   --config <config.json> --study <study-dir> --candidate <id> --by "<name>" [--why "..."]
+ *   node uxq.cjs study status --config <config.json> [--study <study-dir>]
  */
 const fs = require('fs');
 const path = require('path');
@@ -68,6 +74,12 @@ let EVIDENCE_KINDS = {
   content: ['screens', 'pages', 'facts'],
   responsive: ['screens', 'pages', 'facts']
 };
+// The criteria that speak of how a screen is arranged, not of how it is finished: what comes first, what
+// belongs together, what is at hand, how the screen is rebuilt at each size, how much it asks of the
+// person. Issues filed under them are what a layout study is suggested from (see studiesDue). The list
+// is no part of the yardstick: no score depends on it. A set of its own names its own in set.json.
+const DEFAULT_ARRANGEMENT = ['V1', 'V2', 'I9', 'I10', 'R2', 'R5', 'R7', 'U1', 'U5'];
+let ARRANGEMENT = DEFAULT_ARRANGEMENT;
 // A second look at one issue says whether it holds and how serious it is ("none" when it does not hold).
 const HOLDS = ['yes', 'partly', 'no'];
 // When a second look lowers or removes a reviewer's most serious issue, that reviewer's score is counted
@@ -88,6 +100,9 @@ function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8').replac
 function writeJson(file, data) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n'); }
 function round(n, d = 1) { const f = 10 ** d; return Math.round(n * f) / f; }
 function pad(n) { return String(n).padStart(2, '0'); }
+// The date as it is read where the work is done, not the UTC one: a run or a study opened in the
+// evening carries that day's date.
+function today() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 // A set brings its own rubrics; a brief it does not bring is this skill's.
 function readJudgeFile(name) {
   const own = path.join(JUDGE_DIR, name);
@@ -139,11 +154,14 @@ function useRubricSet(configPath) {
     if (!fs.existsSync(path.join(dir, 'roles', `${role}.md`))) problems.push(`roles/${role}.md is missing`);
   }
   if (!fs.existsSync(path.join(dir, 'roles', 'user.md'))) problems.push('roles/user.md is missing');
+  const arrangement = set.arrangement === undefined ? [] : set.arrangement;
+  if (!Array.isArray(arrangement) || arrangement.some((id) => typeof id !== 'string')) problems.push('"arrangement", when given, lists the ids of the criteria that are about how a screen is arranged');
   if (problems.length) fail(`rubric_set ${dir} is invalid:\n  - ${problems.join('\n  - ')}`);
   JUDGE_DIR = dir;
   ROLES = [...Object.keys(specialists), 'user'];
   SPECIALISTS = Object.keys(specialists);
   EVIDENCE_KINDS = specialists;
+  ARRANGEMENT = arrangement;
   RUBRIC_SET = set.name;
 }
 
@@ -166,8 +184,10 @@ function loadRubric(configPath) {
   }
   const versions = [...new Set(ROLES.map((r) => roles[r].version))];
   if (versions.length !== 1) fail(`every rubric under ${path.join(JUDGE_DIR, 'roles')} must carry the same rubric version (found ${versions.join(', ')})`);
+  const strangers = ARRANGEMENT.filter((id) => !ROLES.some((r) => roles[r].ids.includes(id)));
+  if (strangers.length) fail(`"arrangement" names criteria that no rubric under ${path.join(JUDGE_DIR, 'roles')} has: ${strangers.join(', ')}`);
   const measured = [...ROLES.map((r) => path.join('roles', `${r}.md`)), ...BRIEF_FILES].map((f) => `${f}\n${readJudgeFile(f).replace(/\r\n/g, '\n')}`).join('\n');
-  return { version: versions[0], sha: sha(`${measured}\nscoring\n${scoringRules()}`), roles, set: RUBRIC_SET };
+  return { version: versions[0], sha: sha(`${measured}\nscoring\n${scoringRules()}`), roles, set: RUBRIC_SET, arrangement: ARRANGEMENT };
 }
 
 // ---------------------------------------------------------------- config
@@ -387,7 +407,7 @@ function cmdNewRun(args) {
   if (!commit) {
     try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: cfg.home, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (_) { commit = 'nocommit'; }
   }
-  const date = opt(args, 'date') || new Date().toISOString().slice(0, 10);
+  const date = opt(args, 'date') || today();
   const runsDir = path.join(cfg.home, 'runs');
   let runId = `${date.replace(/-/g, '')}-${commit}`;
   for (let n = 2; fs.existsSync(path.join(runsDir, runId)); n += 1) runId = `${date.replace(/-/g, '')}-${commit}-${n}`;
@@ -1257,7 +1277,7 @@ function cmdProgress(args) {
     const open = below.length > 0 || disputed.length > 0;
     const stalled = open && gains.length >= 2 && gains.slice(-2).every((g) => g < STALL_GAIN);
     const state = !open ? 'at target' : stalled ? 'stalled' : 'below target';
-    return { ...base, state, rounds: history.length, last_run: last.e.run_id, last_at: last.at, overall: last.u.overall, roles: last.u.roles, below, disputed, ...(last.u.standing ? { standing: last.u.standing } : {}), last_gain: gains.length ? gains[gains.length - 1] : null };
+    return { ...base, state, runs: history.map((h) => ({ run_id: h.e.run_id, at: h.at })), rounds: history.length, last_run: last.e.run_id, last_at: last.at, overall: last.u.overall, roles: last.u.roles, below, disputed, ...(last.u.standing ? { standing: last.u.standing } : {}), last_gain: gains.length ? gains[gains.length - 1] : null };
   });
   // Next: carry on with the journey worked on most recently if it is still open; otherwise the heaviest
   // untouched one; and when only stalled journeys are left, the one that has waited longest.
@@ -1288,7 +1308,7 @@ function cmdProgress(args) {
     // The target is met only by one run of every journey together: every role of every journey at target,
     // the reviewers agreeing on every one, and the control journey showing the reviewers catch enough.
     target_met: Boolean(full && fullAtTarget && !fullDisputed.length && full.reliable && measured),
-    journeys: journeys.map(({ order, last_at, ...j }) => j)
+    journeys: journeys.map(({ order, last_at, runs, ...j }) => j)
   };
   // A plateau: the scores have stopped answering to the work. Either the last two runs of every journey
   // together each gained under STALL_GAIN overall and nothing has been tried since, or every journey
@@ -1312,6 +1332,12 @@ function cmdProgress(args) {
           : screenAllAtTarget && !(full && fullAtTarget && !fullDisputed.length) ? 'Every journey is at target in screening runs: confirm it with a confirming run of every journey and the control journey (new-run --confirm).'
           : full && fullAtTarget && !fullDisputed.length ? 'Every role is at target in the last confirming run, but how strict the reviewers were was not shown: run a confirming run with the control journey.'
             : 'No journey is left to work on one at a time: run every journey together in a confirming run (new-run --confirm), with the control journey.';
+  }
+  // Screens whose arrangement the reviewers keep reporting, and the studies already under way.
+  out.layout_studies = studiesDue(cfg, rubric, journeys, (runId) => lastOfRun.findIndex((e) => e.run_id === runId));
+  const due = out.layout_studies.due;
+  if (!out.target_met && due.length) {
+    out.then += ` A layout study is due on ${due.length} screen${due.length === 1 ? '' : 's'} (layout_studies), first ${due[0].journey}${due[0].step ? ` ${due[0].step}` : ''}: reviewers keep reporting how it is arranged, and fixing it in place has not answered them. ${out.plateau ? 'That is one different approach to offer the user' : 'Before more fixes to such a screen, tell the user what a study costs and, unless improve.md records that they do not want one, run it'}: study open.`;
   }
   console.log(JSON.stringify(out, null, 2));
 }
@@ -1430,7 +1456,709 @@ function cmdRegress(args) {
   if (out.regressions.length) process.exitCode = 2;
 }
 
-const COMMANDS = { status: cmdStatus, progress: cmdProgress, 'new-run': cmdNewRun, bundle: cmdBundle, collect: cmdCollect, challenge: cmdChallenge, score: cmdScore, regress: cmdRegress, trend: cmdTrend };
+// ---------------------------------------------------------------- layout studies
+// The loop repairs the arrangement a screen has; it never asks whether another arrangement would serve
+// the person better. A layout study does. Two to four other arrangements of the same steps, holding the
+// same content and the same actions, are captured beside the one the product has, and fresh reviewers
+// who see them under letters rank them. A study measures nothing: it writes no score and no ledger
+// line. It ends in a choice, and the choice is the user's; the arrangement chosen is then measured like
+// any other change. Everything of a study lives under <review home>/studies/<id>/.
+const STUDY_JUDGES = 3;
+const STUDY_ALTERNATIVES = { min: 2, max: 4 };
+const MARGINS = ['clear', 'close'];
+const LETTERS = 'ABCDEFGH';
+const CURRENT = 'current';
+
+function loadStudy(arg, flag = '--study') {
+  if (!arg || arg === true) fail(`${flag} <study-dir> is required`);
+  const dir = path.resolve(arg);
+  const file = path.join(dir, 'study.json');
+  if (!fs.existsSync(file)) fail(`not a study directory (no study.json): ${dir}`);
+  const bundlesFile = path.join(dir, 'bundles.json');
+  const bundles = fs.existsSync(bundlesFile) ? readJson(bundlesFile) : [];
+  // bundles.json names temporary folders of one machine and is not committed. In a checkout without
+  // it, the comparisons already stored say which reviewers reported and in which order each was dealt.
+  const stored = path.join(dir, 'comparisons');
+  for (const name of fs.existsSync(stored) ? fs.readdirSync(stored).sort() : []) {
+    const found = /^judge-(\d+)\.json$/.exec(name);
+    if (!found || bundles.some((b) => b.judge === Number(found[1]))) continue;
+    bundles.push({ judge: Number(found[1]), dir: null, order: Object.values(readJson(path.join(stored, name)).letters || {}) });
+  }
+  bundles.sort((a, b) => a.judge - b.judge);
+  return { dir, file, meta: readJson(file), bundlesFile, bundles };
+}
+// A candidate's evidence is laid out as a run's is, so the capture script fills it the same way.
+const candidateRun = (study, id) => ({ dir: path.join(study.dir, 'candidates', id), meta: {} });
+const comparisonFile = (study, judge) => path.join(study.dir, 'comparisons', `judge-${judge}.json`);
+// The screens a study compares: its steps, at every size the journey captures them at.
+const studyScreens = (cfg, unit, steps) => expectedScreens(cfg, unit).filter((x) => steps.includes(x.step));
+// Beside the picture of a screen that is longer than its window, a study keeps the window alone, as the
+// person finds it on arrival: what is in view, and where what is pinned to the window sits, are read there.
+const windowPicture = (dir, x) => { const rel = `screens/${x.step}.${x.size}.window.png`; return fs.existsSync(path.join(dir, rel)) ? rel : null; };
+const screenOf = (rel) => String(rel).replace(/\.window(\.[a-z]+)$/i, '$1');
+function pngHeight(file) {
+  const b = Buffer.alloc(24);
+  const fd = fs.openSync(file, 'r');
+  try { fs.readSync(fd, b, 0, 24, 0); } finally { fs.closeSync(fd); }
+  return b.toString('latin1', 1, 4) === 'PNG' ? b.readUInt32BE(20) : null;
+}
+
+// The arrangements of a study are meant to say the same things. This reads what the pages of each
+// candidate say that the pages of the arrangement the product has do not, and the reverse, at the
+// steps compared: pages/<step>.<size>.txt, line by line. Lines that are the same but for their
+// figures are listed apart (a clock that runs, or data that was not the same), and so are the screens
+// where the same words are only set out in other lines.
+function studyWording(cfg, study, unit) {
+  const m = study.meta;
+  const read = (id, x) => {
+    const file = path.join(cfg.evidenceDir(candidateRun(study, id), unit), 'pages', `${x.step}.${x.size}.txt`);
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean) : null;
+  };
+  // The lines of a that b does not have, each line counted as often as it is there.
+  const less = (a, b) => { const left = new Map(); for (const l of b) left.set(l, (left.get(l) || 0) + 1); return a.filter((l) => { const n = left.get(l) || 0; if (n) left.set(l, n - 1); return !n; }); };
+  const figureless = (l) => l.replace(/\d+/g, '0');
+  // A clock that shows its seconds is read a few seconds apart in each capture: the moment, not the data.
+  const clockless = (l) => l.replace(/\b(?:\d{1,2}:\d{2}:\d{2}|\d{4}:\d{2})\b/g, '#');
+  const clockOnly = (a, b) => clockless(a) !== a && clockless(a) === clockless(b);
+  const wordsOf = (list) => (list.join(' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).sort().join(' ');
+  return m.candidates.filter((c) => !c.current).map((c) => {
+    const lists = { candidate: new Map(), current: new Map(), figures: new Map(), clock: new Map() };
+    const add = (map, key, value, screen) => { if (!map.has(key)) map.set(key, { ...value, screens: [] }); map.get(key).screens.push(screen); };
+    const notRead = []; const otherLines = [];
+    for (const x of studyScreens(cfg, unit, m.steps)) {
+      const screen = `${x.step}.${x.size}`;
+      const a = read(CURRENT, x); const b = read(c.id, x);
+      if (!a || !b) { notRead.push(screen); continue; }
+      const came = less(b, a);
+      const gone = less(a, b).filter((g) => {
+        const k = came.findIndex((n) => figureless(n) === figureless(g));
+        if (k < 0) return true;
+        add(clockOnly(g, came[k]) ? lists.clock : lists.figures, figureless(g), { current: g, candidate: came[k] }, screen);
+        came.splice(k, 1);
+        return false;
+      });
+      if ((gone.length || came.length) && wordsOf(gone) === wordsOf(came)) { otherLines.push(screen); continue; }
+      for (const l of gone) add(lists.current, l, { text: l }, screen);
+      for (const l of came) add(lists.candidate, l, { text: l }, screen);
+    }
+    return { candidate: c.id, only_in_candidate: [...lists.candidate.values()], only_in_current: [...lists.current.values()], figures: [...lists.figures.values()], clock: [...lists.clock.values()], same_words_other_lines: otherLines, not_read: notRead };
+  });
+}
+const worded = (w) => w.only_in_candidate.length + w.only_in_current.length > 0;
+
+function listStudies(cfg) {
+  const root = path.join(cfg.home, 'studies');
+  if (!fs.existsSync(root)) return [];
+  return fs.readdirSync(root).sort().map((name) => path.join(root, name)).filter((d) => fs.existsSync(path.join(d, 'study.json'))).map((d) => loadStudy(d));
+}
+
+// Where a study stands, from its files alone.
+function studyState(cfg, study) {
+  const m = study.meta;
+  const unit = cfg.units.find((u) => u.id === m.unit && !u.control);
+  const stale = !unit || m.config_sha !== cfg.configSha;
+  const missing = {};
+  if (unit) {
+    for (const c of m.candidates) {
+      const dir = cfg.evidenceDir(candidateRun(study, c.id), unit);
+      const gone = studyScreens(cfg, unit, m.steps).filter((x) => !findEvidence(dir, 'screens', x.step, x.size, IMAGE_EXTS)).map((x) => `screens/${x.step}.${x.size}.png`);
+      if (gone.length) missing[c.id] = gone;
+    }
+  }
+  const active = study.bundles.filter((b) => !b.discarded);
+  const collected = active.filter((b) => fs.existsSync(comparisonFile(study, b.judge)));
+  const compared = fs.existsSync(path.join(study.dir, 'result.json'));
+  const state = m.picked ? 'picked' : stale ? 'out of date' : compared ? 'compared' : collected.length >= m.judges ? 'collected' : active.length ? 'comparing' : Object.keys(missing).length ? 'open' : 'captured';
+  return { unit, state, missing, active, collected, compared, waiting: active.filter((b) => !collected.includes(b)) };
+}
+
+// The arrangement issues one review of a journey reported, by step ("*" where the issue names none).
+// Polish is left out: a finishing detail is no reason to rearrange a screen.
+function arrangementReports(cfg, runId, unit, ids) {
+  const file = path.join(cfg.home, 'runs', runId, 'scorecard.json');
+  if (!fs.existsSync(file)) return null;
+  // The person's trouble is filed under the number of the step as they met it; a specialist's under the step's id.
+  const walked = cfg.stepsFor(unit, 'user');
+  const stepOf = (f) => (typeof f.step === 'number' ? (walked[f.step - 1] || {}).id : f.step) || '*';
+  return (readJson(file).issues || []).filter((f) => f.unit === unit.id && ids.includes(f.criterion) && f.severity !== 'polish').map((f) => ({ ...f, step: stepOf(f) }));
+}
+function arrangementIssues(cfg, runId, unit, ids) {
+  const reports = arrangementReports(cfg, runId, unit, ids);
+  if (!reports) return null;
+  const at = {};
+  for (const f of reports) (at[f.step] = at[f.step] || []).push(f.criterion);
+  return at;
+}
+
+// Which screens a layout study is due on. Fixing answers an arrangement issue once; when reviewers who
+// never saw the earlier review report one at the same step again, the arrangement itself is in
+// question. So: a step of a journey still below target where arrangement issues were reported in both
+// of the journey's last two reviews, or in the last review of a journey that has stalled. A step whose
+// study is still open is not due, and one whose study was settled is given two reviews first.
+function studiesDue(cfg, rubric, journeys, runIndex) {
+  const studies = listStudies(cfg);
+  const open = studies.filter((s) => !s.meta.picked).map((s) => ({ study: s.dir, journey: s.meta.unit, steps: s.meta.steps, state: studyState(cfg, s).state }));
+  if (!rubric.arrangement.length) return { due: [], open, note: 'this reviewer set names no arrangement criteria ("arrangement" in its set.json), so no study is suggested from what the reviewers report' };
+  const due = [];
+  for (const j of journeys) {
+    if (!['below target', 'stalled'].includes(j.state)) continue;
+    const runs = j.runs;
+    const unit = cfg.units.find((u) => u.id === j.journey);
+    const last = arrangementIssues(cfg, runs[runs.length - 1].run_id, unit, rubric.arrangement);
+    if (!last) continue;
+    const before = (runs.length > 1 ? arrangementIssues(cfg, runs[runs.length - 2].run_id, unit, rubric.arrangement) : null) || {};
+    for (const [key, list] of Object.entries(last)) {
+      const again = Boolean(before[key]);
+      if (!again && j.state !== 'stalled') continue;
+      const step = key === '*' ? null : key;
+      const mine = studies.filter((s) => s.meta.unit === j.journey && (step === null || s.meta.steps.includes(step)));
+      if (mine.some((s) => !s.meta.picked)) continue;
+      if (mine.length) {
+        const settled = Math.max(...mine.map((s) => runIndex(s.meta.after_run)));
+        if (runs.filter((r) => r.at > settled).length < 2) continue;
+      }
+      const where = step ? 'at this step' : 'across the journey, at no one step';
+      due.push({
+        journey: j.journey, step, reports: list.length, reports_before: again ? before[key].length : 0, criteria: [...new Set(list)].sort(), weight: j.weight,
+        why: again ? `arrangement issues were reported ${where} in both of the last two reviews of the journey` : `the journey has stalled, and its last review reported arrangement issues ${where}`
+      });
+    }
+  }
+  due.sort((a, b) => b.reports - a.reports || b.weight - a.weight || a.journey.localeCompare(b.journey));
+  return { due: due.map(({ weight, ...d }) => d), open };
+}
+
+// What the reviewers said about the arrangement of a journey's steps, review by review: what a new
+// arrangement has to answer. Unlike the list in `progress`, this reads the journey's last reviews
+// whatever series they belong to: after a change of rubric or config the scores no longer compare,
+// but what was said about a screen still describes it.
+function studyIssues(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const unit = cfg.units.find((u) => u.id === opt(args, 'unit') && !u.control);
+  if (!unit) fail('--unit <journey> is required');
+  if (!rubric.arrangement.length) fail('this reviewer set names no arrangement criteria ("arrangement" in its set.json): read the journey\'s findings.md instead');
+  const named = (opt(args, 'steps') || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const unknown = named.filter((x) => !unit.steps.some((st) => st.id === x));
+  if (unknown.length) fail(`--steps: not a step of ${unit.id}: ${unknown.join(', ')}`);
+  const count = opt(args, 'runs') ? Number(args.runs) : 2;
+  if (!(Number.isInteger(count) && count >= 1)) fail('--runs must be a whole number, 1 or more');
+  const scored = readLedger(cfg).entries.filter((e) => e.kind === 'score' && (e.unit_scores || []).some((x) => x.id === unit.id && x.overall !== null));
+  const lastOfRun = scored.filter((e, i) => !scored.slice(i + 1).some((x) => x.run_id === e.run_id));
+  const reviews = [];
+  for (const e of lastOfRun.slice(-count)) {
+    const reports = arrangementReports(cfg, e.run_id, unit, rubric.arrangement);
+    const present = e.rubric_sha === rubric.sha && e.config_sha === cfg.configSha;
+    if (!reports) { reviews.push({ run_id: e.run_id, date: e.date, present_series: present, issues: null, note: 'this run has no scorecard.json here' }); continue; }
+    reviews.push({
+      run_id: e.run_id, date: e.date, present_series: present,
+      issues: reports.filter((f) => !named.length || named.includes(f.step))
+        .sort((a, b) => String(a.step).localeCompare(String(b.step)) || SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity] || a.id.localeCompare(b.id))
+        .map((f) => ({ step: f.step === '*' ? null : f.step, criterion: f.criterion, severity: f.severity, role: f.role, ...(f.size ? { size: f.size } : {}), statement: f.statement, ...(f.fix ? { fix: f.fix } : {}) }))
+    });
+  }
+  const earlier = reviews.some((r) => !r.present_series);
+  console.log(JSON.stringify({
+    journey: unit.id, steps: named.length ? named : unit.steps.map((st) => st.id), criteria: rubric.arrangement, reviews,
+    ...(reviews.length ? {} : { note: 'this journey has not been scored yet' }),
+    ...(earlier ? { earlier_series: 'A review marked "present_series": false was measured with an earlier rubric or config. Its issues still describe the screens; its scores do not compare with today\'s, and an issue filed under a criterion this rubric does not have is not listed.' } : {})
+  }, null, 2));
+}
+
+function shuffled(list) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i -= 1) { const k = crypto.randomInt(i + 1); [out[i], out[k]] = [out[k], out[i]]; }
+  return out;
+}
+
+function studyOpen(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const unit = cfg.units.find((u) => u.id === opt(args, 'unit') && !u.control);
+  if (!unit) fail('--unit <journey> is required: the journey whose screens are to be arranged another way');
+  const list = (key) => (opt(args, key) || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const named = list('steps');
+  const unknown = named.filter((s) => !unit.steps.some((x) => x.id === s));
+  if (unknown.length) fail(`--steps: not a step of ${unit.id}: ${unknown.join(', ')}`);
+  const steps = unit.steps.map((s) => s.id).filter((s) => !named.length || named.includes(s));
+  const others = list('candidates');
+  const bad = others.filter((c, i) => !ID_RE.test(c) || c === CURRENT || others.indexOf(c) !== i);
+  if (bad.length) fail(`--candidates: each name is lowercase letters, digits, "-" or "_", used once, and "${CURRENT}" is taken (the arrangement the product has is always in the study): ${bad.join(', ')}`);
+  if (others.length < STUDY_ALTERNATIVES.min || others.length > STUDY_ALTERNATIVES.max) fail(`--candidates <a,b[,c]>: name ${STUDY_ALTERNATIVES.min} to ${STUDY_ALTERNATIVES.max} other arrangements. One alone is a single idea set against the screen as it is; a study is for choosing among several.`);
+  const judges = opt(args, 'judges') ? Number(args.judges) : STUDY_JUDGES;
+  if (!(Number.isInteger(judges) && judges >= 3 && judges % 2 === 1)) fail('--judges must be an odd number, 3 or more, so that a majority exists');
+  const clash = listStudies(cfg).find((s) => !s.meta.picked && s.meta.unit === unit.id && s.meta.steps.some((x) => steps.includes(x)));
+  if (clash) fail(`a study of these steps is still open: ${clash.dir}. Finish it (study pick) before opening another.`);
+  const date = opt(args, 'date') || today();
+  const root = path.join(cfg.home, 'studies');
+  let id = `${date.replace(/-/g, '')}-${unit.id}`;
+  for (let n = 2; fs.existsSync(path.join(root, id)); n += 1) id = `${date.replace(/-/g, '')}-${unit.id}-${n}`;
+  const dir = path.join(root, id);
+  // The last review of this journey when the study opened: a later study of the same step waits for two more.
+  const scored = readLedger(cfg).entries.filter((e) => e.kind === 'score' && e.rubric_sha === rubric.sha && e.config_sha === cfg.configSha && (e.unit_scores || []).some((x) => x.id === unit.id && x.overall !== null));
+  const candidates = [{ id: CURRENT, current: true }, ...others.map((c) => ({ id: c }))];
+  const meta = {
+    study_id: id, date, created_at: new Date().toISOString(), unit: unit.id, steps, judges, candidates,
+    // Each reviewer meets the candidates in this order turned by one more place, so each letter falls on each candidate in turn.
+    base_order: shuffled(candidates.map((c) => c.id)),
+    config_sha: cfg.configSha, ...(rubric.set ? { rubric_set: rubric.set } : {}), after_run: scored.length ? scored[scored.length - 1].run_id : null
+  };
+  writeJson(path.join(dir, 'study.json'), meta);
+  const study = { dir, meta };
+  const screens = studyScreens(cfg, unit, steps).map((x) => `screens/${x.step}.${x.size}.png`);
+  for (const c of candidates) fs.mkdirSync(path.join(cfg.evidenceDir(candidateRun(study, c.id), unit), 'screens'), { recursive: true });
+  console.log(JSON.stringify({
+    study_dir: dir, study_id: id, journey: unit.id, steps, reviewers: judges,
+    candidates: candidates.map((c) => ({ id: c.id, ...(c.current ? { is: 'the arrangement the product has now' } : {}), evidence: cfg.evidenceDir(candidateRun(study, c.id), unit) })),
+    capture: screens,
+    then: `Build each other arrangement as real screens, apart from the product (a branch or worktree each): the same content, the same actions and the same journey steps, arranged differently. Serve each from data freshly reset and capture it straight away, with the same journey: capture.cjs --config <config.json> --study ${dir} --candidate <id> [--base-url <address>]. One after another is fine. A candidate that runs a server of its own behind its pages (its own data, its own clock) needs a capture plan of its own, at candidates/<id>/capture.json in the study folder: --base-url moves the pages only. Capture "${CURRENT}" the same way, from the product as it is. In candidates.md, list for each candidate what moved and, apart, anything else that changed (a wording, a figure, a line added or dropped), and put the second list to the user before capturing. Then: study text, study bundle.`
+  }, null, 2));
+}
+
+function studyTaskMd(cfg, unit, steps, screens, labels, windows) {
+  const persona = cfg.personas.get(unit.persona);
+  const own = cfg.userViewport(unit);
+  const sizes = cfg.viewports.filter((v) => screens.some((x) => x.size === v.id));
+  const lines = ['# The task', '', `**Product.** ${cfg.config.app.name}: ${cfg.config.app.description}`, '',
+    `**Person.** ${persona.description}`, '', `**Goal.** ${unit.goal}`, '',
+    ...(own && sizes.some((v) => v.id === own.id) ? [`**Their own device.** The \`${own.id}\` size below. The product is used at the other sizes too.`, ''] : []),
+    '## Steps', '', '| Step | What the person does | What they expect to happen |', '|---|---|---|'];
+  for (const s of unit.steps.filter((x) => steps.includes(x.id))) lines.push(`| \`${s.id}\` | ${s.do} | ${s.expect || ''} |`);
+  lines.push('', ...sizesTable(sizes), '', '## The arrangements', '',
+    `${labels.map((l) => `\`${l}/\``).join(', ')}: one folder each, holding \`screens/<step>.<size>.png\` for the steps and sizes above${windows ? ', and \`screens/<step>.<size>.window.png\` beside every screen that is longer than its window' : ''}.`);
+  return lines.join('\n') + '\n';
+}
+
+function studyBundle(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const m = study.meta;
+  if (m.picked) fail(`this study is settled: ${m.picked.candidate} was picked`);
+  if (m.config_sha !== cfg.configSha) fail(`the config changed since this study was opened (${m.config_sha} -> ${cfg.configSha}), so its screens no longer show the journey as it is: open a new study`);
+  const { unit, missing, active } = studyState(cfg, study);
+  if (Object.keys(missing).length) fail(`not every candidate is captured:\n${Object.entries(missing).map(([c, files]) => `  - ${c}: ${files.join(', ')}`).join('\n')}`);
+  const screens = studyScreens(cfg, unit, m.steps);
+  const dirOf = (id) => cfg.evidenceDir(candidateRun(study, id), unit);
+  const fileOf = (id, x) => findEvidence(dirOf(id), 'screens', x.step, x.size, IMAGE_EXTS);
+  // Two candidates with the same pictures are one arrangement captured twice (the wrong branch, the wrong address).
+  const print = (id) => sha(screens.map((x) => sha(fs.readFileSync(path.join(dirOf(id), fileOf(id, x))).toString('base64'), 64)).join('\n'), 64);
+  const prints = m.candidates.map((c) => [c.id, print(c.id)]);
+  const twin = prints.find(([id, p], i) => prints.slice(i + 1).some(([, q]) => q === p));
+  if (twin) fail(`${prints.filter(([, p]) => p === twin[1]).map(([id]) => id).join(' and ')} show exactly the same screens: one arrangement was captured twice. Capture each candidate from its own build.`);
+  // A picture longer than its window shows neither what is in view on arrival nor where what is pinned
+  // to the window sits: the capture keeps the window alone beside it, and a reviewer is given both.
+  const windowOf = (x) => cfg.viewports.find((v) => v.id === x.size).height;
+  const bare = m.candidates.flatMap((c) => screens.filter((x) => /\.png$/i.test(fileOf(c.id, x)) && pngHeight(path.join(dirOf(c.id), fileOf(c.id, x))) > windowOf(x) && !windowPicture(dirOf(c.id), x)).map((x) => `  - ${c.id}: screens/${x.step}.${x.size}.png (${pngHeight(path.join(dirOf(c.id), fileOf(c.id, x)))} px, in a window of ${windowOf(x)})`));
+  if (bare.length) fail(`these screens are longer than their window and have no picture of the window alone beside them (<step>.<size>.window.png), so a reviewer could not tell what is in view on arrival, or where what is pinned to the window sits:\n${bare.join('\n')}\nCapture those candidates again (capture.cjs --study writes both pictures), each from data freshly reset.`);
+  const windows = m.candidates.some((c) => screens.some((x) => windowPicture(dirOf(c.id), x)));
+  const tmpRoot = tmpRootFor(args);
+  const wanted = Math.max((opt(args, 'judges') ? Number(args.judges) : m.judges) - active.length, 0);
+  const lastIndex = study.bundles.reduce((n, b) => Math.max(n, b.judge), 0);
+  const out = [];
+  for (let k = 1; k <= wanted; k += 1) {
+    const judge = lastIndex + k;
+    const turn = (judge - 1) % m.base_order.length;
+    const order = [...m.base_order.slice(turn), ...m.base_order.slice(0, turn)];
+    const labels = order.map((_, i) => LETTERS[i]);
+    const dir = newBundleDir(tmpRoot);
+    fs.writeFileSync(path.join(dir, 'README.md'), readJudgeFile('compare-brief.md')
+      .replace(/\{\{COUNT\}\}/g, () => String(order.length))
+      .replace(/\{\{LETTERS\}\}/g, () => labels.map((l) => `\`${l}\``).join(', ')));
+    fs.writeFileSync(path.join(dir, 'task.md'), studyTaskMd(cfg, unit, m.steps, screens, labels, windows));
+    order.forEach((id, i) => {
+      fs.mkdirSync(path.join(dir, labels[i], 'screens'), { recursive: true });
+      for (const x of screens) for (const rel of [fileOf(id, x), windowPicture(dirOf(id), x)].filter(Boolean)) fs.copyFileSync(path.join(dirOf(id), rel), path.join(dir, labels[i], rel));
+    });
+    study.bundles.push({ judge, dir, order });
+    out.push({ study: m.study_id, judge, ...cfg.starter(dir) });
+  }
+  writeJson(study.bundlesFile, study.bundles);
+  console.log(JSON.stringify(out, null, 2));
+  const differ = studyWording(cfg, study, unit).filter(worded).map((w) => w.candidate);
+  if (differ.length) console.error(`study bundle: at the steps compared, the pages of ${differ.join(', ')} do not say what the pages of ${CURRENT} say. A reviewer may prefer a wording, not an arrangement: read the lines with study text, and make sure the user accepted each one (candidates.md) before the reviewers are started. The result will list them.`);
+}
+
+// A comparison ranks every arrangement, best first, and says what each does better and worse than the
+// others, each point citing a screen of that arrangement.
+function validateComparison(j, labels, dir) {
+  if (!isObject(j)) return ['comparison.json is not a JSON object'];
+  const errors = [];
+  const ranked = Array.isArray(j.ranking) && j.ranking.length === labels.length && labels.every((l) => j.ranking.includes(l));
+  if (!ranked) errors.push(`ranking must list each of ${labels.join(', ')} once, best first`);
+  if (!MARGINS.includes(j.margin)) errors.push(`margin must be one of ${MARGINS.join(', ')}`);
+  if (!text(j.reason)) errors.push('reason is required');
+  const points = (list, tag, label) => {
+    if (!Array.isArray(list)) { errors.push(`${tag} must be a list`); return 0; }
+    list.forEach((p, i) => {
+      if (!isObject(p) || !text(p.what)) { errors.push(`${tag} ${i + 1}: what is required`); return; }
+      if (!evidenceOk(p.evidence, dir) || !p.evidence.every((rel) => String(rel).replace(/\\/g, '/').startsWith(`${label}/screens/`))) errors.push(`${tag} ${i + 1}: evidence must cite at least one screen of arrangement ${label} that exists in the folder`);
+    });
+    return list.length;
+  };
+  const all = isObject(j.arrangements) ? j.arrangements : {};
+  if (!isObject(j.arrangements)) errors.push('arrangements must be an object with one entry per arrangement');
+  for (const l of labels) {
+    if (!isObject(all[l])) { errors.push(`arrangements.${l} is missing`); continue; }
+    const better = points(all[l].better, `arrangements.${l}.better`, l);
+    const worse = points(all[l].worse, `arrangements.${l}.worse`, l);
+    if (ranked && l === j.ranking[0] && !better) errors.push(`arrangements.${l}.better: the arrangement ranked first needs at least one point that says what puts it first`);
+    if (ranked && l === j.ranking[labels.length - 1] && !worse) errors.push(`arrangements.${l}.worse: the arrangement ranked last needs at least one point that says what puts it last`);
+  }
+  if (ranked) points(j.still_wrong, 'still_wrong', j.ranking[0]);
+  else if (!Array.isArray(j.still_wrong)) errors.push('still_wrong must be a list');
+  return errors;
+}
+
+function studyCollect(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const report = [];
+  for (const b of study.bundles) {
+    if (b.discarded) continue;
+    const note = (status, extra = {}) => report.push({ judge: b.judge, status, ...extra });
+    const dest = comparisonFile(study, b.judge);
+    if (fs.existsSync(dest)) { retireBundleDir(b.dir); note('collected'); continue; }
+    const src = path.join(b.dir, 'comparison.json');
+    if (!fs.existsSync(src)) { note('missing', { dir: b.dir }); continue; }
+    let parsed;
+    try { parsed = readJson(src); } catch (e) { note('invalid', { dir: b.dir, errors: [`comparison.json is not valid JSON: ${e.message}`] }); continue; }
+    const labels = b.order.map((_, i) => LETTERS[i]);
+    const errors = validateComparison(parsed, labels, b.dir);
+    if (errors.length) { note('invalid', { dir: b.dir, errors }); continue; }
+    // Put the candidates' names and the real files back, so the stored comparison lines up with the evidence.
+    const named = (l) => b.order[labels.indexOf(l)];
+    const real = (rel) => { const [l, ...rest] = String(rel).replace(/\\/g, '/').split('/'); return path.posix.join('candidates', named(l), 'evidence', study.meta.unit, ...rest); };
+    const point = (p) => ({ what: p.what, evidence: p.evidence.map(real) });
+    writeJson(dest, {
+      judge: b.judge, letters: Object.fromEntries(labels.map((l) => [l, named(l)])),
+      ranking: parsed.ranking.map(named), margin: parsed.margin, reason: parsed.reason,
+      arrangements: Object.fromEntries(labels.map((l) => [named(l), { better: parsed.arrangements[l].better.map(point), worse: parsed.arrangements[l].worse.map(point) }])),
+      still_wrong: parsed.still_wrong.map(point)
+    });
+    retireBundleDir(b.dir);
+    note('collected');
+  }
+  if (args['discard-bad']) {
+    for (const r of report.filter((x) => x.status !== 'collected')) {
+      study.bundles.find((x) => x.dir === r.dir).discarded = true;
+      retireBundleDir(r.dir);
+      r.status = 'discarded';
+    }
+  }
+  writeJson(study.bundlesFile, study.bundles);
+  console.log(JSON.stringify(report, null, 2));
+  if (report.some((r) => r.status === 'missing' || r.status === 'invalid')) process.exitCode = 2;
+}
+
+// Reviewers of a study make the same point each in their own words. Two points are taken as one when
+// they are about the same arrangement, on the same side (better or worse), from different reviewers,
+// cite a screen in common and share enough distinctive words; a reviewer's own points are never
+// joined to each other. Used only to list each point once in result.md: the comparisons keep every word.
+const SAME_POINT = 0.15;
+function joinPoints(points) {
+  const words = points.map((p) => distinctiveWords(p.what));
+  const seenIn = new Map();
+  for (const list of words) for (const w of list) seenIn.set(w, (seenIn.get(w) || 0) + 1);
+  const vectors = words.map((list) => {
+    const v = new Map(list.map((w) => [w, Math.log(1 + points.length / seenIn.get(w))]));
+    return { v, length: Math.sqrt([...v.values()].reduce((sum, x) => sum + x * x, 0)) || 1 };
+  });
+  const alike = (i, k) => { let dot = 0; for (const [w, x] of vectors[i].v) if (vectors[k].v.has(w)) dot += x * vectors[k].v.get(w); return dot / (vectors[i].length * vectors[k].length); };
+  const pairs = [];
+  for (let i = 0; i < points.length; i += 1) {
+    for (let k = i + 1; k < points.length; k += 1) {
+      const a = points[i]; const b = points[k];
+      if (a.candidate !== b.candidate || a.side !== b.side || a.judge === b.judge || !a.evidence.some((e) => b.evidence.some((o) => screenOf(o) === screenOf(e)))) continue;
+      const score = alike(i, k);
+      if (score >= SAME_POINT) pairs.push({ i, k, score });
+    }
+  }
+  const group = points.map((_, i) => [i]);
+  for (const { i, k } of pairs.sort((a, b) => b.score - a.score || a.i - b.i || a.k - b.k)) {
+    const g = group[i]; const h = group[k];
+    if (g === h || g.some((x) => h.some((y) => points[x].judge === points[y].judge))) continue;
+    const joined = [...g, ...h].sort((a, b) => a - b);
+    for (const x of joined) group[x] = joined;
+  }
+  return [...new Set(group)].map((g) => g.map((x) => points[x]));
+}
+
+// The candidates' screens side by side, for whoever chooses: one row per step and size, one column per
+// arrangement, under their names. It names the arrangements, so it is never handed to a reviewer.
+const SHEET = 'side-by-side.html';
+const html = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function writeStudySheet(cfg, study, embed) {
+  const m = study.meta;
+  const unit = cfg.units.find((u) => u.id === m.unit && !u.control);
+  if (!unit) fail(`the config no longer has the journey this study compares (${m.unit})`);
+  const resultFile = path.join(study.dir, 'result.json');
+  const result = fs.existsSync(resultFile) ? readJson(resultFile) : null;
+  const rowOf = (id) => (result ? result.table.find((r) => r.candidate === id) : null);
+  const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+  const figure = (c, x) => {
+    const dir = cfg.evidenceDir(candidateRun(study, c.id), unit);
+    const rel = findEvidence(dir, 'screens', x.step, x.size, IMAGE_EXTS);
+    const row = rowOf(c.id);
+    const caption = `<figcaption>${html(c.id)}${c.current ? ' <span>as it is now</span>' : ''}${row ? ` <span>ranked first by ${row.first} of ${result.reviewers}</span>` : ''}${m.picked && m.picked.candidate === c.id ? ` <span>chosen by ${html(m.picked.by)}</span>` : ''}</figcaption>`;
+    if (!rel) return `<figure>${caption}<p class="none">not captured</p></figure>`;
+    const file = path.join(dir, rel);
+    const srcOf = (f) => (embed ? `data:${mime[path.extname(f).toLowerCase()]};base64,${fs.readFileSync(f).toString('base64')}` : path.relative(study.dir, f).split(path.sep).map(encodeURIComponent).join('/'));
+    const picture = (f, alt) => { const img = `<img src="${srcOf(f)}" alt="${html(alt)}" loading="lazy">`; return embed ? img : `<a href="${srcOf(f)}">${img}</a>`; };
+    // Where the screen is longer than its window, the window alone comes first: it is what the person sees.
+    const alone = windowPicture(dir, x);
+    if (alone) return `<figure>${caption}<p class="what">On arrival, the window alone</p>${picture(path.join(dir, alone), `${c.id}: ${x.step} at ${x.size}, the window on arrival`)}<p class="what">The whole screen, as scrolling shows it. What is pinned to the window may be drawn out of place here.</p>${picture(file, `${c.id}: ${x.step} at ${x.size}, the whole screen`)}</figure>`;
+    return `<figure>${caption}${picture(file, `${c.id}: ${x.step} at ${x.size}`)}</figure>`;
+  };
+  const sections = studyScreens(cfg, unit, m.steps).map((x) => {
+    const step = unit.steps.find((st) => st.id === x.step);
+    const v = cfg.viewports.find((vp) => vp.id === x.size);
+    return [`<section><h2>${html(x.step)} <span>${html(x.size)}, ${v.width} x ${v.height}</span></h2>`, `<p>${html(step.do)}</p>`,
+      `<div class="row" style="--w:${Math.min(Math.max(Math.round(v.width / 2), 240), 640)}px">`, ...m.candidates.map((c) => figure(c, x)), '</div></section>'].join('\n');
+  });
+  const verdict = !result ? '' : result.preferred ? ` The reviewers preferred ${html(result.preferred)}, ranked first by ${result.table.find((r) => r.candidate === result.preferred).first} of ${result.reviewers}; their reasons are in result.md.` : ' The reviewers were split; their reasons are in result.md.';
+  const page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout study ${html(m.study_id)}</title>
+<style>
+:root { color-scheme: light dark; }
+body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 16px 20px 48px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 36px 0 2px; }
+h2 span, figcaption span { font-weight: 400; opacity: 0.7; }
+figcaption span::before { content: "· "; }
+p { margin: 0 0 12px; max-width: 80ch; opacity: 0.8; }
+.row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(var(--w), 1fr); gap: 14px; overflow-x: auto; align-items: start; }
+figure { margin: 0; }
+figcaption { font-weight: 600; margin: 0 0 6px; }
+img { display: block; width: 100%; height: auto; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.none { padding: 24px 12px; border: 1px dashed; }
+.what { font-size: 13px; margin: 10px 0 4px; }
+</style>
+</head>
+<body>
+<h1>Layout study ${html(m.study_id)}</h1>
+<p>Journey ${html(m.unit)}: the same step at the same size in each arrangement, ${m.candidates.length} arrangements side by side.${verdict} This page names the arrangements. It is for whoever chooses, never for a reviewer.</p>
+${sections.join('\n')}
+</body>
+</html>
+`;
+  const file = path.join(study.dir, SHEET);
+  fs.writeFileSync(file, page);
+  return file;
+}
+function studySheet(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const { missing } = studyState(cfg, study);
+  const file = writeStudySheet(cfg, study, Boolean(args.embed));
+  console.log(JSON.stringify({ sheet: file, ...(args.embed ? { embedded: 'the pictures are inside the file, so it can be sent on its own' } : { needs: 'the candidates\' screens beside it, where they are: open it from the study folder, or write it with --embed to send it on its own' }), ...(Object.keys(missing).length ? { not_captured: missing } : {}) }, null, 2));
+}
+
+// What the comparisons add up to. An arrangement is preferred when more than half of the reviewers
+// ranked it first; anything less is a split, and is reported as one.
+function studyTally(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const m = study.meta;
+  const { collected, unit } = studyState(cfg, study);
+  if (collected.length < m.judges) fail(`${collected.length} of ${m.judges} comparisons are in: collect the rest, or replace the reviewers that did not report (study collect --discard-bad, then study bundle)`);
+  const comps = collected.map((b) => readJson(comparisonFile(study, b.judge)));
+  const n = comps.length;
+  const ids = m.candidates.map((c) => c.id);
+  const rank = (c, id) => c.ranking.indexOf(id) + 1;
+  const table = ids.map((id) => {
+    const ranks = comps.map((c) => rank(c, id));
+    return {
+      candidate: id, ...(id === CURRENT ? { current: true } : {}), first: ranks.filter((r) => r === 1).length, last: ranks.filter((r) => r === ids.length).length,
+      mean_rank: round(ranks.reduce((a, b) => a + b, 0) / n, 2), ranks,
+      // Ranked above each of these by more than half of the reviewers.
+      ahead_of: ids.filter((o) => o !== id && comps.filter((c) => rank(c, id) < rank(c, o)).length > n / 2)
+    };
+  }).sort((a, b) => a.mean_rank - b.mean_rank || b.first - a.first || ids.indexOf(a.candidate) - ids.indexOf(b.candidate));
+  const winner = table.find((r) => r.first > n / 2) || null;
+  const close = comps.filter((c) => c.ranking[0] === (winner || {}).candidate && c.margin === 'close').length;
+  const pick = `study pick --config <config.json> --study ${study.dir} --candidate <id> --by "<the user>"`;
+  const wording = unit ? studyWording(cfg, study, unit) : null;
+  const then = !winner
+    ? `No arrangement was ranked first by more than half of the reviewers: the study is split. Show the user result.md and the screens of each arrangement side by side (side-by-side.html). They may pick one all the same, keep the arrangement the product has, or ask for a new study with a candidate that joins what the reviewers preferred in each. The choice is theirs: ${pick}.`
+    : winner.candidate === CURRENT
+      ? `The reviewers prefer the arrangement the product has (${winner.first} of ${n} ranked it first): another arrangement of these steps is not what the journey is missing. Show the user result.md; unless they choose otherwise, record that the arrangement stays (${pick.replace('<id>', CURRENT)}) and go on with the ordinary fixes, taking what the reviewers say it still gets wrong.`
+      : `${winner.first} of ${n} reviewers ranked ${winner.candidate} first${close ? `; ${close} of them called it close` : ''}. Show the user result.md and the screens of each arrangement side by side (side-by-side.html), with what the preferred one still gets wrong. The choice is theirs, and it need not be the reviewers': ${pick}.`;
+  const result = { study_id: m.study_id, journey: m.unit, steps: m.steps, reviewers: n, outcome: winner ? 'clear' : 'split', preferred: winner ? winner.candidate : null, current_preferred: Boolean(winner && winner.candidate === CURRENT), called_close: close, table,
+    // What the candidates' pages say that the pages of the arrangement the product has do not: a preference may rest on it.
+    ...(wording ? { words_differ: wording.filter((w) => worded(w) || w.figures.length || w.not_read.length).map((w) => ({ candidate: w.candidate, only_in_candidate: w.only_in_candidate.length, only_in_current: w.only_in_current.length, figures: w.figures.length, ...(w.not_read.length ? { not_read: w.not_read } : {}) })) } : {}),
+    ...(m.redone ? { earlier: m.redone } : {}), then };
+  writeJson(path.join(study.dir, 'result.json'), result);
+  const bullets = (list) => (list.length ? list.map((p) => `- ${cell(p.what)} (${p.evidence.map((e) => `\`${e}\``).join(', ')})`) : ['- nothing recorded']);
+  // Each point once, in the words of the first reviewer who made it, with who else made it and every
+  // screen cited for it. The points several reviewers made come first.
+  const said = (judges) => (judges.length === n ? `All ${n} reviewers` : judges.length === 1 ? `Reviewer ${judges[0]}` : `Reviewers ${judges.slice(0, -1).join(', ')} and ${judges[judges.length - 1]}`);
+  const joined = joinPoints(comps.flatMap((c) => ids.flatMap((id) => ['better', 'worse'].flatMap((side) => c.arrangements[id][side].map((p) => ({ candidate: id, side, judge: c.judge, what: p.what, evidence: p.evidence }))))));
+  const points = (id, side) => {
+    const mine = joined.filter((g) => g[0].candidate === id && g[0].side === side);
+    if (!mine.length) return ['- nothing recorded'];
+    return mine.map((g, at) => ({ at, first: g[0], judges: g.map((x) => x.judge).sort((a, b) => a - b), evidence: [...new Set(g.flatMap((x) => x.evidence))] }))
+      .sort((a, b) => b.judges.length - a.judges.length || a.at - b.at)
+      .map((g) => `- **${said(g.judges)}.** ${cell(g.first.what)} (${g.evidence.map((e) => `\`${path.posix.basename(e)}\``).join(', ')})`);
+  };
+  const lines = [`# Layout study ${m.study_id}`, '', `Journey \`${m.unit}\`, steps ${m.steps.map((s) => `\`${s}\``).join(', ')}. ${n} reviewers each ranked ${ids.length} arrangements shown under letters, in a different order for each reviewer.`, '',
+    winner ? `**Preferred: \`${winner.candidate}\`**${winner.candidate === CURRENT ? ' (the arrangement the product has)' : ''}, ranked first by ${winner.first} of ${n}.` : '**Split:** no arrangement was ranked first by more than half of the reviewers.', '',
+    '| Arrangement | Ranked first by | Ranked last by | Mean rank | Ranked above, by most reviewers |', '|---|---|---|---|---|',
+    ...table.map((r) => `| \`${r.candidate}\`${r.current ? ' (as it is now)' : ''} | ${r.first} of ${n} | ${r.last} of ${n} | ${r.mean_rank} | ${r.ahead_of.map((o) => `\`${o}\``).join(', ') || 'none'} |`), ''];
+  for (const r of m.redone || []) lines.push(`This comparison replaces an earlier one, set aside on ${r.date}. The reason given: "${cell(r.why)}" Captured again: ${r.recaptured.map((c) => `\`${c}\``).join(', ')}. The earlier comparisons${r.result ? ` and their result (${r.preferred ? `\`${r.preferred}\` preferred` : 'split'})` : ''} are in \`${r.kept}/\`.`, '');
+  if (wording) {
+    const some = (list) => `${list.slice(0, WORDING_SHOWN).map((l) => `"${cell(l.text)}"`).join('; ')}${list.length > WORDING_SHOWN ? ` (and ${list.length - WORDING_SHOWN} more)` : ''}`;
+    const notes = wording.flatMap((w) => [
+      ...(w.only_in_candidate.length ? [`- \`${w.candidate}\` says, and \`${CURRENT}\` does not: ${some(w.only_in_candidate)}`] : []),
+      ...(w.only_in_current.length ? [`- \`${CURRENT}\` says, and \`${w.candidate}\` does not: ${some(w.only_in_current)}`] : []),
+      ...(w.figures.length ? [`- \`${w.candidate}\`: figures differ on ${new Set(w.figures.flatMap((x) => x.screens)).size} screen(s), for example "${cell(w.figures[0].current)}" in \`${CURRENT}\` and "${cell(w.figures[0].candidate)}" here. Check that the candidates showed the same data at the same moment.`] : []),
+      ...(w.not_read.length ? [`- \`${w.candidate}\`: the text of ${w.not_read.length} screen(s) was not captured, so it was not compared.`] : [])
+    ]);
+    lines.push('## Besides the arrangement', '', ...(notes.length
+      ? [`The arrangements were to hold the same content. At the steps compared, the text of the candidates' pages differs from the text of \`${CURRENT}\` as listed here, so a reviewer may have preferred a wording, a figure or a piece of content, not an arrangement. Every line, with its screens: \`study text\`.`, '', ...notes]
+      : [`At the steps compared, the pages of every candidate say what the pages of \`${CURRENT}\` say, line for line.`]), '');
+  }
+  lines.push('## What each reviewer said of their first choice', '');
+  for (const c of comps) {
+    lines.push(`**Reviewer ${c.judge}** ranked ${c.ranking.map((id) => `\`${id}\``).join(', ')} (first and second: ${c.margin}). ${cell(c.reason)} (This reviewer's letters: ${Object.entries(c.letters).map(([l, id]) => `${l} = ${id}`).join(', ')}.)`, '');
+    if (c.still_wrong.length) lines.push(`What \`${c.ranking[0]}\` still gets wrong:`, '', ...bullets(c.still_wrong), '');
+  }
+  lines.push('## Arrangement by arrangement', '',
+    `A point that several reviewers made, each in their own words, is listed once, in the words of the first, with every screen cited for it (under \`candidates/<arrangement>/evidence/${m.unit}/screens/\`). Each reviewer's own points are in \`comparisons/\`.`, '');
+  for (const r of table) {
+    lines.push(`### \`${r.candidate}\`${r.current ? ' (as it is now)' : ''}`, '', '**Better than the others**', '', ...points(r.candidate, 'better'), '', '**Worse than the others**', '', ...points(r.candidate, 'worse'), '');
+  }
+  lines.push(`The screens of every arrangement, side by side: \`${SHEET}\`.`, '', 'A study chooses between arrangements; it gives no score. The arrangement chosen is measured by the next review of the journey.', '');
+  fs.writeFileSync(path.join(study.dir, 'result.md'), lines.join('\n'));
+  const sheet = writeStudySheet(cfg, study, false);
+  console.log(JSON.stringify({ ...result, result: path.join(study.dir, 'result.md'), sheet }, null, 2));
+}
+
+// The choice is the user's, and is recorded with their name. It need not be the reviewers' preference.
+function studyPick(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const m = study.meta;
+  const resultFile = path.join(study.dir, 'result.json');
+  if (!fs.existsSync(resultFile)) fail('this study has no result yet: the user picks after seeing the comparison (study tally)');
+  if (m.picked) fail(`already settled: ${m.picked.by} picked ${m.picked.candidate} on ${m.picked.date}`);
+  const candidate = m.candidates.find((c) => c.id === opt(args, 'candidate'));
+  if (!candidate) fail(`--candidate must be one of ${m.candidates.map((c) => c.id).join(', ')}`);
+  if (!opt(args, 'by')) fail('--by "<name>" is required: the choice between arrangements is the user\'s, and is recorded with who made it');
+  const result = readJson(resultFile);
+  m.picked = { candidate: candidate.id, by: args.by, date: opt(args, 'date') || today(), ...(opt(args, 'why') ? { why: args.why } : {}), reviewers_preferred: result.preferred };
+  writeJson(study.file, m);
+  // The page that shows the candidates side by side names the choice too, written the way it was.
+  const sheetFile = path.join(study.dir, SHEET);
+  if (fs.existsSync(sheetFile)) writeStudySheet(cfg, study, fs.readFileSync(sheetFile, 'utf8').includes('src="data:'));
+  console.log(JSON.stringify({
+    study_id: m.study_id, picked: m.picked,
+    then: candidate.current
+      ? 'The arrangement stays as it is. Go on with the ordinary fixes; the other candidates can be discarded.'
+      : `Bring ${candidate.id} into the product through the project's own change process (where the screens' structure is specified or approved somewhere, that is changed first, by whoever owns it), record the choice where the project keeps its design decisions, commit, and review the journey in a new run with fresh reviewers. The other candidates can be discarded.`
+  }, null, 2));
+}
+
+function studyStatus(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const studies = opt(args, 'study') ? [loadStudy(args.study)] : listStudies(cfg);
+  console.log(JSON.stringify(studies.map((study) => {
+    const m = study.meta;
+    const s = studyState(cfg, study);
+    const next = {
+      picked: null,
+      'out of date': 'The config changed since this study was opened: its screens no longer show the journey as it is. Open a new study if one is still wanted.',
+      open: `${(m.redone || []).length ? 'The comparison is being done again. ' : ''}Capture the candidates still missing screens (capture.cjs --config <config.json> --study ${study.dir} --candidate <id>): ${Object.keys(s.missing).join(', ')}.`,
+      captured: 'Every candidate is captured: study text, to see that the candidates say what current says; then study bundle, and start one fresh agent per entry printed.',
+      comparing: `${s.waiting.length} reviewer(s) have not reported: study collect; replace any that never will with study collect --discard-bad and study bundle.`,
+      collected: 'Every comparison is in: study tally.',
+      compared: 'Show the user result.md and the screens of each arrangement side by side (side-by-side.html in the study folder; study sheet --embed writes it as one file that can be sent); record their choice with study pick.'
+    }[s.state];
+    return { study: study.dir, study_id: m.study_id, journey: m.unit, steps: m.steps, candidates: m.candidates.map((c) => c.id), state: s.state, reviewers: { wanted: m.judges, started: s.active.length, reported: s.collected.length }, ...(Object.keys(s.missing).length && !m.picked ? { missing: s.missing } : {}), ...(m.picked ? { picked: m.picked } : {}), ...(m.redone ? { redone: m.redone } : {}), ...(next ? { next } : {}) };
+  }), null, 2));
+}
+
+// What the candidates' pages say that the pages of the arrangement the product has do not, before a
+// reviewer sees them.
+function studyText(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const m = study.meta;
+  const unit = cfg.units.find((u) => u.id === m.unit && !u.control);
+  if (!unit) fail(`the config no longer has the journey this study compares (${m.unit})`);
+  const candidates = studyWording(cfg, study, unit).map((w) => ({ ...w, same: !worded(w) && !w.figures.length && !w.not_read.length }));
+  const clean = candidates.every((w) => w.same);
+  console.log(JSON.stringify({
+    study_id: m.study_id, journey: m.unit, steps: m.steps, compared: `the text of each candidate's pages (pages/<step>.<size>.txt) with the text of ${CURRENT}, line by line, at the steps compared`,
+    candidates,
+    then: clean
+      ? `Every candidate says what ${CURRENT} says. A picture, an icon or a control without words that was added or taken away does not show here: look at the screens too.`
+      : `A line listed here is a difference besides the arrangement. Hold each against candidates.md: one the user accepted stays, and the result will say it; any other is taken out of the candidate (or brought into every candidate, ${CURRENT} included) and that candidate is captured again before a reviewer is started. Figures that differ mean the candidates did not show the same data at the same moment: capture them again, each from data freshly reset. Screens under same_words_other_lines only set the same words out in other lines, which an arrangement may do. Lines under clock are a clock on the page that shows its seconds, read a little apart in each capture: they are listed and not counted.`
+  }, null, 2));
+  if (!clean) process.exitCode = 2;
+}
+
+// A comparison is done again only when the reviewers were shown the wrong thing: pictures captured the
+// wrong way, or a candidate that differed from the others in more than its arrangement. What they were
+// shown and what they said is set aside, never deleted, and the candidates named are captured again.
+function studyRedo(args) {
+  const rubric = loadRubric(args.config);
+  const cfg = loadConfig(args.config, rubric);
+  const study = loadStudy(args.study);
+  const m = study.meta;
+  if (m.picked) fail(`this study is settled: ${m.picked.by} picked ${m.picked.candidate} on ${m.picked.date}. A choice already made is not compared again; a new study of the same steps can be opened.`);
+  const s = studyState(cfg, study);
+  if (!s.unit) fail(`the config no longer has the journey this study compares (${m.unit})`);
+  if (!s.active.length && !s.compared) fail('no reviewer has been started for this study, so nothing needs setting aside: capture the candidate again and go on');
+  if (!opt(args, 'why')) fail('--why "<what was wrong with what the reviewers were shown>" is required. A comparison is done again because the pictures were wrong, never because its result is unwelcome; a reviewer that did not report is replaced with study collect --discard-bad and study bundle.');
+  const named = (opt(args, 'recapture') || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const ids = named.length === 1 && named[0] === 'all' ? m.candidates.map((c) => c.id) : named;
+  const unknown = ids.filter((id) => !m.candidates.some((c) => c.id === id));
+  if (!ids.length || unknown.length) fail(`--recapture <all|id,id> is required: the candidates whose pictures were wrong and will be captured again (${m.candidates.map((c) => c.id).join(', ')}). Fresh reviewers on the same pictures are not a second opinion, they are a second draw.`);
+  const n = (m.redone || []).length + 1;
+  const kept = path.posix.join('earlier', String(n));
+  const aside = path.join(study.dir, 'earlier', String(n));
+  if (fs.existsSync(aside)) fail(`${aside} already exists: move it away first`);
+  fs.mkdirSync(aside, { recursive: true });
+  const result = s.compared ? readJson(path.join(study.dir, 'result.json')) : null;
+  for (const name of ['comparisons', 'result.json', 'result.md']) if (fs.existsSync(path.join(study.dir, name))) fs.renameSync(path.join(study.dir, name), path.join(aside, name));
+  for (const id of ids) {
+    const from = path.join(candidateRun(study, id).dir, 'evidence');
+    if (fs.existsSync(from)) { fs.mkdirSync(path.join(aside, 'candidates', id), { recursive: true }); fs.renameSync(from, path.join(aside, 'candidates', id, 'evidence')); }
+    fs.rmSync(path.join(candidateRun(study, id).dir, 'capture-notes.json'), { force: true });
+    fs.mkdirSync(path.join(cfg.evidenceDir(candidateRun(study, id), s.unit), 'screens'), { recursive: true });
+  }
+  for (const b of study.bundles) retireBundleDir(b.dir);
+  fs.rmSync(study.bundlesFile, { force: true });
+  fs.rmSync(path.join(study.dir, SHEET), { force: true });
+  const entry = { date: opt(args, 'date') || today(), why: args.why, recaptured: ids, reviewers_reported: s.collected.length, result: Boolean(result), ...(result ? { preferred: result.preferred } : {}), kept };
+  m.redone = [...(m.redone || []), entry];
+  writeJson(study.file, m);
+  console.log(JSON.stringify({
+    study_id: m.study_id, set_aside: aside, ...entry,
+    then: `Tell the user that the comparison is being done again, and why. Capture ${ids.join(', ')} again, each from data freshly reset (capture.cjs --config <config.json> --study ${study.dir} --candidate <id>); the candidates not named keep their pictures, so the data and the moment shown must be the same as theirs. Then study text, study bundle, and one fresh agent per entry printed: never a reviewer that saw the earlier pictures. The pictures, comparisons and result set aside stay in ${kept}/ and are committed with the study.`
+  }, null, 2));
+}
+
+const WORDING_SHOWN = 8;
+const STUDY = { issues: studyIssues, open: studyOpen, text: studyText, bundle: studyBundle, collect: studyCollect, tally: studyTally, sheet: studySheet, pick: studyPick, redo: studyRedo, status: studyStatus };
+function cmdStudy(args) {
+  const action = STUDY[args._[1]];
+  if (!action) fail(`usage: uxq.cjs study <${Object.keys(STUDY).join('|')}> --config <config.json> [--study <study-dir>] ...`);
+  action(args);
+}
+
+const COMMANDS = { status: cmdStatus, progress: cmdProgress, 'new-run': cmdNewRun, bundle: cmdBundle, collect: cmdCollect, challenge: cmdChallenge, score: cmdScore, regress: cmdRegress, trend: cmdTrend, study: cmdStudy };
 
 if (require.main === module) {
   const args = parseArgs(process.argv.slice(2));
@@ -1440,4 +2168,4 @@ if (require.main === module) {
 }
 
 // The roles and their evidence are read when asked for: they are the set's once a config names one.
-module.exports = { get ROLES() { return ROLES; }, get SPECIALISTS() { return SPECIALISTS; }, get EVIDENCE_KINDS() { return EVIDENCE_KINDS; }, REBASE, disagree, reviewerResult, validateVerdict, numberedDecisions, groupFindings, validateSpecialist, validateUser, loadRubric, loadConfig, loadRun, expectedScreens, spawnPrompt, CAP, FINISHED_CAP, OUTCOME_SEVERITY, SEVERITY_WEIGHT };
+module.exports = { get ROLES() { return ROLES; }, get SPECIALISTS() { return SPECIALISTS; }, get EVIDENCE_KINDS() { return EVIDENCE_KINDS; }, REBASE, disagree, reviewerResult, validateVerdict, numberedDecisions, groupFindings, joinPoints, validateSpecialist, validateUser, loadRubric, loadConfig, loadRun, loadStudy, candidateRun, studyScreens, validateComparison, expectedScreens, spawnPrompt, CAP, FINISHED_CAP, OUTCOME_SEVERITY, SEVERITY_WEIGHT };

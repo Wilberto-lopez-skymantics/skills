@@ -7,6 +7,14 @@
  *
  *   node capture.cjs --config <config.json> --run <run-dir> [--plan <capture.json>] [--unit <id>]
  *                    [--controls] [--recapture-controls] [--browser <path>] [--headed] [--allow-remote]
+ *                    [--base-url <address>]
+ *   node capture.cjs --config <config.json> --study <study-dir> --candidate <id> [--base-url <address>] [--plan <capture.json>] ...
+ *
+ * The second form captures one candidate of a layout study (uxq.cjs study open): the study's journey,
+ * replayed the same way against the build that holds that arrangement, into the candidate's own folder.
+ * --base-url gives the address of that build when it is not the one in the plan. It moves the pages
+ * only: a candidate with a server of its own behind them (data to reset, a pinned clock) keeps a plan
+ * of its own at <study-dir>/candidates/<id>/capture.json, used when it is there.
  *
  * The plan (default: capture.json beside the config) says how to reach each step of each journey:
  * where to go, what to press, what to type. See references/config.md, "Capture plan".
@@ -440,7 +448,11 @@ async function setAsideNotProduct(page, items) {
 
 // The picture of a step is the whole page, as scrolling would show it. For a step the plan lists under
 // "window_steps" it is the window alone, as it stands on arrival: what someone sees before they scroll.
-async function captureStep(page, viewport, outDir, stepId, factsSource, windowOnly = false) {
+// In a layout study both are kept for a screen that is longer than its window (withWindow): the picture
+// of the whole screen, and <step>.<size>.window.png beside it, the window alone on arrival. Arrangements
+// are compared on what is in view and on where what is pinned to the window sits, and the long picture
+// alone shows neither: its first window has to be guessed, and what is pinned is drawn out of place.
+async function captureStep(page, viewport, outDir, stepId, factsSource, windowOnly = false, withWindow = false) {
   // A browser that refuses a narrow window lays the page out wider and crops the picture. That would be
   // scored as a defect of the product, so refuse to save it. The layout width is the document's client
   // width: window.innerWidth is no use here, because a phone browser reports a wider window when the
@@ -468,6 +480,7 @@ async function captureStep(page, viewport, outDir, stepId, factsSource, windowOn
     return Math.max(0, Math.min(most, ${MAX_HEIGHT}));
   })()`);
   const grown = hidden > 8 && !windowOnly ? Math.min(viewport.height + hidden, MAX_HEIGHT) : viewport.height;
+  const arrival = withWindow && !windowOnly ? await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, clip: { x: 0, y: 0, width: viewport.width, height: viewport.height, scale: 1 } }) : null;
   if (grown > viewport.height) {
     await page.send('Emulation.setDeviceMetricsOverride', { width: viewport.width, height: grown, deviceScaleFactor: 1, mobile: Boolean(viewport.touch) });
     await sleep(300);
@@ -485,9 +498,13 @@ async function captureStep(page, viewport, outDir, stepId, factsSource, windowOn
   const name = `${stepId}.${viewport.id}`;
   for (const kind of ['screens', 'pages', 'facts']) fs.mkdirSync(path.join(outDir, kind), { recursive: true });
   fs.writeFileSync(path.join(outDir, 'screens', `${name}.png`), Buffer.from(shot.data, 'base64'));
+  // The window alone is kept only where it shows less than the picture; one left by an earlier capture goes.
+  const windowToo = Boolean(arrival) && height > viewport.height;
+  if (windowToo) fs.writeFileSync(path.join(outDir, 'screens', `${name}.window.png`), Buffer.from(arrival.data, 'base64'));
+  else fs.rmSync(path.join(outDir, 'screens', `${name}.window.png`), { force: true });
   fs.writeFileSync(path.join(outDir, 'pages', `${name}.txt`), `${text}\n`);
   fs.writeFileSync(path.join(outDir, 'facts', `${name}.json`), `${JSON.stringify(facts, null, 2)}\n`);
-  return { step: stepId, size: viewport.id, height, ...(windowOnly ? { window_only: true } : {}), ...(grown > viewport.height ? { panel_grown_by: grown - viewport.height } : {}), cut_off: !windowOnly && Math.ceil(content.height) > MAX_HEIGHT || hidden >= MAX_HEIGHT };
+  return { step: stepId, size: viewport.id, height, ...(windowOnly ? { window_only: true } : {}), ...(grown > viewport.height ? { panel_grown_by: grown - viewport.height } : {}), ...(windowToo ? { window_picture: true } : {}), cut_off: !windowOnly && Math.ceil(content.height) > MAX_HEIGHT || hidden >= MAX_HEIGHT };
 }
 
 // ---------------------------------------------------------------- probes
@@ -734,19 +751,24 @@ async function probePass(page, ctx, o) {
   summary.probes.push({ unit: unit.id, size: viewport.id, steps, kinds });
 }
 
-// plan.clock = { at: ISO instant, since_file: path (relative to the review home) holding the server's start epoch in ms }
+// plan.clock = { at: ISO instant, since_file: path (relative to the review home) holding the server's start epoch in ms,
+//                max_past_s: how many seconds past `at` the application's clock may have run when the capture starts }
+const CLOCK_PAST_S = 60;
 function readClock(plan, home) {
   if (!plan.clock) return null;
   const at = Date.parse(plan.clock.at);
   if (Number.isNaN(at)) fail('clock.at must be an ISO instant');
+  if (plan.clock.max_past_s !== undefined && !(Number(plan.clock.max_past_s) > 0)) fail('clock.max_past_s must be a number of seconds above 0');
   let since = Date.now();
+  let past = null;
   if (plan.clock.since_file) {
     const file = path.resolve(home, plan.clock.since_file);
     if (!fs.existsSync(file)) fail(`clock.since_file not found: ${file} (start the application with the same clock first)`);
     since = Number(fs.readFileSync(file, 'utf8').replace(/\u001b\[[0-9;]*m/g, '').replace(/[^0-9]/g, ''));
     if (!Number.isFinite(since)) fail(`clock.since_file must hold an epoch in ms: ${file}`);
+    past = Math.round((Date.now() - since) / 1000);
   }
-  return { offset: at - since };
+  return { offset: at - since, past_s: past };
 }
 function clockShim(clock) {
   return `(() => { const R = Date, off = ${clock.offset};
@@ -759,9 +781,26 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const rubric = uxq.loadRubric(args.config);
   const cfg = uxq.loadConfig(args.config, rubric);
-  const run = uxq.loadRun(args.run);
-  const plan = loadPlan(path.resolve(typeof args.plan === 'string' ? args.plan : path.join(cfg.home, 'capture.json')));
-  const base = new URL(plan.base_url);
+  // A candidate of a layout study is captured as a run's journey is: the same steps, the same sizes, into
+  // the candidate's own folder. Only what the comparison shows is taken, so there is no probe pass.
+  const study = args.study !== undefined ? uxq.loadStudy(args.study) : null;
+  if (study) {
+    if (args.run !== undefined) fail('pass --run or --study, not both');
+    if (!study.meta.candidates.some((c) => c.id === args.candidate)) fail(`--candidate must be one of ${study.meta.candidates.map((c) => c.id).join(', ')}`);
+    if (study.meta.config_sha !== cfg.configSha) fail('the config changed since this study was opened, so its journey is no longer the one the study compares: open a new study');
+    if (study.meta.picked) fail(`this study is settled: ${study.meta.picked.candidate} was picked`);
+    args.unit = study.meta.unit;
+  }
+  const run = study ? uxq.candidateRun(study, args.candidate) : uxq.loadRun(args.run);
+  // A candidate served by a build of its own, with its own data and clock behind the pages, keeps a
+  // plan of its own in the study: candidates/<id>/capture.json. It is used when it is there.
+  const ownPlan = study ? path.join(run.dir, 'capture.json') : null;
+  const homePlan = path.join(cfg.home, 'capture.json');
+  const planFile = path.resolve(typeof args.plan === 'string' ? args.plan : ownPlan && fs.existsSync(ownPlan) ? ownPlan : homePlan);
+  const plan = loadPlan(planFile);
+  const warnings = [];
+  let base;
+  try { base = new URL(typeof args['base-url'] === 'string' ? args['base-url'] : plan.base_url); } catch (_) { fail(`not an address: ${args['base-url'] || plan.base_url}`); }
   if (!isLocalHost(base.hostname) && !args['allow-remote']) fail(`${base.hostname} is not a local address. Capture signs in and presses things, so it runs against a local or test instance; pass --allow-remote only for a test instance you own.`);
   const browserPath = findBrowser(typeof args.browser === 'string' ? args.browser : null);
   if (!browserPath) fail('no Chrome, Edge or Chromium found; pass --browser <path> or set UXQ_BROWSER');
@@ -770,6 +809,24 @@ async function main() {
   const probesSource = fs.readFileSync(path.join(__dirname, 'page-probes.js'), 'utf8').trim().replace(/;\s*$/, '');
   const settleMs = plan.settle_ms !== undefined ? Number(plan.settle_ms) : 400;
   const clock = readClock(plan, cfg.home);
+  // The pages' clock runs on from clock.at for as long as the application's server has been up. Started
+  // late, a capture shows a later moment: anything that depends on the time comes out differently.
+  // Candidates of a study must all show the same moment, so there the capture refuses; in a run it says so.
+  if (clock && clock.past_s !== null) {
+    const limit = plan.clock.max_past_s !== undefined ? Number(plan.clock.max_past_s) : study ? CLOCK_PAST_S : null;
+    if (limit !== null && clock.past_s > limit) {
+      fail(`the application's clock has already run ${clock.past_s} s past clock.at, and the limit is ${limit} s${plan.clock.max_past_s === undefined ? ' (the default for a layout study, whose candidates must all show the same moment)' : ' (clock.max_past_s)'}. Start the application's server again and capture straight away, or raise clock.max_past_s in the capture plan if that much time changes nothing on these screens.`);
+    }
+    if (limit === null && clock.past_s > CLOCK_PAST_S) warnings.push(`The application's clock had run ${clock.past_s} s past clock.at when this capture started: anything on screen that depends on the time may differ from a capture started straight after the server. Set clock.max_past_s in the capture plan to have the capture refuse instead.`);
+  }
+  // --base-url moves the pages only. What else the plan names of the application (the command that
+  // resets its data, the file with its server's start time) still belongs to the address in the plan.
+  if (study && planFile === path.resolve(homePlan) && typeof args['base-url'] === 'string') {
+    let planned = null;
+    try { planned = new URL(plan.base_url).origin; } catch (_) { /* reported above when it is the address used */ }
+    const still = [plan.reset_command ? 'reset_command' : null, plan.clock && plan.clock.since_file ? 'clock.since_file' : null].filter(Boolean);
+    if (still.length && planned !== base.origin) warnings.push(`--base-url moved the pages only: ${still.join(' and ')} of ${path.relative(process.cwd(), planFile) || planFile} ${still.length > 1 ? 'were' : 'was'} used as written. If this candidate runs a server of its own behind its pages (its own data, its own clock), ${still.length > 1 ? 'they' : 'it'} still pointed at the product's: give the candidate a capture plan of its own at ${path.relative(process.cwd(), ownPlan) || ownPlan}, with its address, reset command and clock file, and capture it again.`);
+  }
   const timeoutMs = plan.timeout_ms !== undefined ? Number(plan.timeout_ms) : 8000;
 
   const summary = { browser: path.basename(browserPath), captured: [], failures: [], skipped: [], dialogs: [], planted: [], hidden: [], probes: [], probe_notes: [] };
@@ -790,7 +847,7 @@ async function main() {
     const sizes = cfg.viewports.filter((v) => expected.some((x) => x.size === v.id));
     for (const viewport of sizes) todo.push({ unit, unitPlan, viewport, outDir, expected });
     // The probe pass: once per journey, after its screenshots, at its first size without touch.
-    const kinds = probesFor(plan, unitPlan);
+    const kinds = study ? [] : probesFor(plan, unitPlan);
     if (kinds.length && sizes.length) todo.push({ unit, unitPlan, viewport: sizes.find((v) => !v.touch) || sizes[0], outDir, expected, kinds });
     else for (const kind of PROBES) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true }); // nothing stale stays beside new screens
   }
@@ -847,7 +904,7 @@ async function main() {
             await page.settle(settleMs);
             // A journey whose subject is the demo itself (a prospect trying it) keeps what is otherwise not the product.
             for (const h of unitPlan.keep_not_product ? [] : await setAsideNotProduct(page, plan.not_product || [])) summary.hidden.push({ unit: unit.id, step: step.id, size: viewport.id, ...h });
-            summary.captured.push({ unit: unit.id, ...(await captureStep(page, viewport, outDir, step.id, factsSource, (unitPlan.window_steps || []).includes(step.id))) });
+            summary.captured.push({ unit: unit.id, ...(await captureStep(page, viewport, outDir, step.id, factsSource, (unitPlan.window_steps || []).includes(step.id), Boolean(study))) });
           }
           for (const p of ctx.planted) summary.planted.push({ unit: unit.id, size: viewport.id, ...p });
         } catch (e) {
@@ -884,6 +941,15 @@ async function main() {
   }
   const cut = summary.captured.filter((c) => c.cut_off);
   if (cut.length) summary.note = `${cut.length} screenshot(s) were cut at ${MAX_HEIGHT} px of height.`;
+  // A screen that scrolls inside a panel is pictured in a window grown by what the panel hides. Say
+  // where, so that nobody reads the place of a pinned bar, or what is in view, off such a picture.
+  const grown = summary.captured.filter((c) => c.panel_grown_by);
+  if (grown.length) summary.grown = { note: 'On these screens the window does not scroll and a panel inside it does, so the picture was taken in a window made taller by what the panel hides. It shows the whole screen, but anything pinned to the bottom of the window is drawn lower than the person sees it, and the first window is not marked on it.' + (study ? '' : ' Where what is in view on arrival is the point of a step, name the step under window_steps in the capture plan.'), screens: grown.map((c) => ({ unit: c.unit, step: c.step, size: c.size, taller_by: c.panel_grown_by })) };
+  const windows = summary.captured.filter((c) => c.window_picture);
+  if (windows.length) summary.window_pictures = { note: 'These screens are longer than their window. Each has a second picture beside the first, the window alone as the person finds it on arrival: the reviewers of the study are given both.', files: windows.map((c) => `${c.unit}/screens/${c.step}.${c.size}.window.png`) };
+  if (study) { summary.study = study.meta.study_id; summary.candidate = args.candidate; summary.address = base.origin; summary.plan = planFile; }
+  if (clock && clock.past_s !== null) summary.clock_past_s = clock.past_s;
+  if (warnings.length) summary.warnings = warnings;
   console.log(JSON.stringify({ ...summary, captured: summary.captured.length, files: summary.captured.map((c) => `${c.unit}/screens/${c.step}.${c.size}.png`) }, null, 2));
   process.exit(summary.failures.length ? 2 : 0);
 }
