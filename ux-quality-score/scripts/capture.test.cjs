@@ -100,9 +100,28 @@ label{display:block}
 </main><div class="foot"><button type="button" id="save">Save</button></div></div>
 </body></html>`;
 
+// A fifth page: an application whose panel scrolls down, holding a grid that is scrolled sideways and
+// whose width follows the window's, with one red block to say where the grid stands.
+const GRID_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Grid desk</title>
+<style>
+html,body{height:100%}
+body{font-family:sans-serif;margin:0;color:#111;background:#fff;overflow:hidden}
+.app{height:100%;overflow-y:auto}
+.tall{min-height:1800px}
+h1{margin:0;height:50px}
+.grid{overflow-x:auto}
+.row{position:relative;width:300vw;height:100px}
+.mark{position:absolute;left:80vw;top:0;width:10vw;height:100px;background:#f00}
+</style></head>
+<body><div class="app"><main class="tall"><h1>Grid desk</h1>
+<div class="grid" id="grid" tabindex="0" aria-label="The day"><div class="row"><div class="mark"></div></div></div>
+</main></div>
+<script>document.getElementById('grid').scrollLeft = innerWidth * 0.6;</script>
+</body></html>`;
+
 function startServer() {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : PAGE); });
+    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : req.url.startsWith('/grid') ? GRID_PAGE : PAGE); });
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
@@ -118,6 +137,28 @@ function run(script, args, env = {}) {
   });
 }
 const pngSize = (file) => { const b = fs.readFileSync(file); assert.strictEqual(b.slice(1, 4).toString(), 'PNG'); return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) }; };
+
+// The pixels of a picture, to see where something was drawn (8-bit RGB or RGBA, not interlaced).
+function pngPixels(file) {
+  const b = fs.readFileSync(file);
+  const { width, height } = pngSize(file);
+  assert.deepStrictEqual([b[24], b[28]], [8, 0], 'an 8-bit picture, not interlaced');
+  const n = { 2: 3, 6: 4 }[b[25]];
+  assert.ok(n, 'RGB or RGBA');
+  const parts = [];
+  for (let at = 8; at < b.length;) { const len = b.readUInt32BE(at); if (b.slice(at + 4, at + 8).toString() === 'IDAT') parts.push(b.slice(at + 8, at + 8 + len)); at += 12 + len; }
+  const raw = require('zlib').inflateSync(Buffer.concat(parts));
+  const stride = width * n; const px = Buffer.alloc(stride * height);
+  for (let y = 0; y < height; y += 1) {
+    const kind = raw[y * (stride + 1)];
+    for (let i = 0; i < stride; i += 1) {
+      const left = i >= n ? px[y * stride + i - n] : 0; const up = y ? px[(y - 1) * stride + i] : 0; const corner = y && i >= n ? px[(y - 1) * stride + i - n] : 0;
+      const p = left + up - corner; const paeth = Math.abs(p - left) <= Math.abs(p - up) && Math.abs(p - left) <= Math.abs(p - corner) ? left : Math.abs(p - up) <= Math.abs(p - corner) ? up : corner;
+      px[y * stride + i] = (raw[y * (stride + 1) + 1 + i] + [0, left, up, (left + up) >> 1, paeth][kind]) & 255;
+    }
+  }
+  return { width, height, at: (x, y) => [...px.slice(y * stride + x * n, y * stride + x * n + 3)] };
+}
 
 function setup(port) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uxq-capture-'));
@@ -662,6 +703,36 @@ test('a candidate screen longer than its window is pictured twice: the whole scr
     assert.strictEqual(JSON.parse(inRun.stdout).window_pictures, undefined);
     assert.deepStrictEqual(JSON.parse(inRun.stdout).grown.screens.map((g) => `${g.unit}/${g.step}.${g.size}`), ['sign-in/01-form.phone', 'sign-in/01-form.desktop']);
     assert.match(JSON.parse(inRun.stdout).grown.note, /name the step under window_steps in the capture plan\.$/);
+  } finally {
+    server.close();
+    fs.rmSync(t.root, { recursive: true, force: true });
+  }
+});
+
+test('a window already grown is pictured as it stands: a grid scrolled sideways is drawn where the person sees it', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const t = setup(server.address().port);
+  try {
+    const opened = JSON.parse(spawnSync(process.execPath, [UXQ, 'study', 'open', '--config', t.configFile, '--unit', 'sign-in', '--candidates', 'grid,other', '--date', '2026-01-18'], { encoding: 'utf8' }).stdout);
+    const ev = opened.candidates.find((c) => c.id === 'grid').evidence;
+    const steps = { '01-form': [{ goto: '/grid' }, { wait_for: 'text=Grid desk' }], '02-welcome': [], '03-focus': [] };
+    fs.writeFileSync(path.join(opened.study_dir, 'candidates', 'grid', 'capture.json'), JSON.stringify({ ...t.plan, units: { 'sign-in': { steps } } }));
+    const done = await run(CAPTURE, ['--config', t.configFile, '--study', opened.study_dir, '--candidate', 'grid']);
+    assert.strictEqual(done.status, 0, done.stderr + done.stdout);
+    assert.deepStrictEqual(JSON.parse(done.stdout).grown.screens.map((g) => g.taller_by), [1100, 1100, 1100, 1100, 1100, 1100], 'the panel scrolls, so the window was grown at every step');
+    // Where the red block is drawn, along a row through its middle. The grid is three windows wide,
+    // stands 0.6 of a window along, and the block starts at 0.8: it is drawn from 0.2 to 0.3 of the
+    // width. A picture taken "beyond the viewport" has the browser shrink the window to nothing and
+    // back; the grid is then left at its start, in that picture and at every step after it.
+    const reds = (file) => { const p = pngPixels(file); const xs = []; for (let x = 0; x < p.width; x += 1) { const [r, g, b] = p.at(x, 100); if (r > 200 && g < 60 && b < 60) xs.push(x); } return xs.length ? [xs[0], xs[xs.length - 1]] : null; };
+    const near = (found, width) => Boolean(found) && Math.abs(found[0] - width * 0.2) <= 1 && Math.abs(found[1] - (width * 0.3 - 1)) <= 1;
+    for (const step of ['01-form', '02-welcome', '03-focus']) for (const [size, width] of [['desktop', 1000], ['phone', 375]]) {
+      for (const kind of ['window.png', 'png']) {
+        const found = reds(path.join(ev, 'screens', `${step}.${size}.${kind}`));
+        assert.ok(near(found, width), `${step}.${size}.${kind}: the block is drawn at ${found}, and the person sees it from ${width * 0.2} to ${width * 0.3 - 1}`);
+      }
+    }
+    assert.strictEqual(pngSize(path.join(ev, 'screens', '01-form.desktop.png')).height, 1800);
   } finally {
     server.close();
     fs.rmSync(t.root, { recursive: true, force: true });

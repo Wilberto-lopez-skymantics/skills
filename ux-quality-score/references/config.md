@@ -476,6 +476,12 @@ Things to know:
   drawn at the end of that panel. So a picture alone does not show that such a bar stays within reach
   while the page scrolls: the measurements list what does (`layout.stays_in_window_while_scrolling`
   in `facts/`, with the edge each one keeps to). Pages taller than 12000 pixels are cut there.
+  To picture a page that runs past its window, the browser shrinks the window to nothing and back for
+  an instant; a page that answers to its window's size (a grid that scrolls itself into place, content
+  sized by the window) may not stand as it did afterwards. A window that was grown for a panel is
+  pictured as it stands, without that, so such screens are not touched; on a page that scrolls as a
+  whole, compare the picture with the window alone (`window_steps`, or the second picture of a study)
+  if something sideways looks out of place.
 - **Test fixtures are not the product.** A demo or development mode may show sign-in shortcuts for
   seeded accounts, a form already filled in with a test account, a debug bar. Reviewers report what
   they see, so anything of that kind is scored as a defect of the product and can sink trust on its

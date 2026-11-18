@@ -490,7 +490,12 @@ async function captureStep(page, viewport, outDir, stepId, factsSource, windowOn
   const metrics = await page.send('Page.getLayoutMetrics', {});
   const content = metrics.cssContentSize || metrics.contentSize;
   const height = windowOnly ? viewport.height : Math.max(grown, Math.min(Math.ceil(content.height), MAX_HEIGHT));
-  const shot = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: !windowOnly, clip: { x: 0, y: 0, width: viewport.width, height, scale: 1 } });
+  // A window already grown to the picture's height has nothing beyond it. To picture what is beyond the
+  // viewport the browser shrinks the window to nothing and back, and a page that answers to its window's
+  // size is not the same afterwards (seen: a grid scrolled sideways, drawn somewhere else in the picture
+  // and at every step after it). So it is asked only when the page really runs past the window.
+  const beyond = !windowOnly && height > grown;
+  const shot = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: beyond, clip: { x: 0, y: 0, width: viewport.width, height, scale: 1 } });
   if (grown > viewport.height) {
     await page.send('Emulation.setDeviceMetricsOverride', { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: Boolean(viewport.touch) });
     await sleep(150);
