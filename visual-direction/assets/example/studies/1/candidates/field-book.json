@@ -1,0 +1,199 @@
+{
+  "id": "field-book",
+  "name": "Field book",
+  "idea": "Warm paper, ruled lines in place of boxes, a serif for headings and rows roomy enough for a gloved hand, as a surveyor's field book has them.",
+  "gives_up": "Room. Rows this tall show a supervisor fewer assets at once, and on a landing page the look is quiet",
+  "drawn_from": [
+    {
+      "ref": "R4",
+      "took": "Warm paper and coloured ruling in place of boxes, a serif for headings, rows roomy enough to be used outdoors"
+    },
+    {
+      "ref": "R7",
+      "took": "Colour kept for the state a thing is in, each colour with one meaning the whole depot knows"
+    }
+  ],
+  "brings_to_mind": [
+    "careful",
+    "outdoors",
+    "kept for years"
+  ],
+  "refuses": [
+    "No boxes around groups: a ruled line or space tells them apart",
+    "No pure white and no pure black",
+    "No capitals for emphasis"
+  ],
+  "signature": [
+    {
+      "what": "Rows ruled in the feint green of a field book, and never boxed",
+      "product": "Every table and every list",
+      "landing": "The rule above each benefit, and the table in the picture"
+    },
+    {
+      "what": "Headings in a bookish serif over a plain sans",
+      "product": "Screen titles, section headings and the product's name",
+      "landing": "The headline and every section heading"
+    }
+  ],
+  "signature_css": ".p-h, .p-h3 { font-family: var(--vd-font-display); }\n.p-table th { border-bottom: 2px solid var(--vd-border); }\n.p-bar { border-bottom-width: 2px; }",
+  "type": {
+    "families": {
+      "display": {
+        "family": "Source Serif 4",
+        "class": "serif",
+        "width": "normal",
+        "fallback": "Georgia, serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "text": {
+        "family": "Public Sans",
+        "class": "sans",
+        "width": "normal",
+        "fallback": "Arial, sans-serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "mono": {
+        "family": "Courier Prime",
+        "class": "mono",
+        "width": "normal",
+        "fallback": "Courier New, monospace",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      }
+    },
+    "numerals": "tabular",
+    "labels": {
+      "case": "sentence",
+      "tracking_em": 0
+    },
+    "product": {
+      "caption": 14,
+      "control": 16,
+      "body": 17,
+      "heading": 22,
+      "title": 32,
+      "weight_text": 400,
+      "weight_label": 600,
+      "weight_heading": 600,
+      "line_height": 1.5
+    },
+    "landing": {
+      "body": 19,
+      "lead": 23,
+      "h3": 26,
+      "h2": 42,
+      "display": 68,
+      "display_weight": 600,
+      "display_tracking_em": -0.015,
+      "display_line_height": 1.06,
+      "measure_ch": 64
+    }
+  },
+  "colour": {
+    "default_mode": "light",
+    "modes": {
+      "light": {
+        "surface": "#F6F1E6",
+        "surface-raised": "#FBF8F1",
+        "text-default": "#23211C",
+        "text-muted": "#5F5A4E",
+        "border": "#B9CFC6",
+        "border-control": "#6E7F76",
+        "accent": "#1D4E89",
+        "text-on-accent": "#FFFFFF",
+        "text-accent": "#1D4E89",
+        "focus-ring": "#23211C",
+        "danger": "#A6262E",
+        "text-on-danger": "#FFFFFF",
+        "text-danger": "#A6262E",
+        "text-warning": "#8A5A00",
+        "text-success": "#2B6B3F",
+        "text-info": "#5F5A4E"
+      }
+    },
+    "meanings": {
+      "accent": "the one thing to do next on a screen, and nothing else",
+      "danger": "out of service, or failed",
+      "warning": "needs a second look",
+      "success": "checked and in order",
+      "info": "not visited yet, or a note"
+    },
+    "product_use": "Ink blue is on the main action and on links. No area is filled with colour",
+    "landing_use": "Paper and ink. Colour is on the main action and on links only",
+    "landing_band": "raised"
+  },
+  "shape": {
+    "radius_control": 4,
+    "radius_container": 0,
+    "border_width": 1,
+    "separation": "space",
+    "shadow": "none",
+    "action_edge": false,
+    "icons": {
+      "family": "Lucide",
+      "stroke": 1.75,
+      "licence": "ISC"
+    }
+  },
+  "space": {
+    "scale": [
+      6,
+      12,
+      18,
+      24,
+      36,
+      48,
+      72,
+      96,
+      144
+    ],
+    "product": {
+      "control_height": 44,
+      "row_height": 48,
+      "touch_control_height": 48,
+      "gutter": 24
+    },
+    "landing": {
+      "control_height": 52,
+      "section_gap": 144,
+      "gutter": 24
+    }
+  },
+  "motion": {
+    "product": "A panel opens with a short fade",
+    "landing": "A section fades in once, as it is reached",
+    "reduced": "Everything appears at once, without a fade",
+    "control_ms": 150,
+    "section_ms": 500
+  },
+  "imagery": {
+    "kind": "Photographs the utility has taken of its own assets, and real screens of the product",
+    "treatment": "In daylight and uncropped, each with a caption that says what it is and where",
+    "never": "Stock photographs, or drawings made to look hand-drawn"
+  },
+  "voice": {
+    "speaks_to": "the crew or the supervisor, as \"you\"",
+    "tone": "Plain and exact, as one colleague to another",
+    "capitalisation": "Sentence case throughout, and no capitals for emphasis",
+    "uses": [
+      "round",
+      "asset",
+      "sheet",
+      "visit"
+    ],
+    "avoids": [
+      "work order",
+      "ticket",
+      "job",
+      "task"
+    ]
+  }
+}

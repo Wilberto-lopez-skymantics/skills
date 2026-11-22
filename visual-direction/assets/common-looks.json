@@ -1,0 +1,130 @@
+{
+  "as_of": "2026-11",
+  "note": "Looks, typefaces and marks that a great many generated interfaces share, as this skill's maintainers saw them at the date above. It is a judgement, it dates, and it is yours to change: copy this file into a direction folder as common-looks.json and that copy is used instead. A candidate that sits in one of the looks is said to, not refused; at most one candidate of a study may. A look is matched on what is listed under tests: families (a text or display family), neutrals (warm, cool, neutral), ground (light, dark), ground_colour (saturated, quiet), accent_hue (ranges of hue in degrees, as OKLCH counts them: red near 30, yellow near 100, green near 145, blue near 260, violet near 300), corners (sharp, soft, round), separation (rules, shadow, fill, space), display_class (serif, sans, slab, mono, script), display_width (condensed, normal, wide), display_weight (ranges of weight), labels (sentence, upper), shadow (none, soft, hard). needs is how many of the listed tests have to match. faces are families: one matches a candidate's family of the same name or one that begins with it. marks are found in what a candidate calls its signature (words) and in its signature_css (css); both are regular expressions, read without regard to case.",
+  "credit": "The looks broadsheet-editorial and flat-colour-and-heavy-type, most of faces, and the ids and subjects of marks restate, in this skill's own words and tests, what the public skill impeccable describes (https://github.com/pbakaus/impeccable, Apache-2.0, as it stood at commit b49177d32788f2dc585c42831d845dacf1ebed2c): the paragraph headed Calibration and the list of typefaces in skill/reference/new-work.md, and the entries marked slop in crates/live/assets/antipatterns.json. Nothing of it is copied here, and nothing here runs or needs it.",
+  "looks": [
+    {
+      "id": "cool-grey-and-blue",
+      "what": "A plain sans, cool greys, a blue-to-violet accent, soft corners and cards lifted by a shadow.",
+      "tests": {
+        "families": ["Inter", "Geist", "Roboto", "Open Sans", "Helvetica", "Helvetica Neue", "Arial", "SF Pro", "SF Pro Text", "SF Pro Display", "Segoe UI", "system-ui", "-apple-system", "Poppins", "Montserrat", "DM Sans", "Plus Jakarta Sans", "Manrope", "Nunito", "Lato", "Figtree"],
+        "neutrals": ["cool", "neutral"],
+        "accent_hue": [[215, 305]],
+        "corners": ["soft", "round"],
+        "separation": ["shadow"]
+      },
+      "needs": 4
+    },
+    {
+      "id": "cream-and-serif",
+      "what": "A high-contrast display serif on a warm off-white, with an orange, brown or red accent: the usual answer to a request for something less generic.",
+      "tests": {
+        "families": ["Playfair Display", "Fraunces", "Instrument Serif", "Cormorant", "Cormorant Garamond", "DM Serif Display", "DM Serif Text", "Lora", "Libre Baskerville", "EB Garamond"],
+        "neutrals": ["warm"],
+        "ground": ["light"],
+        "accent_hue": [[20, 80]]
+      },
+      "needs": 3
+    },
+    {
+      "id": "dark-and-neon",
+      "what": "A near-black ground with a bright cyan, green or violet accent and a technical or monospaced face: the usual answer to a request for something that looks technical.",
+      "tests": {
+        "families": ["JetBrains Mono", "Space Mono", "Space Grotesk", "Fira Code", "Geist Mono", "IBM Plex Mono", "Orbitron", "Rajdhani", "Share Tech Mono"],
+        "ground": ["dark"],
+        "accent_hue": [[130, 215], [285, 335]]
+      },
+      "needs": 3
+    },
+    {
+      "id": "broadsheet-editorial",
+      "what": "A display serif, hairlines between everything, square corners and small labels in spaced capitals: the newspaper or the journal, as the usual answer to a request for something with taste.",
+      "tests": {
+        "families": ["Playfair Display", "Fraunces", "Newsreader", "Instrument Serif", "Cormorant", "Cormorant Garamond", "Bodoni Moda", "DM Serif Display", "Libre Caslon Text", "Libre Caslon Display", "Lora", "Crimson Pro", "Crimson Text", "Recoleta"],
+        "display_class": ["serif"],
+        "separation": ["rules"],
+        "labels": ["upper"],
+        "corners": ["sharp"]
+      },
+      "needs": 4
+    },
+    {
+      "id": "flat-colour-and-heavy-type",
+      "what": "A ground of one flat strong colour, very heavy condensed display type, square corners and shadows with a hard edge: the loud poster, as the usual answer to a request for something bold.",
+      "tests": {
+        "ground_colour": ["saturated"],
+        "display_weight": [[800, 1000]],
+        "display_width": ["condensed"],
+        "shadow": ["hard"],
+        "corners": ["sharp"]
+      },
+      "needs": 3
+    }
+  ],
+  "faces": ["Inter", "Roboto", "Geist", "Fraunces", "Playfair Display", "Cormorant", "Lora", "Crimson", "Newsreader", "Syne", "Space Grotesk", "Space Mono", "IBM Plex", "DM Sans", "DM Serif", "Outfit", "Plus Jakarta Sans", "Instrument Sans", "Recoleta"],
+  "marks": [
+    {
+      "id": "kicker-above-heading",
+      "what": "a small label set above each heading",
+      "words": ["\\bkickers?\\b", "\\beyebrows?\\b", "\\boverlines?\\b", "\\blabels? (above|over|before) (each|every|the|a) (heading|headline|title|section)", "(above|over|before) (each|every) (heading|headline)"]
+    },
+    {
+      "id": "numbered-section-labels",
+      "what": "sections that number themselves",
+      "words": ["\\bnumbered (sheet|section|page|chapter|part|plate)s?\\b", "\\b(each|every) section (is|has|carries|gets|wears) (a|its)( own)? number", "\\bsection numbers?\\b", "\\bnumbers? (on|for|beside|before) (each|every) (section|heading)"],
+      "css": ["counter-(increment|reset)", "\\bcounters?\\("]
+    },
+    {
+      "id": "codex-grid-background",
+      "what": "a grid of lines drawn as a background",
+      "words": ["\\b(grid|graph|squared|drafting) paper\\b", "\\bgrid (background|behind)", "\\bblueprint grid\\b", "\\bgrid of (fine |faint |thin )?lines (behind|under|as)"],
+      "css": ["linear-gradient[^;}]*linear-gradient[^;}]*;[^}]*background-size", "background-size[^}]*linear-gradient[^;}]*linear-gradient"]
+    },
+    {
+      "id": "repeating-stripes-gradient",
+      "what": "stripes drawn as a background",
+      "words": ["\\bstripes? (behind|as (a|the) (background|ground))", "\\bhatch(ed|ing) (ground|background)"],
+      "css": ["repeating-(linear|radial|conic)-gradient"]
+    },
+    {
+      "id": "gradient-text",
+      "what": "words filled with a gradient",
+      "words": ["\\bgradient (text|type|headline|heading|lettering)"],
+      "css": ["background-clip\\s*:\\s*text"]
+    },
+    {
+      "id": "dark-glow",
+      "what": "a coloured glow around things",
+      "words": ["\\bglow(s|ing)?\\b", "\\bneon\\b"],
+      "css": ["(box|text)-shadow\\s*:[^;}]*(^|[\\s,:])0(px)?\\s+0(px)?\\s+[1-9]"]
+    },
+    {
+      "id": "radial-halo",
+      "what": "a soft halo of colour behind a section",
+      "words": ["\\bhalo\\b", "\\bspotlight\\b", "\\bsoft (cloud|haze|wash) of colour"],
+      "css": ["radial-gradient"]
+    },
+    {
+      "id": "side-tab",
+      "what": "a thick bar of colour down one side of a box",
+      "words": ["\\b(bar|stripe|band|rule) down (the|its|one) (left|side|edge)", "\\bleft (border|bar|edge) in the accent"],
+      "css": ["border-(left|inline-start)(-width)?\\s*:\\s*([3-9]|[1-9]\\d)px"]
+    },
+    {
+      "id": "shape-assembled-illustration",
+      "what": "plain shapes standing where a picture should be",
+      "words": ["\\b(flat|plain|geometric|abstract|simple) shapes?\\b", "\\ba circle, a (square|triangle)", "\\bshapes? standing for\\b"]
+    },
+    {
+      "id": "icon-tile-stack",
+      "what": "an icon in a rounded tile above each heading",
+      "words": ["\\bicon (tile|chip|badge|box)(s|es)?\\b", "\\bicons? in (a |its own )?(rounded|soft|tinted) (square|tile|box)"]
+    },
+    {
+      "id": "pulsing-dot",
+      "what": "something that pulses, blinks or scrolls by itself without end",
+      "words": ["\\bpuls(e|es|ing)\\b", "\\bblink(s|ing)?\\b", "\\bmarquee\\b", "\\bticker\\b"],
+      "css": ["animation[^;}]*infinite"]
+    }
+  ]
+}

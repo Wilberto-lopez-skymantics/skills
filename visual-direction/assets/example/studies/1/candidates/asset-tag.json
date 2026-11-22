@@ -1,0 +1,200 @@
+{
+  "id": "asset-tag",
+  "name": "Asset tag",
+  "idea": "Condensed capitals, square ruled cells and one signal colour kept for the thing to act on, as a stamped asset tag and the cells of a drawing use them to be read at arm's length.",
+  "gives_up": "Warmth. It reads as official paper, and a visitor to the landing page meets a great many capitals",
+  "drawn_from": [
+    {
+      "ref": "R1",
+      "took": "Condensed capitals for names and labels, the asset code as the most prominent thing in a row, and one signal colour"
+    },
+    {
+      "ref": "R2",
+      "took": "A small capital label over its value in a ruled cell, two weights of line and no fills, figures of equal width"
+    }
+  ],
+  "brings_to_mind": [
+    "exact",
+    "municipal",
+    "built to last"
+  ],
+  "refuses": [
+    "No shadows: nothing is lifted off the page",
+    "No rounded corners on boxes or panels",
+    "Orange never fills anything larger than a button",
+    "No icon without a word beside it"
+  ],
+  "signature": [
+    {
+      "what": "Asset codes in fixed-width capitals, the heaviest thing in any row",
+      "product": "The first column of every table, and the heading of an asset's panel",
+      "landing": "The codes in the picture of the product"
+    },
+    {
+      "what": "Names and headings in condensed capitals, as stamped",
+      "product": "The product's name and every screen title",
+      "landing": "The headline and every section heading"
+    }
+  ],
+  "signature_css": ".p-title, .p-name, .l-name, .l-display, .l-h2, .l-h3, .l-band-say { text-transform: uppercase; letter-spacing: 0.01em; }\n.p-table td.code { font-weight: 600; }\n.p-facts dt { text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; }\n.p-detail { border-top-width: 3px; border-top-color: var(--vd-text-default); }",
+  "type": {
+    "families": {
+      "display": {
+        "family": "Barlow Condensed",
+        "class": "sans",
+        "width": "condensed",
+        "fallback": "Arial Narrow, sans-serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "text": {
+        "family": "Barlow",
+        "class": "sans",
+        "width": "normal",
+        "fallback": "Arial, sans-serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "mono": {
+        "family": "Red Hat Mono",
+        "class": "mono",
+        "width": "normal",
+        "fallback": "ui-monospace, monospace",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Red+Hat+Mono:wght@400;500;600&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      }
+    },
+    "numerals": "tabular",
+    "labels": {
+      "case": "upper",
+      "tracking_em": 0.06
+    },
+    "product": {
+      "caption": 13,
+      "control": 14,
+      "body": 16,
+      "heading": 20,
+      "title": 30,
+      "weight_text": 400,
+      "weight_label": 500,
+      "weight_heading": 600,
+      "line_height": 1.45
+    },
+    "landing": {
+      "body": 18,
+      "lead": 22,
+      "h3": 26,
+      "h2": 46,
+      "display": 80,
+      "display_weight": 600,
+      "display_tracking_em": 0,
+      "display_line_height": 0.96,
+      "measure_ch": 58
+    }
+  },
+  "colour": {
+    "default_mode": "light",
+    "modes": {
+      "light": {
+        "surface": "#F3F5F6",
+        "surface-raised": "#FFFFFF",
+        "text-default": "#14202B",
+        "text-muted": "#4C5A66",
+        "border": "#C3CCD3",
+        "border-control": "#6B7A86",
+        "accent": "#C2410C",
+        "text-on-accent": "#FFFFFF",
+        "text-accent": "#C2410C",
+        "focus-ring": "#14202B",
+        "danger": "#A3195B",
+        "text-on-danger": "#FFFFFF",
+        "text-danger": "#A3195B",
+        "text-warning": "#8A5200",
+        "text-success": "#1B6B3A",
+        "text-info": "#1F5FA8"
+      }
+    },
+    "meanings": {
+      "accent": "the one thing to do next on a screen, and nothing else",
+      "danger": "out of service, or failed",
+      "warning": "needs a second look",
+      "success": "checked and in order",
+      "info": "not visited yet, or a note"
+    },
+    "product_use": "Orange is on the main action and on links, and nowhere else. Everything else is ink on paper",
+    "landing_use": "Ink on paper, with one band of ink. Orange is on the main action only",
+    "landing_band": "inverse"
+  },
+  "shape": {
+    "radius_control": 2,
+    "radius_container": 0,
+    "border_width": 1,
+    "separation": "rules",
+    "shadow": "none",
+    "action_edge": false,
+    "icons": {
+      "family": "Tabler Icons, outline",
+      "stroke": 1.5,
+      "licence": "MIT"
+    }
+  },
+  "space": {
+    "scale": [
+      4,
+      8,
+      12,
+      16,
+      24,
+      32,
+      48,
+      64,
+      96
+    ],
+    "product": {
+      "control_height": 32,
+      "row_height": 32,
+      "touch_control_height": 44,
+      "gutter": 16
+    },
+    "landing": {
+      "control_height": 48,
+      "section_gap": 96,
+      "gutter": 24
+    }
+  },
+  "motion": {
+    "product": "Nothing moves except a pressed button, which sinks by a pixel",
+    "landing": "Nothing moves",
+    "reduced": "The same: there is nothing to reduce",
+    "control_ms": 80,
+    "section_ms": 0
+  },
+  "imagery": {
+    "kind": "Real screens of the product, and line drawings of assets in the manner of an engineering drawing",
+    "treatment": "Black line on the page colour inside a ruled border, without perspective",
+    "never": "Photographs of people, or any colour but the one orange"
+  },
+  "voice": {
+    "speaks_to": "the crew or the supervisor, as \"you\"",
+    "tone": "Plain and exact, as one colleague to another",
+    "capitalisation": "Sentence case for sentences and buttons; names, labels and headings in capitals",
+    "uses": [
+      "round",
+      "asset",
+      "sheet",
+      "visit"
+    ],
+    "avoids": [
+      "work order",
+      "ticket",
+      "job",
+      "task"
+    ]
+  }
+}

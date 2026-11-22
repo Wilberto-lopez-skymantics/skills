@@ -1,0 +1,208 @@
+{
+  "name": "Example Rounds",
+  "product": {
+    "nav": [
+      "Today",
+      "Rounds",
+      "Assets",
+      "Reports"
+    ],
+    "current": 1,
+    "user": "M. Okafor, North depot",
+    "screen": {
+      "title": "Rounds this week",
+      "search_label": "Find an asset",
+      "filter_label": "Area",
+      "filter_options": [
+        "All areas",
+        "North",
+        "Riverside",
+        "Old town"
+      ],
+      "primary_action": "Plan a round",
+      "secondary_action": "Print the sheet"
+    },
+    "table": {
+      "columns": [
+        "Asset",
+        "Where",
+        "State",
+        "Pressure, bar",
+        "Due"
+      ],
+      "code_columns": [
+        0
+      ],
+      "numeric_columns": [
+        3
+      ],
+      "status_column": 2,
+      "rows": [
+        {
+          "cells": [
+            "HY-0412",
+            "Hydrant, Mill Lane",
+            "Checked",
+            "4.2",
+            "Mon 16 Nov"
+          ],
+          "status": "success"
+        },
+        {
+          "cells": [
+            "VL-1180",
+            "Gate valve, Bridge Street",
+            "Stiff to turn",
+            "3.9",
+            "Mon 16 Nov"
+          ],
+          "status": "warning"
+        },
+        {
+          "cells": [
+            "HY-0437",
+            "Hydrant, Quarry Road",
+            "Leaking at the cap",
+            "2.1",
+            "Overdue"
+          ],
+          "status": "danger"
+        },
+        {
+          "cells": [
+            "PS-0031",
+            "Pump station, Riverside",
+            "Checked",
+            "5.0",
+            "Tue 17 Nov"
+          ],
+          "status": "success"
+        },
+        {
+          "cells": [
+            "VL-1204",
+            "Air valve, Church Hill",
+            "Not visited yet",
+            "4.4",
+            "Tue 17 Nov"
+          ],
+          "status": "info"
+        },
+        {
+          "cells": [
+            "HY-0460",
+            "Hydrant, Station Yard",
+            "Checked",
+            "4.1",
+            "Wed 18 Nov"
+          ],
+          "status": "success"
+        },
+        {
+          "cells": [
+            "MT-2217",
+            "District meter, Old town",
+            "Reading out of range",
+            "6.3",
+            "Wed 18 Nov"
+          ],
+          "status": "warning"
+        },
+        {
+          "cells": [
+            "HY-0502",
+            "Hydrant, Tannery Row",
+            "Not visited yet",
+            "4.0",
+            "Thu 19 Nov"
+          ],
+          "status": "info"
+        }
+      ]
+    },
+    "statuses": {
+      "success": "Checked",
+      "warning": "Needs a second look",
+      "danger": "Out of service",
+      "info": "Not visited yet"
+    },
+    "states_title": "What each state means",
+    "notice": "The round for Riverside was saved at 14:05.",
+    "detail": {
+      "title": "HY-0437, Quarry Road",
+      "facts": [
+        [
+          "Kind",
+          "Hydrant, pillar"
+        ],
+        [
+          "Fitted",
+          "2009"
+        ],
+        [
+          "Last round",
+          "3 Nov, J. Brandt"
+        ],
+        [
+          "Pressure",
+          "2.1 bar"
+        ]
+      ],
+      "form_title": "Record this visit",
+      "field_label": "Pressure, bar",
+      "field_value": "2.1",
+      "field_help": "Read at the outlet, with the cap off.",
+      "error_label": "Flow, litres a second",
+      "error_value": "abc",
+      "error_message": "Write the flow as a number, such as 18.4.",
+      "select_label": "What you found",
+      "select_options": [
+        "Leaking at the cap",
+        "Checked, nothing to report",
+        "Could not reach it"
+      ],
+      "checkbox_label": "Needs a second visit",
+      "save": "Save the visit",
+      "cancel": "Cancel",
+      "quiet": "See past visits",
+      "destructive": "Take out of service",
+      "disabled": "Close the round"
+    },
+    "empty": {
+      "title": "No rounds planned for Old town",
+      "body": "The assets here were last checked in October. Plan a round to put them on a sheet.",
+      "action": "Plan a round for Old town"
+    }
+  },
+  "landing": {
+    "nav": [
+      "How it works",
+      "For supervisors",
+      "Pricing"
+    ],
+    "action": "Book a walk-through",
+    "headline": "Every hydrant checked, and the sheet to prove it",
+    "lead": "Example Rounds plans the week's maintenance rounds for a small water utility, and keeps what each crew found, asset by asset.",
+    "quiet_link": "See a sample round sheet",
+    "proof": "{{proof: a figure from a named utility, with its date}}",
+    "picture_caption": "The week's rounds, as a supervisor sees them.",
+    "benefits": [
+      {
+        "title": "Plan a round in a minute",
+        "body": "Pick an area, and the assets that are due are on the sheet, in walking order."
+      },
+      {
+        "title": "Record it at the kerb",
+        "body": "A crew records pressure, flow and what they found on a tablet, with a signal or without."
+      },
+      {
+        "title": "Know what is overdue",
+        "body": "Anything not checked within its interval is at the top of Monday's list."
+      }
+    ],
+    "band": "{{quotation: a supervisor's own words, used with permission}}",
+    "band_source": "{{name, role and utility}}",
+    "closing_headline": "See your own area on a round sheet",
+    "footer": "Example Rounds is a made-up product, used to show the format."
+  }
+}

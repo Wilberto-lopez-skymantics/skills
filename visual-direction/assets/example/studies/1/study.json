@@ -1,0 +1,15 @@
+{
+  "study": 1,
+  "state": "open",
+  "opened": "2026-11-20",
+  "candidates": [
+    "asset-tag",
+    "timetable",
+    "field-book"
+  ],
+  "surfaces": [
+    "product",
+    "landing"
+  ],
+  "held": []
+}

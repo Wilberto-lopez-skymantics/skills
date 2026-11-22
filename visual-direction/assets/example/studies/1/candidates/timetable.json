@@ -1,0 +1,218 @@
+{
+  "id": "timetable",
+  "name": "Timetable",
+  "idea": "Strong figures on a dark ground, tinted rows in place of lines and one bright lozenge for the thing to find, as a pocket timetable uses them to be read at a glance in a van.",
+  "gives_up": "The look of paper that a supervisor trusts. A dark screen is also harder to read in full sun at the kerb, which is why it has a light mode",
+  "drawn_from": [
+    {
+      "ref": "R3",
+      "took": "Open figures that read at a glance in dense tables, a tint in place of a line between rows, a rounded lozenge in one bright colour"
+    },
+    {
+      "ref": "R5",
+      "took": "A dark ground for a screen read in glances, a state shown as a mark and a word, no movement without cause"
+    }
+  ],
+  "brings_to_mind": [
+    "legible",
+    "dependable",
+    "on time"
+  ],
+  "refuses": [
+    "No lines between rows: a tint tells them apart",
+    "No colour but the one yellow and the four states",
+    "Nothing moves unless a value has changed"
+  ],
+  "signature": [
+    {
+      "what": "A yellow lozenge marks where you are",
+      "product": "The current place in the navigation",
+      "landing": "The main action, and the band"
+    },
+    {
+      "what": "Every other row carries a tint, and no row a line",
+      "product": "Every table",
+      "landing": "The table in the picture of the product"
+    }
+  ],
+  "signature_css": ".p-table td, .p-table tr { border-top-color: transparent; }\n.p-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--vd-text-default) 7%, transparent); }\n.p-nav a[aria-current] { align-self: center; height: 30px; padding: 0 14px; border-color: transparent; border-radius: 999px; background: var(--vd-accent); color: var(--vd-text-on-accent); }",
+  "type": {
+    "families": {
+      "display": {
+        "family": "Overpass",
+        "class": "sans",
+        "width": "normal",
+        "fallback": "Verdana, sans-serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "text": {
+        "family": "Atkinson Hyperlegible",
+        "class": "sans",
+        "width": "normal",
+        "fallback": "Verdana, sans-serif",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      },
+      "mono": {
+        "family": "Overpass Mono",
+        "class": "mono",
+        "width": "normal",
+        "fallback": "ui-monospace, monospace",
+        "source": {
+          "stylesheet": "https://fonts.googleapis.com/css2?family=Overpass+Mono:wght@400;600&display=swap"
+        },
+        "licence": "SIL Open Font License 1.1"
+      }
+    },
+    "numerals": "tabular",
+    "labels": {
+      "case": "sentence",
+      "tracking_em": 0
+    },
+    "product": {
+      "caption": 14,
+      "control": 16,
+      "body": 16,
+      "heading": 20,
+      "title": 26,
+      "weight_text": 400,
+      "weight_label": 700,
+      "weight_heading": 700,
+      "line_height": 1.5
+    },
+    "landing": {
+      "body": 18,
+      "lead": 22,
+      "h3": 24,
+      "h2": 40,
+      "display": 64,
+      "display_weight": 800,
+      "display_tracking_em": -0.02,
+      "display_line_height": 1.04,
+      "measure_ch": 60
+    }
+  },
+  "colour": {
+    "default_mode": "dark",
+    "modes": {
+      "dark": {
+        "surface": "#0F1B2A",
+        "surface-raised": "#18283B",
+        "text-default": "#F2F5F8",
+        "text-muted": "#A9B6C4",
+        "border": "#2A3D53",
+        "border-control": "#7F92A6",
+        "accent": "#FACC15",
+        "text-on-accent": "#1A1A0A",
+        "text-accent": "#FACC15",
+        "focus-ring": "#FFFFFF",
+        "danger": "#F87171",
+        "text-on-danger": "#2A0A0A",
+        "text-danger": "#FCA5A5",
+        "text-warning": "#FDBA74",
+        "text-success": "#86EFAC",
+        "text-info": "#93C5FD"
+      },
+      "light": {
+        "surface": "#F4F6F8",
+        "surface-raised": "#FFFFFF",
+        "text-default": "#0F1B2A",
+        "text-muted": "#4A5868",
+        "border": "#CBD3DC",
+        "border-control": "#6A7887",
+        "accent": "#FACC15",
+        "text-on-accent": "#1A1A0A",
+        "text-accent": "#6B5600",
+        "focus-ring": "#0F1B2A",
+        "danger": "#B4232C",
+        "text-on-danger": "#FFFFFF",
+        "text-danger": "#B4232C",
+        "text-warning": "#8A5200",
+        "text-success": "#1B6B3A",
+        "text-info": "#1F5FA8"
+      }
+    },
+    "meanings": {
+      "accent": "the one thing to do next on a screen, and nothing else",
+      "danger": "out of service, or failed",
+      "warning": "needs a second look",
+      "success": "checked and in order",
+      "info": "not visited yet, or a note"
+    },
+    "product_use": "Yellow marks where you are and the one thing to do next. The four states have their own colours. The rest is light on navy",
+    "landing_use": "The same dark ground, with one full band of yellow",
+    "landing_band": "accent"
+  },
+  "shape": {
+    "radius_control": 12,
+    "radius_container": 14,
+    "border_width": 1,
+    "separation": "fill",
+    "shadow": "none",
+    "action_edge": true,
+    "icons": {
+      "family": "Phosphor, bold",
+      "stroke": 2,
+      "licence": "MIT"
+    }
+  },
+  "space": {
+    "scale": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      28,
+      40,
+      56,
+      80,
+      112
+    ],
+    "product": {
+      "control_height": 40,
+      "row_height": 40,
+      "touch_control_height": 48,
+      "gutter": 20
+    },
+    "landing": {
+      "control_height": 52,
+      "section_gap": 112,
+      "gutter": 28
+    }
+  },
+  "motion": {
+    "product": "A value that has changed is marked for a moment. Nothing else moves",
+    "landing": "Sections do not animate in",
+    "reduced": "A changed value is marked without a transition",
+    "control_ms": 120,
+    "section_ms": 300
+  },
+  "imagery": {
+    "kind": "Real screens of the product, on the dark ground",
+    "treatment": "Shown whole and level, never cropped at an angle",
+    "never": "Stock photographs, or drawings of people"
+  },
+  "voice": {
+    "speaks_to": "the crew or the supervisor, as \"you\"",
+    "tone": "Plain and exact, as one colleague to another",
+    "capitalisation": "Sentence case throughout",
+    "uses": [
+      "round",
+      "asset",
+      "sheet",
+      "visit"
+    ],
+    "avoids": [
+      "work order",
+      "ticket",
+      "job",
+      "task"
+    ]
+  }
+}
