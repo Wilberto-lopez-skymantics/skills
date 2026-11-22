@@ -96,6 +96,7 @@ The worker starts from the fix order in the scorecard, and from this skill. Wher
 | K (conversion), F1, F2, F5, F6 (visitor) | The structure or the ask: what is in the first window, the order of sections, how many actions, what the form wants | The page brief, then the source's A2 to A4 |
 | W (copy), F3, F4 | The words, or a claim with nothing behind it | The brief's Proof and Voice, then the source's A5 and B8 |
 | B (brand) | A value that is not the brand's, or a page that does not look finished | The brief's Brand section, then the brand's own system |
+| B4, S6, S7 | How the page is drawn at that size | The brief's Composition section, then `references/composition.md` |
 | X (accessibility), S (responsive) | Craft | The project's standards, or `interface-craft` where it is installed |
 
 Three rules for the worker:
@@ -113,8 +114,10 @@ Three rules for the worker:
   the argument, the small screen, and a visitor asked for too much). When reviewers report them at
   the same step in two reviews running, the review skill's `progress` lists a layout study as due:
   two or three other structures of the same page, with the same offer, proof and action from the
-  brief, compared blind, and the owner chooses. The layout types of the source's A3 are the natural
-  candidates. The owner's choice is recorded in the brief's Layout section and its Decisions.
+  brief, compared blind, and the owner chooses. The natural candidates are the compositions that
+  were put to the owner and not chosen (`references/composition.md`), and the layout types of the
+  source's A3. The owner's choice is recorded in the brief's Layout or Composition section and its
+  Decisions.
 
 ## Control units
 
@@ -144,6 +147,10 @@ so read the first strictness numbers with that in mind.
   a conversion rate, and a 90 is not a promise of one. Only real visitors measure that.
 - **Whether the offer is right.** Reviewers judge the page against its brief. A clear page for an
   offer nobody wants scores well.
+- **Whether it reads as a model's work.** No rubric asks. A page can reach the threshold in every
+  role and still be known at a glance for a generated one, by its skeleton, its labels and its
+  wording. `references/tells.md` is the check for that, and it is made by whoever builds the page,
+  before the page is captured.
 - **Speed on a real network.** The capture runs against a local server. Layout shift is measured;
   time to load is not.
 - **A screen reader, a real phone, a real thumb.** The measurements stand in for them. The

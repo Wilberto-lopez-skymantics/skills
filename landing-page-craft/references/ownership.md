@@ -1,9 +1,16 @@
-# What the source owns here
+# What the sources own here
 
-The source is `sources/elaya/skills/landing-page-design/SKILL.md`. It has two halves. Part A decides
-what a page says and how it is ordered; that half is the reason it is here. Part B is one studio's
-visual house style, written as non-negotiable; here it is negotiable, because a landing page belongs
-to a brand.
+Two public sources are copied into `sources/`, unchanged, each at a pinned commit with its licence.
+
+- **The source**, as it is called everywhere in this skill, is
+  `sources/elaya/skills/landing-page-design/SKILL.md`. It has two halves. Part A decides what a page
+  says and how it is ordered; that half is the reason it is here. Part B is one studio's visual
+  house style, written as non-negotiable; here it is negotiable, because a landing page belongs to
+  a brand.
+- **The catalogue** is `sources/impeccable/`: a list of the things that make a page read as made by
+  a model, with four files of notes from the skill it belongs to. It decides nothing about what a
+  page says. It is here because a page can follow the source to the letter and still be the page
+  every model makes (`references/tells.md`).
 
 Three words are used below.
 
@@ -17,11 +24,15 @@ Three words are used below.
 | Section | Standing | Notes |
 |---|---|---|
 | A1 Intake | Rule | Its answers are written into the page brief, not kept in the conversation. One change: the source says to assume and carry on when the user cannot answer. Here an assumption about the offer, the audience or the action is a proposed decision the owner confirms, and a missing fact is a marker, never an assumption. |
-| A2 Page structure | Rule | The twelve parts and their order. Its last sentence (the tagline section) is not used. |
+| A2 Page structure: the first window (parts 1 to 4) | Rule | The headline, the line under it, the action and one sign of proof. |
+| A2 Page structure: the picture in the first window (part 5) | Rule | What the picture is, is a decision of the composition. A first window with no picture needs the owner's dated decision. |
+| A2 Page structure: what the page answers below the first window, and in what order (parts 6 to 12) | Rule | What was wrong, what changes for the visitor, how it works, who else uses it, what if it goes wrong, the action again. Each is answered, in that order, where a visitor scanning the headings finds it (`review/roles/conversion.md` K5, K6, K9). |
+| A2 Page structure: a section for each part, and the counts (three to five benefits, three steps, six to twelve questions) | Default | This is the skeleton every visitor has seen, and a page that takes it without deciding to is recognised before it is read. A composition may answer two questions in one section, give one section most of the page and keep the rest short, and use the number there truly is: two benefits, four steps, the brief's own objections and no others. The skeleton is the first decision in `references/composition.md`. |
+| A2 Page structure: its last sentence (the tagline section) | Not used | See B11. |
 | A3 Layout selection | Rule | Pick one of the four and record it in the brief with the reason. |
 | A4 Conversion rules | Rule | |
-| A5 Copywriting | Rule | Its closing note about hyphens and orphaned words points at B1; see there. |
-| A6 Build order | Rule | |
+| A5 Copywriting | Rule | Its three headline formulas and its benefit bullet show what a headline and a benefit must contain. They are not sentences to fill in: a headline that fits a formula word for word fits every offer in the category. Its closing note about hyphens and orphaned words points at B1; see there. |
+| A6 Build order | Rule | Section by section, the first window first. The six names are the common skeleton's: build the sections the brief's Composition names. |
 | A7 Search | Rule | The choice to index or not is the owner's and goes in the brief. |
 | A8 Pitfalls | Rule | |
 | Output format | Rule | These seven things in words, shown to the owner before any code. |
@@ -48,7 +59,42 @@ Three words are used below.
 | B11 Tagline reveal section | Not used | It is a signature of the source's own style. Build it only where the brief asks for it; if built, its reduced-motion behaviour is a rule. |
 | Quick checklist | Not used | The rubrics under `review/roles/` replace it. |
 
-## Not used at all
+## The catalogue
+
+| File or part | Standing | Notes |
+|---|---|---|
+| `crates/live/assets/antipatterns.json`, the entries marked `slop` | Rule | Walked as `references/tells.md` says: before the compositions go to the owner, while writing, and on the built page. An entry with `severity: advisory` is a prompt to look, not a fault. A typeface, a colour or a shape the brief records is the brand's, whichever entry names it. |
+| The same file, the entries marked `quality` | Rule | Plain faults, most of which the rubrics under `review/roles/` also test. Where a figure differs from a rubric's, the rubric's is the one the page is reviewed against. The four `design-system-*` entries are about a file of the catalogue's own skill: read them as "outside the brief's Brand section". |
+| `skill/reference/craft-floor.md`, "Verify" | Rule | Checks on the built page: the limits on display type, what the browser draws (the selection, the caret, the scrollbar, the focus ring), states, one authored movement. Two exceptions: a value the brief or the brand has stands; and where its line on motion allows more than B7 of the source does, B7 stands. |
+| `skill/reference/craft-floor.md`, "Refuse" | Rule | Refused wherever the brief does not ask for the thing by name. The label above a heading is refused whatever the brief says. The block marked `<codex>` is addressed to one model; the habits in it are every model's, and it holds here. The line on modals belongs to product screens. |
+| `skill/reference/mode-persuade.md` | Rule, two sentences of it | What the opening of a page that persuades must do (make the offer intelligible, expose the action, demonstrate something only this product can prove), and the two first windows that are the template whatever is painted on them (the last sentence of its first paragraph under "Comps"). Showing the action in its working form is a choice of the composition, not a rule. The rest, on worlds and comps, is not used. |
+| `skill/reference/new-work.md`, section 6, "Both paths" | Rule, four of its points | "The first viewport is a thesis", "Prove, don't claim", "Pace the scroll like a studio" and "Use real, verified imagery". On "Prove, don't claim", see "Facts" below. The other points are not used. |
+| `skill/reference/new-work.md`, section 4: the list of typefaces and the paragraph headed "Calibration" | Default | A brand's typefaces and colours are the brand's. Where a page has no brand and a value has to be proposed for the brief, a proposal that lands in one of the looks or on one of the faces named there says so to the owner. |
+| `skill/reference/distill.md` | Rule: "Content Simplification", "Information Architecture" and the list under "Avoid" | The pass that cuts a page to its length (`references/composition.md`, "Length"). Its figures for type and colour are the brand's to set. Its last line, which hands the work to another command, is not used. |
+| `NOTICE.md` | Kept | The licence asks that notices travel with the work. None of the three things it names is among the files copied here. |
+
+Not used at all, though the files copied name them often: the catalogue's own commands, its
+detector, its hooks and its agents; the files they read and write (`PRODUCT.md`, `DESIGN.md`, a
+surface brief, anything under `.impeccable/`); the choosing of a look by a roll of worlds and by
+generated pictures of a page (sections 1 to 3 and 5 of `new-work.md`); and its finishing review
+(section 7), whose place here is taken by `review/`. Nothing in this skill runs or expects any of
+them. `{{scripts_path}}` and the like in those files are the catalogue's own unfilled placeholders,
+not markers of this skill.
+
+## What neither settles
+
+How the page is drawn. The source gives the questions a page answers and their order (A2), four
+types of page (A3) and one rule for the words in the first window (B5). It does not say what the
+picture is, where the words sit against it, or what form any section takes, and a page built from
+it alone takes the commonest form of each. The catalogue says what not to reach for, and nothing
+about what to do in its place for this offer. That is settled for each page with its owner, from
+references, as `references/composition.md` describes, and recorded in the brief. It ranks where the
+brief ranks: above the brand's general system, this file and both sources. It never sets aside a
+rule of Part A: a composition decides how the page is drawn and which of its parts are sections of
+their own, never which questions the page answers, their order, or what the first window must
+hold.
+
+## Not used at all, of the source
 
 - **Scope.** The source says it applies to all web interface work, dashboards included, and that it
   wins over framework defaults. Here it applies to landing pages only, and it sits last in the order
@@ -68,11 +114,19 @@ page is routinely pasted into a real one:
 - A missing fact is a visible marker (`{{price}}`, `{{testimonial}}`), and is reported.
 - Invented sample content is allowed only on a page the owner has said is a fiction (a template, a
   teaching example), and the page says that it is one.
+- The product shown at work is not a claim. A demonstration may run on sample material (the invoice
+  in the editor, the message being answered), written with care and marked as sample where it
+  stands. It carries no fact about the offer: no price, no customer's name, no result
+  (`review/roles/copy.md` W5).
 - The source's list of filler words to avoid is a rule.
 
-## When the source changes
+## When a source changes
 
 After `node scripts/update-sources.cjs --update --source elaya`, read the diff of the source file.
 A new section needs a row here. A changed rule in Part A may need a changed test in
 `review/roles/conversion.md` or `review/roles/copy.md`; changing a rubric means raising the rubric
 version in all six files, which starts a new series of scores.
+
+After `node scripts/update-sources.cjs --update --source impeccable`, read the diff of the list. A
+new entry marked `slop` needs a place in `references/tells.md`, and `scripts/review-set.test.cjs`
+fails until it has one. A changed line under "Refuse" may change a row above.

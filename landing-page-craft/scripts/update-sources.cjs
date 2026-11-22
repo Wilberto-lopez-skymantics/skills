@@ -186,13 +186,26 @@ function git(cwd, args, opts = {}) {
   }
 }
 
+function tryGit(cwd, args) {
+  try {
+    execFileSync('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }, maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+    return true;
+  } catch { return false; }
+}
+
 // The files of one source at one commit, read as blobs from a bare repository in a temporary
 // directory: the licence at the repository root and everything under the included paths.
 function fetchSource(source, wanted) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `interface-craft-${source.id}-`));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `landing-page-craft-${source.id}-`));
   try {
     git(tmp, ['init', '-q', '--bare', '.']);
-    git(tmp, ['fetch', '-q', '--depth', '1', source.repo, wanted || 'HEAD']);
+    // Only the commit and its folders are fetched; the content of a file is fetched when it is read, so
+    // a large repository costs no more than the few files taken from it. Where the server cannot do
+    // that, the whole commit is fetched.
+    git(tmp, ['remote', 'add', 'origin', source.repo]);
+    if (!tryGit(tmp, ['fetch', '-q', '--depth', '1', '--filter=blob:none', 'origin', wanted || 'HEAD'])) {
+      git(tmp, ['fetch', '-q', '--depth', '1', source.repo, wanted || 'HEAD']);
+    }
     const commit = git(tmp, ['rev-parse', 'FETCH_HEAD']).toString().trim();
     if (wanted && /^[0-9a-f]{40}$/.test(wanted) && commit !== wanted) {
       fail(`source ${source.id}: asked for ${wanted}, fetched ${commit}`);

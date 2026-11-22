@@ -1,6 +1,6 @@
 ---
 name: landing-page-craft
-description: Guides the planning, writing, building, fixing and reviewing of landing pages and marketing pages that persuade a visitor to take one action, by conducting a vendored landing page reference (intake, page structure, layout choice, conversion rules, copywriting, search and sharing) through one entry point that puts the page's own brief and the brand's own values first, never lets a fact be invented, and carries a set of blind reviewer rubrics (conversion, copy, brand and visual design, accessibility, responsive design, and the first-time visitor) for a work-and-review loop. Use this whenever the user asks to plan, write, design, build, restyle or improve a landing page, a campaign page, a product marketing page, a waitlist, pricing or sign-up page, a hero section, a headline or a call to action, or asks why a page does not convert or to review one, even if they do not name this skill. Not for the screens of an application people sign in to and work in.
+description: Guides the planning, writing, building, fixing and reviewing of landing and marketing pages that persuade a visitor to take one action. It conducts two vendored references (a landing page method and a catalogue of the tells of generated design) through one entry point that puts the page's brief and the brand's values first, never lets a fact be invented, has the page's composition and length chosen by its owner from alternatives drawn from references of several kinds, and carries blind reviewer rubrics (conversion, copy, brand, accessibility, responsive design, first-time visitor) for a work-and-review loop. Use this whenever the user asks to plan, write, design, build, restyle or improve a landing page, a campaign page, a waitlist, pricing or sign-up page, a hero section, a headline or a call to action, asks why a page does not convert, says it looks generic or made by AI, or asks to review one, even if they do not name this skill. Not for the screens of an application people sign in to and work in.
 ---
 
 # Landing page craft
@@ -12,11 +12,19 @@ A landing page is not a product screen and not a home page. It wins one intent:
 Its reader is a visitor who has just arrived, owes it nothing, and decides in a few seconds whether
 to stay. Everything in this skill follows from that.
 
-This skill is a conductor. The method lives in `sources/`: a public landing page skill copied
-unchanged at a pinned commit with its licence. Its file is still named `SKILL.md`, but inside this
-package it is **a reference file, reached only through this conductor**. Do not install it as a
-skill of its own. `references/ownership.md` says which of its parts are rules here, which are
+This skill is a conductor. Two public works are copied into `sources/`, unchanged, each at a pinned
+commit with its licence. The first, called **the source** from here on, is a landing page skill: it
+is the method. Its file is still named `SKILL.md`, but inside this package it is **a reference file,
+reached only through this conductor**. Do not install it as a skill of its own. The second, **the
+catalogue**, is a list of the things that make a page read as made by a model, with notes from the
+skill it belongs to. `references/ownership.md` says which parts of each are rules here, which are
 defaults that give way to the brand, and which are not used.
+
+The source settles what a page says and in what order. How the page is drawn, its composition, the
+source leaves open, and what is left open comes out as the page every visitor has seen. That part is
+this skill's own: `references/composition.md`. A page can also be composed with care and still be
+known at a glance for a model's work, by its skeleton, its labels and its wording:
+`references/tells.md`.
 
 ## When to use it
 
@@ -38,7 +46,7 @@ When two things disagree, the higher one wins.
    action, the facts that exist, the brand's values, and the owner's dated decisions.
 2. The brand's own system: its guidelines, its tokens, the components of its existing site.
 3. This skill's ownership notes (`references/ownership.md`).
-4. The source.
+4. The source and the catalogue.
 
 The source has a house style of its own: named typefaces, a spacing table, a text gradient on the
 hero, a ban on hyphens, a "mandatory" tagline section. None of it overrides a brand. It is a
@@ -58,13 +66,36 @@ marker is not finished, and the review will say so.
 **One page, one offer, one action.** A second offer, a second audience or a second main button is
 a second page. Say so instead of fitting it in.
 
-**Words before pixels.** Show the owner the plan in words first: the outline, the first window's
-copy (headline, the line under it, the action, one proof), the benefits, how it works, the questions
-and answers, the layout type and why, and whether the page should be found by search. Build after
-they have seen it.
+**Words before pixels.** Show the owner the plan in words first: the first window's copy (headline,
+the line under it, the action, one proof), what the page says after it and at what length, the
+answers to the brief's objections, the layout type and why, the ways the page could be drawn
+(below), and whether the page should be found by search. Build after they have seen it.
 
-**Build section by section.** First window, benefits, how it works, proof, questions, the last call
-to act. Never regenerate the whole page to change one section.
+**Compose it on purpose.** Before any section is built, look at real things of several kinds (the
+trade's own printed matter, persuasion that is not a web page, pages for other kinds of offer, what
+the owner brings), and put two or three compositions to the owner in one table, with what each gives
+up and which of them is the common form. They differ first in their skeleton: which parts of the
+page are sections of their own, which one leads, and how long the page is. A section for every
+question, three of everything and all of it the same weight is one skeleton among several, and it
+is the one a visitor has seen. They choose; the choice goes in the brief's Composition section and
+its Decisions. What converts is never part of the choice: the promise and the action in the first
+window, the proof beside the claim and the order of the argument stay as they are.
+`references/composition.md` has the ten decisions, the kinds of reference and the form of a note.
+
+**Nothing rests on a tell.** A small label above a heading, sections that number themselves, a row
+of same-size cards with an icon each, a whole sentence at display size, a sentence built for its
+sound: each is a thing a model does without deciding to, and a visitor has learnt to see them.
+`references/tells.md` names them and says when to walk the list. Taking one out is not the repair:
+ask what the part was for, and draw that.
+
+**Say it once, to the length agreed.** The brief's Composition gives the page a length in words.
+Write to it, count it (`node scripts/page-words.cjs <the built page> --budget <the number>`) and
+cut: what is said twice, what explains a thing the picture shows, what nobody in the brief's
+Audience would ask. Write as the brief's Voice would speak to one person across a table. Never cut
+the answer to an objection the brief lists.
+
+**Build section by section.** The first window first, then the sections the brief's Composition
+names, in their order. Never regenerate the whole page to change one section.
 
 **The brand's value, not a second one.** Where the brief or the brand's system has a value, use it.
 Where neither has one, propose it as a decision for the brief; do not invent it in a section.
@@ -80,10 +111,18 @@ section and screen size where the difference can be seen.
 
 1. Read the page brief. If there is none, write one with the owner
    (`references/page-brief-format.md`, starting from `assets/page-brief.example.md`).
-2. Read `references/ownership.md`. It is short, and it is what makes the source safe to use.
+2. Read `references/ownership.md`. It is what makes the two sources safe to use: each says more
+   than this skill takes from it.
 3. Open `sources/elaya/skills/landing-page-design/SKILL.md`. Read Part A for planning and writing.
    Open a section of Part B only for a thing the brand has no value for.
-4. For craft the source does not cover (how a form behaves, focus, contrast, the detail of motion),
+4. Read `references/composition.md` and `references/tells.md` before the plan goes to the owner, and
+   again whenever a page is said to look like every other or like a model's work. If the brief
+   already has a Composition section, the task is to build to it.
+5. Open `sources/impeccable/crates/live/assets/antipatterns.json` before the page is handed back,
+   and `sources/impeccable/skill/reference/craft-floor.md` with it. The other files beside them
+   are read only for the parts `references/ownership.md` names: they are another skill's working
+   instructions, and none of their commands is run.
+6. For craft the source does not cover (how a form behaves, focus, contrast, the detail of motion),
    use the project's own standards, or `interface-craft` where it is installed.
 
 ## Before handing work back
@@ -95,6 +134,13 @@ against them first:
   action there, whole? (`conversion.md` K1, K2; `responsive.md` S2.)
 - Go through each rubric's "Major on sight" list once. None may remain.
 - Compare every fact on the page with the brief's Proof section, value by value (`copy.md` W5).
+- Hold the page against the brief's Composition section, entry by entry, at the smallest size and at
+  the widest. Where the page departs from it, the page is wrong or the brief is, and the brief is
+  the owner's.
+- Count the words (`node scripts/page-words.cjs`). Over the brief's Length, cut. Look at each
+  section's share: if they are all alike, nothing leads.
+- Walk the tells (`references/tells.md`): the catalogue's list on the built page, then the six
+  things the list does not catch. Report each one met, and each one left and why.
 - Walk the page with the Tab key, and once more with reduced motion asked for.
 - Press the action. Does it do what its label says, and does the page say what happens next?
 - Anything you could not check, report as not verified.
@@ -117,17 +163,22 @@ handed one of them with screenshots of the page.
 |---|---|
 | `references/page-brief-format.md` | The format and rules of the page brief |
 | `references/ownership.md` | Which parts of the source are rules, which are defaults, which are not used |
+| `references/composition.md` | How a page is drawn: what is fixed, the ten decisions, the page's length, the kinds of reference and the form of a note, proposing alternatives, and recording the owner's choice |
+| `references/tells.md` | What makes a page read as a model's work: the catalogue's list and how to use it, when to walk it, and what the list does not catch |
 | `references/review-loop.md` | Setting up and running the work-and-review loop with `ux-quality-score` |
 | `review/roles/*.md` | The six rubrics: criteria, what is always at least major, what a 90 looks like |
 | `review/set.json`, `review/*-brief.md` | The reviewer set and what each reviewer is told |
 | `assets/page-brief.example.md` | A filled-in brief to copy |
+| `assets/composition-references.example.md` | The notes and the table of alternatives behind that brief's Composition section |
 | `assets/review-config.example.json`, `assets/capture.example.json` | A starting review config and capture plan |
-| `scripts/review-set.test.cjs` | Checks that the reviewer set and the example files hold together (`node --test scripts/review-set.test.cjs`; run it after changing anything under `review/` or `assets/`) |
+| `scripts/page-words.cjs` | Counts the words a visitor reads on a built page, section by section, against the length in the brief |
+| `scripts/review-set.test.cjs`, `scripts/page-words.test.cjs` | Check that the reviewer set, the example files, the list of tells and the word count hold together (`node --test scripts/review-set.test.cjs scripts/page-words.test.cjs`; run them after changing anything under `review/`, `assets/` or `references/`) |
 
-## The source
+## The sources
 
-`sources/sources.lock.json` records the source's repository, pinned commit, licence and a hash of
-every file. The files are never edited here. To confirm they are untouched, or to move to a newer
+`sources/sources.lock.json` records, for the source (`elaya`, MIT) and for the catalogue
+(`impeccable`, Apache-2.0), the repository, the pinned commit, the licence and a hash of every
+file. The files are never edited here. To confirm they are untouched, or to move one to a newer
 commit, run from this skill's folder (Node 18 or later, and `git` for an update):
 
 ```bash
@@ -138,9 +189,13 @@ node scripts/update-sources.cjs --check
 node scripts/update-sources.cjs --update --source elaya
 ```
 
+```bash
+node scripts/update-sources.cjs --update --source impeccable
+```
+
 An update reads files straight from the repository's git objects and runs nothing from it. After
-an update, re-read `references/ownership.md` and the rubrics under `review/roles/` against what
-changed.
+an update, re-read `references/ownership.md` against what changed: the rubrics under
+`review/roles/` after the first, `references/tells.md` after the second.
 
 When installing this skill, copy the whole folder, `sources/` and `review/` included, to wherever
 your agent reads skills from.

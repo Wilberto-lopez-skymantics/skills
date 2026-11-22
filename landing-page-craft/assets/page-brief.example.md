@@ -81,6 +81,30 @@ Designers, developers and writers who work alone and send between two and twenty
 Type 1, hero-led, from the source's A3: the audience has an urgent, familiar problem, and the trial
 is the whole answer.
 
+## Composition
+
+- **Skeleton:** the first window; then one long section that takes the reminders schedule apart,
+  date by date, and is the page's whole account of what changes and how it works; then Ana Ruiz's
+  words; then the four objections, answered; then the action again. The schedule section is about
+  half the page. There is no section of benefits and none of steps.
+- **Length:** 350 words, the first window included.
+- **First window:** the words on the left and, on the right, the reminders schedule, whole: the
+  three dates on which a reminder goes out. It is the picture because it is the promise. The action
+  is a button. On a phone the words and the action come first and the schedule follows, running
+  off the bottom of the window.
+- **First proof:** the median of 6 days, directly under the action.
+- **Benefits:** in the schedule section. Under each date, one sentence of what the visitor no longer
+  does that day. No cards and no icons.
+- **How it works:** in the same section. The invoice editor on a phone is shown once, beside the
+  first date: the day the invoice is sent.
+- **Proof:** Ana Ruiz's words, large, with the figure of 6 days and its dates beside them.
+- **Questions:** the four objections in the brief and no others, all open, to be read down. The
+  price follows them.
+- **Rhythm:** one column 60 characters wide. The schedule section is wider than the text and far
+  longer than any other. The rest are short. One ground from top to bottom: no bands.
+- **Recurs:** the dates of the schedule, set the same way wherever they return: beside the proof
+  and beside the last action.
+
 ## Search and sharing
 
 - Not to be found by search: it is a campaign page, and the home page is the one that should rank.
@@ -102,4 +126,14 @@ is the whole answer.
 - **Decision:** The price is shown on the page, under the questions, not hidden behind the trial.
 - **Why:** Visitors from the newsletter asked for it before signing up.
 - **Applies to:** the questions section
+- **Supersedes:** none
+
+### D-003
+- **Date:** 2026-11-10
+- **Decision:** The page is drawn as the Composition section says: the picture in the first window
+  is the reminders schedule, and one section on the schedule stands where a section of benefits
+  and a section of steps would be.
+- **Why:** The schedule shows the promise itself. A picture of the editor would show a form to fill
+  in, and three sections would say one thing three times.
+- **Applies to:** every section
 - **Supersedes:** none

@@ -34,8 +34,12 @@ section means "not decided", and the work stops there to ask.
 | `## Objections` | The reasons this audience does not act today, most common first, each with its true answer. |
 | `## Brand` | The values this page must use. One short entry for each of: Type, Colour, Shape, Spacing, Motion, Imagery, Voice. Where the brand keeps a value somewhere else (a token file, a guidelines document), say where instead of copying it. Leave an entry out where the brand has no value. |
 | `## Layout` | Which of the source's four layout types (A3) and why. |
+| `## Composition` | How the page is drawn, for someone who has never seen it. One short entry for each of these that the owner has settled: Skeleton (which parts are sections of their own, which one leads and what the page leaves out), Length (a number of words), First window (what it is made of and what the picture is, at the widest size and on a phone), First proof, Benefits, How it works, Proof, Questions, Rhythm, Recurs. Where two of them share one section, both entries say so. It records the choice made as `references/composition.md` describes, never how the choice was reached. |
 | `## Search and sharing` | Whether the page should be found by search or kept out of it, and why; the title and the description if it should. |
 | `## Decisions` | The dated decisions, below. |
+
+Composition is the one section a page that already exists may be without: until its composition
+is in question, the page as built is its composition.
 
 Write for a reader who has never met the product. Reviewers are handed this file with no other
 knowledge of the page. For the same reason it holds nothing about how the page is being worked on or

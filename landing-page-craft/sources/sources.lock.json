@@ -17,6 +17,32 @@
         "LICENSE": "5f9af6ce7083838497676a8dfa651ad8e2559fdabd4586afc73587beec476b0e",
         "skills/landing-page-design/SKILL.md": "0c0ad9323121c0cc4f52b637f64a3a446016f065ae9ebf012dab210559f03d5f"
       }
+    },
+    {
+      "id": "impeccable",
+      "repo": "https://github.com/pbakaus/impeccable",
+      "commit": "b49177d32788f2dc585c42831d845dacf1ebed2c",
+      "commit_date": "2026-11-18T13:58:19-08:00",
+      "licence": "Apache-2.0",
+      "licence_file": "LICENSE",
+      "include": [
+        "NOTICE.md",
+        "crates/live/assets/antipatterns.json",
+        "skill/reference/craft-floor.md",
+        "skill/reference/distill.md",
+        "skill/reference/mode-persuade.md",
+        "skill/reference/new-work.md"
+      ],
+      "tree_sha256": "f7647cd49efa0d301554cb4720982092775a4fac649a26f6516f58e240dd68a7",
+      "files": {
+        "LICENSE": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+        "NOTICE.md": "01bf53e5d24d64e19e9e1c33b24c37cef0d314323df7bf678c6ba22d4528a115",
+        "crates/live/assets/antipatterns.json": "ea61e3bb0ba5be71ddefa3ae25f67209cadb737031258f8c5eec5bcd99cba199",
+        "skill/reference/craft-floor.md": "1497d63f0d80b0d6a5855710838e3dae17dddab55e9b70e3eba3e4b43217c1c0",
+        "skill/reference/distill.md": "db5d44441e3a94c3a7b8a70be23f036ac6e492e9272db0f937b57f05cc629373",
+        "skill/reference/mode-persuade.md": "b3f8b39cbf89392b62c07298361fb2a7e8e0b4ef13bbb38bac974ccd8fd835fd",
+        "skill/reference/new-work.md": "e47b8584189d02f0ce8c8a0c390e5361b6a530766d75a776a283c115590fa0b6"
+      }
     }
   ]
 }
