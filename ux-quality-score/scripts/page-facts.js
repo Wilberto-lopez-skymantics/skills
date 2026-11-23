@@ -234,6 +234,60 @@
   const firstActions = interactive.filter((el) => isAction(el) && inFirst(el)).map((el) => { const at = place(el); return { element: describe(el), top: at.top, ...(at.bottom > firstHeight ? { cut_off_at_the_bottom: true } : {}) }; });
   const firstHeadings = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')].filter((h) => visible(h) && inFirst(h)).map((h) => ({ level: Number(h.getAttribute('aria-level')) || Number(h.tagName[1]) || null, text: clean(h.innerText) }));
 
+  // Words: how much there is to read on this screen, what kind of words they are, and how they fall
+  // down the page, one window at a time. A word is a run of characters with a letter or a figure in it.
+  // Running text is what is left when headings, the words of controls (a button, a link, a field's
+  // label) and values (a table's cells, a list of terms, code) are taken out: sentences, descriptions,
+  // hints. A table full of names is many words and nothing to cut; running text is where a screen that
+  // says too much says it. One more count leaves out the navigation, the footer and anything the page
+  // marks data-words="off" (a picture made of words, such as a demonstration on sample material): it is
+  // the count to hold against a length that was agreed for the page.
+  const KINDS = [
+    ['in_controls', 'a, button, label, summary, option, [role=button], [role=link], [role=tab], [role=menuitem], [role=option], [role=checkbox], [role=switch], [role=radio]'],
+    ['headings', 'h1, h2, h3, h4, h5, h6, [role=heading]'],
+    ['in_tables_and_term_lists', 'td, th, dt, dd, [role=cell], [role=gridcell], [role=rowheader], [role=columnheader], pre, code, kbd, samp, output']
+  ];
+  const kindOf = (el) => { for (let n = el; n && n !== document.body; n = n.parentElement) { for (const [kind, selector] of KINDS) if (n.matches(selector)) return kind; } return 'running_text'; };
+  const countWords = (str) => str.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const blockOf = (el) => { let n = el; while (n.parentElement && n !== document.body && getComputedStyle(n).display.startsWith('inline')) n = n.parentElement; return n; };
+  const drawn = new Map();
+  const isDrawn = (el) => { if (!drawn.has(el)) drawn.set(el, visible(el)); return drawn.get(el); };
+  const ofWhich = { running_text: 0, headings: 0, in_controls: 0, in_tables_and_term_lists: 0 };
+  const perWindow = [];
+  const blocks = new Map();
+  let wordsOnScreen = 0;
+  let wordsInBody = 0;
+  let wordsInSamples = 0;
+  let runningFirst = 0;
+  let textNodes = 0;
+  const span = document.createRange();
+  const everyText = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+  for (let node = everyText.nextNode(); node && textNodes < 20000; node = everyText.nextNode()) {
+    const el = node.parentElement;
+    if (!el || ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(el.tagName)) continue;
+    const n = countWords(node.nodeValue);
+    if (!n || !isDrawn(el)) continue;
+    span.selectNodeContents(node);
+    const box = span.getBoundingClientRect();
+    if (box.width === 0 && box.height === 0) continue;
+    textNodes += 1;
+    const top = Math.max(0, box.top + window.scrollY);
+    const kind = kindOf(el);
+    ofWhich[kind] += n;
+    wordsOnScreen += n;
+    if (el.closest('[data-words="off"]')) wordsInSamples += n;
+    else if (!el.closest('nav, [role=navigation], footer, [role=contentinfo]')) wordsInBody += n;
+    const band = Math.min(Math.floor(top / firstHeight), 39);
+    perWindow[band] = (perWindow[band] || 0) + n;
+    if (kind === 'running_text') {
+      if (top < firstHeight) runningFirst += n;
+      const block = blockOf(el);
+      blocks.set(block, (blocks.get(block) || 0) + n);
+    }
+  }
+  for (let i = 0; i < perWindow.length; i += 1) perWindow[i] = perWindow[i] || 0;
+  const longestBlocks = [...blocks].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([el, n]) => ({ element: describe(el).slice(0, 80), words: n }));
+
   // What the page says about itself to a search engine and to a link preview.
   const long = (s) => (s === null || s === undefined ? null : String(s).replace(/\s+/g, ' ').trim().slice(0, 300));
   const metaOf = (selector) => { const m = document.querySelector(selector); return m ? long(m.getAttribute('content')) : null; };
@@ -253,6 +307,7 @@
     labels: { form_fields: fields.length, fields_without_label: cut(unlabeled), fields_with_placeholder_only: cut(placeholderOnly), controls_without_name: cut(unnamedControls), images: images.length, images_without_alt: cut(imagesWithoutAlt), field_edges_below_3_to_1: cut(faintEdges), field_edges_unknown: edgesUnknown, field_types: fieldTypes },
     text: { elements_measured: textElements.length, smallest_font_px: smallest === null ? null : round1(smallest), smaller_than_12px: cut(smallText), sentences_smaller_than_16px: cut(sentencesUnder16), contrast_checked: contrastChecked, contrast_unknown_background: contrastUnknown, below_required_contrast: cut(lowContrast), meets_minimum_but_below_7_to_1: cut(below7), never_filled_in: cut(unfilled) },
     first_window: { height: firstHeight, headings: firstHeadings.slice(0, 10), buttons_and_links: cut(firstActions), form_fields: fields.filter(inFirst).length },
+    words: { on_the_screen: wordsOnScreen, of_which: ofWhich, outside_navigation_footer_and_samples: wordsInBody, in_marked_samples: wordsInSamples, in_the_first_window: perWindow[0] || 0, running_text_in_the_first_window: runningFirst, in_each_window_down_the_page: perWindow, longest_blocks_of_running_text: longestBlocks },
     links: { count: allLinks.length, lead_nowhere: cut(nowhere) },
     head: { title: long(document.title) || null, title_length: document.title.trim().length, description, description_length: description ? description.length : 0, canonical: canonical ? canonical.getAttribute('href') : null, robots: metaOf('meta[name="robots"]'), open_graph: { title: metaOf('meta[property="og:title"]'), description: metaOf('meta[property="og:description"]'), image: metaOf('meta[property="og:image"]'), url: metaOf('meta[property="og:url"]') }, twitter_card: metaOf('meta[name="twitter:card"]'), icon: Boolean(document.querySelector('link[rel~="icon"]')), structured_data_blocks: document.querySelectorAll('script[type="application/ld+json"]').length },
     structure: { lang: document.documentElement.getAttribute('lang') || null, h1_count: headings.filter((h) => h.level === 1).length, headings: headings.slice(0, 40), skipped_heading_levels: skipped, has_main_landmark: Boolean(document.querySelector('main, [role=main]')), has_nav_landmark: Boolean(document.querySelector('nav, [role=navigation]')), viewport_meta: (document.querySelector('meta[name=viewport]') || { content: null }).content, open_dialogs: dialogs }

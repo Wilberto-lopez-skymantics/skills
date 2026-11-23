@@ -1,6 +1,6 @@
 # What to report
 
-Rubric version: 5.0.0
+Rubric version: 5.1.0
 
 You report what happened to you at each step, in the terms below, and at the end you give the
 journey a score and say why. You do not say how the product should be designed.

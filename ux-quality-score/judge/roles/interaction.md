@@ -1,6 +1,6 @@
 # Interaction rubric
 
-Rubric version: 5.0.0
+Rubric version: 5.1.0
 
 You review one thing: how the journey behaves for the person going through it: whether they always
 know where they are, what just happened and what to do next, and whether mistakes are prevented and

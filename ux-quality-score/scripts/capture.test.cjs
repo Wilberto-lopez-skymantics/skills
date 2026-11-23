@@ -75,6 +75,20 @@ const LONG_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><m
 <script>new IntersectionObserver(function (entries) { entries.forEach(function (e) { if (e.isIntersecting) document.getElementById('proof').textContent = 'Shown once scrolled to'; }); }).observe(document.getElementById('late'));</script>
 </body></html>`;
 
+// A page for counting words: a navigation, a heading, running text, a field with a hint, a table of
+// values, a block marked as sample material, and a footer.
+const WORDS_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Words desk</title>
+<style>body{font-family:sans-serif;margin:0;color:#111;background:#fff} main{padding:16px}</style></head>
+<body><nav><a href="/a">Orders</a> <a href="/b">Customers</a></nav>
+<main><h1>New order</h1>
+<p>Fill in the order below. It is sent when you press the button, and the customer is told by email at once.</p>
+<label for="ref">Reference</label> <input id="ref"> <p class="hint">Six figures, from the paper form.</p>
+<table><tr><th>Item</th><th>Price</th></tr><tr><td>Oak shelf</td><td>40</td></tr></table>
+<div data-words="off"><p>Sample: Dana orders two shelves for Leeds.</p></div>
+<button>Send the order</button></main>
+<footer><p>Words desk, a sample page.</p></footer>
+</body></html>`;
+
 // A fourth page for what the measurements used to get wrong: colours the page mixes, native date and
 // time fields, and a footer that sticks inside a panel that scrolls.
 const MIXED_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mixed desk</title>
@@ -121,7 +135,7 @@ h1{margin:0;height:50px}
 
 function startServer() {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : req.url.startsWith('/grid') ? GRID_PAGE : PAGE); });
+    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/words') ? WORDS_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : req.url.startsWith('/grid') ? GRID_PAGE : PAGE); });
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
@@ -477,6 +491,16 @@ test('a long page: the first window pictured alone, scrolled through before the 
     assert.deepStrictEqual(facts.links, { count: 3, lead_nowhere: { count: 1, examples: facts.links.lead_nowhere.examples } });
     assert.ok(facts.links.lead_nowhere.examples[0].includes('More'));
     assert.deepStrictEqual(facts.text.never_filled_in, { count: 2, examples: ['{{price}}', 'Lorem ipsum'] });
+    // How much there is to read: in all, by kind, in the first window, and window by window down the page.
+    assert.strictEqual(facts.words.on_the_screen, 32);
+    assert.deepStrictEqual([facts.words.outside_navigation_footer_and_samples, facts.words.in_marked_samples], [32, 0]);
+    assert.deepStrictEqual(facts.words.of_which, { running_text: 16, headings: 11, in_controls: 5, in_tables_and_term_lists: 0 });
+    assert.deepStrictEqual([facts.words.in_the_first_window, facts.words.running_text_in_the_first_window], [12, 5]);
+    assert.strictEqual(facts.words.in_each_window_down_the_page[0], 12);
+    assert.ok(facts.words.in_each_window_down_the_page.length >= 5, 'a page over five windows tall has words in the sixth band or the fifth');
+    assert.strictEqual(facts.words.in_each_window_down_the_page.reduce((a, b) => a + b, 0), 32);
+    assert.deepStrictEqual(facts.words.longest_blocks_of_running_text.map((b) => b.words), [5, 5, 4]);
+    assert.ok(facts.words.longest_blocks_of_running_text[0].element.startsWith('p "'));
     assert.deepStrictEqual(facts.head, {
       title: 'Long desk: one page, one offer', title_length: 30, description: 'A sample page that is several windows tall.', description_length: 43,
       canonical: 'https://example.test/long', robots: null,
@@ -495,6 +519,40 @@ test('a long page: the first window pictured alone, scrolled through before the 
     plan.units.visit.window_steps = '01-arrive';
     writePlan();
     assert.match((await run(CAPTURE, args)).stderr, /window_steps must be a list of step ids/);
+  } finally {
+    server.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the words on a screen are counted: by kind, apart from navigation, footer and marked samples, and block by block', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uxq-words-'));
+  try {
+    const home = path.join(root, 'quality', 'ux');
+    fs.mkdirSync(home, { recursive: true });
+    const config = {
+      app: { name: 'Words desk', description: 'A sample screen for the test.' },
+      viewports: [{ id: 'desktop', width: 1000, height: 700 }],
+      personas: [{ id: 'clerk', description: 'Someone entering an order.', viewport: 'desktop' }],
+      units: [{ id: 'order', persona: 'clerk', goal: 'Enter an order.', steps: [{ id: '01-form', do: 'Opens the form.' }] }]
+    };
+    const plan = { base_url: `http://127.0.0.1:${server.address().port}`, settle_ms: 50, probes: false, units: { order: { steps: { '01-form': [{ goto: '/words' }, { wait_for: 'text=New order' }] } } } };
+    const configFile = path.join(home, 'config.json');
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    fs.writeFileSync(path.join(home, 'capture.json'), JSON.stringify(plan));
+    const runDir = JSON.parse(spawnSync(process.execPath, [UXQ, 'new-run', '--config', configFile, '--commit', 'abc1234', '--date', '2026-01-15'], { encoding: 'utf8' }).stdout).run_dir;
+    const done = await run(CAPTURE, ['--config', configFile, '--run', runDir]);
+    assert.strictEqual(done.status, 0, done.stderr + done.stdout);
+    const words = JSON.parse(fs.readFileSync(path.join(runDir, 'evidence', 'order', 'facts', '01-form.desktop.json'), 'utf8')).words;
+    // Running text: the paragraph (22), the hint (6), the sample (7) and the footer's line (5). Controls: two links, a label, a button.
+    assert.deepStrictEqual(words.of_which, { running_text: 40, headings: 2, in_controls: 6, in_tables_and_term_lists: 5 });
+    assert.strictEqual(words.on_the_screen, 53);
+    // What an agreed length is held against: not the navigation (2), the footer (5) or the marked sample (7).
+    assert.deepStrictEqual([words.outside_navigation_footer_and_samples, words.in_marked_samples], [39, 7]);
+    assert.deepStrictEqual([words.in_the_first_window, words.running_text_in_the_first_window, words.in_each_window_down_the_page], [53, 40, [53]]);
+    assert.deepStrictEqual(words.longest_blocks_of_running_text.map((b) => b.words), [22, 7, 6]);
+    assert.ok(words.longest_blocks_of_running_text[0].element.startsWith('p "Fill in the order below'));
   } finally {
     server.close();
     fs.rmSync(root, { recursive: true, force: true });

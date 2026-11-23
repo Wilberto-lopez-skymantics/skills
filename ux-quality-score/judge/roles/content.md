@@ -1,6 +1,6 @@
 # Content rubric
 
-Rubric version: 5.0.0
+Rubric version: 5.1.0
 
 You review one thing: the words. Whether they are clear to this person, whether they tell the truth,
 and whether they help or get in the way. How the screens look and how the flow behaves belong to other
@@ -10,7 +10,10 @@ specialists; raise them only where the words cause the problem.
 
 - `pages/`: the words of each screen in reading order. Read every one.
 - `screens/`: where the words sit, and what is beside them.
-- `facts/`: the names of controls and the labels of fields (`labels`).
+- `facts/`: the names of controls and the labels of fields (`labels`), and under `words` how many
+  words each screen holds, of what kind, and its longest blocks of running text. Running text is
+  sentences, descriptions and hints: what is left when headings, the words of controls and the
+  values in tables are taken out.
 - `decisions.md`: its Voice entry, and any decision that fixes a name or a term, is this product's
   chosen wording. Judge the screens against it.
 
@@ -49,6 +52,8 @@ tests: an issue is a test that fails in a file.
   - Nothing is addressed to a different kind of user, and nothing repeats the heading in the body or explains what is already plain.
   - The most needed words come first: on the screen, in each paragraph and in each label.
   - Help appears where the question arises.
+  - The screen says no more than the step needs. Read each block named under `words.longest_blocks_of_running_text` and quote its count: one this person could do the step without is an issue, and so is one of more than 40 words that is neither what they came to read (a message, an article, terms to accept) nor something the step cannot be done without.
+  - On a screen for doing (a form, a list, a table, a dashboard) where running text outnumbers the words of the controls and the values together (`words.of_which`), read every sentence of it: each one that a clearer label or the value itself would replace is an issue.
 - **C9** Open about limits: the product says what it does not do, what is information and not advice, and what the person must do somewhere else.
   - What the product cannot do, or cannot do right now, is said with the reason.
   - Values that are estimates, out of date or partial say so: as of when, roughly, first 50 of 312.
@@ -66,4 +71,5 @@ into a harmful mistake. A recorded decision does not excuse them.
 ## What 90 looks like here
 
 Every word helps this person do what they came for: nothing is unclear, misleading, generic or in the
-way, and one thing has one name from the first screen to the last.
+way, no screen says more than its step needs, and one thing has one name from the first screen to the
+last.

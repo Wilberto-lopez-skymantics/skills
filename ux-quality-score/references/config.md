@@ -223,6 +223,23 @@ while the page scrolls (`layout.stays_in_window_while_scrolling`), links that le
 search engine and a link preview (`head`: title, description, canonical address, robots, sharing card,
 icon, structured data).
 
+It also counts the words (`words`): how many are on the screen, how many of them are running text
+and how many are headings, the words of controls, or values in a table or a list of terms
+(`of_which`), how many are in the first window, how many fall in each window down the page
+(`in_each_window_down_the_page`), and the three longest blocks of running text. Running text is
+sentences, descriptions and hints: what is left when headings, controls and values are taken out.
+It is the number to look at when a screen is said to say too much. A table full of names is many
+words and nothing to cut. One more count leaves out the navigation, the footer and anything the
+page marks `data-words="off"` (a picture made of words, such as a demonstration on sample
+material): `outside_navigation_footer_and_samples`, the count to hold against a length that was
+agreed for a page.
+
+The shipped content rubric uses these under C8: a reviewer reads the longest blocks and quotes
+their counts, a block of more than 40 words has to be what the person came to read or something
+the step cannot be done without, and a screen for doing on which running text outnumbers controls
+and values is read sentence by sentence. The count says where to look. Whether a sentence is
+needed is still the reviewer's judgement.
+
 **Comparing two captures.** `uxq.cjs regress --config CFG --run RUN [--against <earlier run>]
 [--unit <id>]` reads the counts in `facts/`, `keyboard/` and `motion/` of this run and of the latest
 earlier run that measured the same journey, and prints, per journey, step and screen size, what rose

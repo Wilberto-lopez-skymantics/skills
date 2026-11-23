@@ -1,6 +1,6 @@
 # Visual design rubric
 
-Rubric version: 5.0.0
+Rubric version: 5.1.0
 
 You review one thing: how the screens look and how they direct the eye. Whether a person with a
 disability can use them, what the words say and how the flow behaves belong to other specialists;

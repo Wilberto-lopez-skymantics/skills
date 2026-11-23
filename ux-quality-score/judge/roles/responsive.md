@@ -1,6 +1,6 @@
 # Responsive design rubric
 
-Rubric version: 5.0.0
+Rubric version: 5.1.0
 
 You review one thing: whether the journey works and feels right at every screen size it was captured
 at, on the devices those sizes stand for. Contrast, wording and the flow in general belong to other
