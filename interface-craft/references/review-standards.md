@@ -29,7 +29,7 @@ For each step of the flow, at each screen size:
 |---|---|---|
 | Still screenshot | The screen as the person sees it | Everything marked `[eyes]` |
 | Page text | The words on the screen, in reading order | Content tests, labels, messages |
-| Measurements | Text and non-text contrast, control sizes, overflow, labels and names, field types, headings and landmarks, small text | Most `[script]` tests in Accessibility and Responsive |
+| Measurements | Text and non-text contrast, control sizes and how close small controls are, overflow, text and controls that cross, labels and names, field types, headings and landmarks, small text, how many words a screen says, how many looks one kind of thing has (`styles`), and what the pictures are (`pictures`) | Most `[script]` tests in Accessibility and Responsive, and those marked so in Visual design and Content |
 | Keyboard walk | Each Tab stop in order, with its name and whether a focus indicator shows | A4, A9, I8 |
 | Control-state pictures | Rest, hover, focus, pressed and disabled of the main controls, with the measured style change between them | A4, I2, I12, V6 |
 | Declared motion | For each transition: duration, easing, what remains under reduced motion, layout shift, time to settle | A10, I4, I11, V7 |
@@ -170,6 +170,9 @@ marked in the text; report them as not verified unless the evidence happens to s
 - Controls look different from static text and nothing static looks pressable. `[eyes]`
 - Things that belong together share a container or an edge, and things that do not belong
   together do not. `[eyes]`
+- A box is drawn where it separates something. Where the measurements list a box three deep or
+  more (`styles.boxes_inside_boxes`), each of the three sets apart something the one outside it
+  does not. `[script]` for the count, `[eyes]` for the need.
 
 ### V3 Spacing and alignment
 
@@ -190,6 +193,9 @@ marked in the text; report them as not verified unless the evidence happens to s
 - The screen uses a small set of sizes and weights, each with a visible role. Text below 18 px is
   not set lighter than regular weight. Numbers that change or sit in columns keep the same width
   per digit, so they do not jiggle or misalign. `[eyes]`
+- The sizes and weights in use are few (`styles.text_sizes_px`, `styles.text_weights`). Two sizes
+  a pixel or two apart that do the same job are one size drawn twice, and so is a heading level
+  drawn at two sizes in one region. `[script]` for the list, `[eyes]` for the job.
 
 ### V5 Colour
 
@@ -203,21 +209,30 @@ marked in the text; report them as not verified unless the evidence happens to s
 ### V6 Consistent components
 
 - The same kind of control measures the same wherever it appears: height, corner, padding, label
-  style. `[script]`
+  style. Where a capture exists, `styles.button_looks` and `styles.link_looks` list every look:
+  two that differ only in a corner, a height, a weight or the room at the sides are one kind drawn
+  two ways, unless the difference marks a difference (a smaller button in a dense table).
+  `[script]`
 - No detail is done two ways in one product: two corner sizes for the same card, two icon
-  families, two shadow styles, two date formats. `[eyes]`
+  families, two shadow styles, two date formats (`styles.corners`, `styles.shadows`). `[eyes]`
 - Controls of one kind show the same change on hover, focus and press. `[script]`
 - Icons come from one family, and their line weight matches the weight of the text beside them.
   `[eyes]`
 
 ### V7 Finish
 
-- Nothing is clipped, overlapping or touching the edge of its container without padding.
-  `[eyes]`
+- Nothing is clipped, overlapping or touching the edge of its container without padding. The
+  measurements list text and controls that cross (`layout.lies_on_something_else`): find each on
+  the screen, and leave out what is laid there on purpose. `[script]` for the list, `[eyes]` for
+  the purpose.
 - Nothing jumps when content, images or fonts arrive: the measured layout shift is nil.
   `[script]`
 - Images are sharp, in proportion, and have a visible edge where they sit on a background close
-  to their own colour. `[eyes]`
+  to their own colour. `[eyes]` A picture drawn larger than its file is soft, one out of
+  proportion is stretched, and none is missing (`pictures.drawn_larger_than_the_file`,
+  `pictures.out_of_proportion`, `pictures.did_not_load`). `[script]`
+- Every typeface the product brings is the one drawn (`styles.typefaces`: none with
+  `comes_with_the_page` true and `drawn` false). `[script]`
 - Text that is cut short shows that it is cut short. `[eyes]`
 
 ### V8 Data at a glance
@@ -239,7 +254,8 @@ marked in the text; report them as not verified unless the evidence happens to s
 - Distinctive choices are carried through every screen, not made on one and dropped on the next.
   `[eyes]`
 - No unstyled leftovers stand beside designed parts: a browser-default control among custom
-  ones, a stock placeholder picture, a default link colour. `[eyes]`
+  ones, a stock placeholder picture, a default link colour (`styles.link_looks` says where a link
+  is in the browser's own blue). `[eyes]`
 
 ---
 
@@ -459,7 +475,10 @@ marked in the text; report them as not verified unless the evidence happens to s
 ### R1 Fits
 
 - At every captured size the page does not scroll sideways. `[script]`
-- At every captured size nothing is clipped, overlapping or pushed out of reach. `[script]`
+- At every captured size nothing is clipped, overlapping or pushed out of reach: what
+  `layout.lies_on_something_else` lists as crossing is there on purpose, and nothing a person
+  needs is listed under `layout.under_a_pinned_bar_wherever_the_page_is_scrolled`. `[script]` for
+  the lists, `[eyes]` for the purpose.
 - Long content (a long name, a long number, a translated label) wraps or is cut short on
   purpose. It does not break out of its container. `[eyes]`
 
@@ -474,11 +493,14 @@ marked in the text; report them as not verified unless the evidence happens to s
 ### R3 Touch targets
 
 - Every target is at least 24 by 24 px, or has enough clear space around it that a 24 px circle
-  on it touches no other target. `[script]`
+  on it touches no other target (`targets.smaller_than_24px_with_no_room_around` lists the ones
+  that have not). `[script]`
 - At touch sizes, primary and frequent controls aim for 44 by 44 px (40 by 40 at pointer sizes
   where density allows). Missing this aim alone is never above minor. `[script]`
 - Neighbouring targets are far enough apart that a near miss does not press the wrong one,
-  above all beside a destructive control. `[eyes]`
+  above all beside a destructive control (`targets.under_44px_and_closer_than_8px_to_another`
+  names each small control and the one beside it). `[script]` for the distance, `[eyes]` for what
+  a wrong press would cost.
 
 ### R4 Readable without zooming
 
