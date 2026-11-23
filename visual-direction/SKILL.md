@@ -121,8 +121,10 @@ where it is; nothing searches for it.
    `corners`, `separation`, `density`). Two to four candidates; three is usual. Name each for what
    it is drawn from, not for how bold it is. They can be named again until the owner has chosen.
 
-   Spread them: one close to what people who use products of this kind already expect, done well;
-   one drawn from the product's own world; one further out. The owner cannot say how far they want
+   Spread them: one close to what people who use products of this kind already expect, done well
+   (the palette library that comes with this skill is a place to start that one, and only that
+   one: `references/gathering-references.md`); one drawn from the product's own world; one further
+   out. The owner cannot say how far they want
    to go before they have seen the range.
 
    Write each candidate (`candidates/<id>.json`) as a whole idea that a designer could defend:
@@ -246,6 +248,7 @@ go or picked up later: `status` says where it stands.
 | `references/gathering-references.md` | The kinds of reference, where to look, how to write a note, what may be taken and what may be kept |
 | `references/using-the-direction.md` | Handing the look to the product and to a landing page, the tokens, changing the look later, and projects that freeze their design |
 | `assets/example/` | A whole study of a made-up product: its brief, seven references, its words and three candidates that pass |
+| `sources/taste-skill/skills/taste-skill/library/palettes.json` | What good sites of each trade use: 64 palettes read from real sites, kept as a reference for the one familiar candidate (`references/gathering-references.md`) |
 | `assets/common-looks.json` | The looks, the typefaces and the marks that are everywhere, as this skill's maintainers saw them at the date in the file, with where the list was taken from |
 | `assets/specimen.css` | The skeleton every candidate is drawn on |
 | `scripts/direction.test.cjs` | Tests of the script on the example (`node --test scripts/direction.test.cjs`; run it after changing the script, the skeleton or the example) |
@@ -259,5 +262,22 @@ record, so a product and its landing page share a look without either skill know
 A review tool that hands those files to its reviewers, such as `ux-quality-score`, then holds every
 screen and page to the chosen look. None of them needs this skill, and it needs none of them.
 
-When installing this skill, copy the whole folder, `assets/` included, to wherever your agent reads
-skills from. It needs Node 18 or later and nothing else.
+## The source
+
+One file here is someone else's: the palette library above, from a public skill, copied unchanged
+with its licence (MIT). `sources/sources.lock.json` records the repository, the pinned commit and
+a hash of the file. To confirm it is untouched, or to move to a newer commit (Node 18 or later, and
+`git` for an update):
+
+```bash
+node scripts/update-sources.cjs --check
+```
+
+```bash
+node scripts/update-sources.cjs --update --source taste-skill
+```
+
+An update reads the file straight from the repository's git objects and runs nothing from it.
+
+When installing this skill, copy the whole folder, `assets/` and `sources/` included, to wherever
+your agent reads skills from. It needs Node 18 or later and nothing else.

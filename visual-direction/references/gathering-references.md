@@ -41,6 +41,33 @@ In this order.
 Do not use as a reference: a generated image, another generated interface, or a gallery of
 concept pictures of screens that were never built. They are the commonest look already.
 
+## What good sites of each trade use
+
+One more place to look comes with this skill: `sources/taste-skill/skills/taste-skill/library/palettes.json`,
+copied unchanged from a public skill at a pinned commit. It is a reading of real sites: 64
+palettes, each with the trades it suits (`trades`), six colours (`bg`, `surface`, `ink`, `muted`,
+`accent`, `accentInk`), a sentence on how those colours are used (`note`), and the sites it was
+seen on (`seenIn`, as short names from two galleries of real sites).
+
+It is used on these terms.
+
+- **It feeds the familiar candidate, and only that one.** Step 6 asks for one candidate close to
+  what people who use products of this kind already expect. A palette from this list is a fair
+  start for it. That candidate is said to be the familiar one when it is shown, whether or not
+  `check` says anything.
+- **Its note is a note of the kind `same-category`,** and its `Seen` is `described by the palette
+  library that comes with this skill`: nobody looked at a site. Where one of the sites it names can
+  be opened, open it and write the note from the site, as `looked at`. The checks on references
+  hold as for any other: a direction is never drawn from this kind alone.
+- **It gives six of the sixteen colours a candidate needs.** The lines, the focus ring and the
+  colours of the states are yours to add, and `check` measures all of them against the floor. A
+  palette that is in the list is not excused from it.
+- **Nothing is dealt.** The list is read, and a palette is proposed for a reason that can be said.
+  The owner chooses between candidates as before.
+
+The skill it comes from is in wide use, so a look taken from this list is by now a common one.
+That is why it serves for the familiar candidate and for nothing else.
+
 ## Writing a note
 
 ```markdown

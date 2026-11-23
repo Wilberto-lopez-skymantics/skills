@@ -771,3 +771,33 @@ test('a look that already exists is written down without a study, and still has 
   r = run(['render', '--dir', other], { allowFail: true });
   assert.match(r.stderr, /No direction has been settled in .*there is no direction\.json/);
 });
+
+
+test('the palette library is the file its lock records, and holds what the guide says it holds', () => {
+  const skill = path.join(__dirname, '..');
+  const checked = spawnSync(process.execPath, [path.join(skill, 'scripts', 'update-sources.cjs'), '--check'], { encoding: 'utf8' });
+  assert.strictEqual(checked.status, 0, checked.stdout + checked.stderr);
+  const lock = JSON.parse(fs.readFileSync(path.join(skill, 'sources', 'sources.lock.json'), 'utf8'));
+  assert.deepStrictEqual(lock.sources.map((x) => [x.id, x.licence, x.include]), [['taste-skill', 'MIT', ['skills/taste-skill/library/palettes.json']]]);
+  assert.ok(fs.existsSync(path.join(skill, 'sources', 'taste-skill', 'LICENSE')));
+  const file = 'sources/taste-skill/skills/taste-skill/library/palettes.json';
+  const palettes = JSON.parse(fs.readFileSync(path.join(skill, file), 'utf8'));
+  assert.ok(Array.isArray(palettes) && palettes.length >= 40);
+  for (const p of palettes) {
+    for (const k of ['bg', 'surface', 'ink', 'muted', 'accent', 'accentInk']) assert.match(p[k], /^#[0-9a-f]{6}$/i, `${p.id}.${k}`);
+    assert.ok(Array.isArray(p.trades) && p.trades.length && typeof p.note === 'string' && p.note.length > 20, p.id);
+  }
+  // The guide and the entry file point at the file by its path, and say the terms it is used on.
+  const guide = fs.readFileSync(path.join(skill, 'references', 'gathering-references.md'), 'utf8');
+  assert.ok(guide.includes(`\`${file}\``) && /It feeds the familiar candidate, and only that one/.test(guide) && /Nothing is dealt/.test(guide));
+  assert.ok(fs.readFileSync(path.join(skill, 'SKILL.md'), 'utf8').includes(`\`${file}\``));
+  // A note taken from it is a reference like any other: its kind and how it was seen are ones the checker knows.
+  const { parseReferences, checkReferences } = require('./direction.cjs');
+  const note = '## R1  What agency sites use, by one reading of them\n\n- Kind: same-category\n- Where: The palette "white-link-blue" in the palette library.\n- Seen: described by the palette library that comes with this skill\n- Does: White holds the page with black type; blue is the colour of links and the one button.\n- Take: One accent kept for links and the one action.\n- Leave: Its exact colours.\n';
+  const refs = parseReferences(note);
+  assert.strictEqual(refs.length, 1);
+  assert.deepStrictEqual([refs[0].kind, /^described by /.test(refs[0].seen)], ['same-category', true]);
+  const read = checkReferences(refs, 3);
+  assert.strictEqual(read.seen.described, 1, 'it is counted as described, not as looked at');
+  assert.ok(!read.problems.some((m) => /R1 has/.test(m)), read.problems.join('\n'));
+});
