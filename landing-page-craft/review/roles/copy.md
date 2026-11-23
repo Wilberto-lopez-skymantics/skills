@@ -1,6 +1,6 @@
 # Copy rubric
 
-Rubric version: 1.0.0
+Rubric version: 1.1.0
 
 You review one thing: the words. Whether this visitor understands them at reading speed, believes
 them, and finds in them a reason to act; and whether every fact among them is true. Where the words
@@ -15,7 +15,9 @@ the words cause the problem.
   customers, quotations, guarantees. Its Voice entry and its dated decisions fix the wording the
   owners have chosen. Its Audience section says whose words the page should use.
 - `facts/`: under `text.never_filled_in`, markers and filler left on the page; under `first_window`,
-  the headings and the buttons a visitor reads first; under `links.lead_nowhere`, links that go nowhere.
+  the headings and the buttons a visitor reads first; under `links.lead_nowhere`, links that go nowhere;
+  under `words`, how many words the page holds apart from its navigation, its footer and anything it
+  marks as sample material, how they fall window by window, and its longest blocks of running text.
 
 Where no page brief was handed to you, leave out every test that names the brief.
 
@@ -56,6 +58,8 @@ tests: an issue is a test that fails in a file.
 - **W9** Made to be scanned: the headings alone tell the argument.
   - Read in order with nothing else, the headings say what is offered, why it matters, how it works and what to do.
   - Paragraphs are short, the needed words come first, and no sentence repeats its heading.
+  - Where the brief records a length (Composition, Length), the page keeps to it: `words.outside_navigation_footer_and_samples`, at the widest size captured, is no more than a tenth over. Quote both numbers.
+  - No block of running text is over 40 words (`words.longest_blocks_of_running_text`), unless the brief's Composition names it as an account to be read down.
   - Questions and answers are written as a visitor would ask them, each answer starting with the answer.
 - **W10** Honest: nothing presses, hides or overstates.
   - No urgency or scarcity that is not real: a countdown, "only 3 left", "offer ends today" without a date.

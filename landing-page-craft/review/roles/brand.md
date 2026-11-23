@@ -1,6 +1,6 @@
 # Brand and visual design rubric
 
-Rubric version: 1.0.0
+Rubric version: 1.1.0
 
 You review one thing: how the page looks and moves, and whether it is this brand's. Whether the eye
 goes where the page needs it, whether the brand's own type, colour and shape are used and kept, and

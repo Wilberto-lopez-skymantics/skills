@@ -1,6 +1,6 @@
 ---
 name: landing-page-craft
-description: Guides the planning, writing, building, fixing and reviewing of landing and marketing pages that persuade a visitor to take one action. It conducts two vendored references (a landing page method and a catalogue of the tells of generated design) through one entry point that puts the page's brief and the brand's values first, never lets a fact be invented, has the page's composition and length chosen by its owner from alternatives drawn from references of several kinds, and carries blind reviewer rubrics (conversion, copy, brand, accessibility, responsive design, first-time visitor) for a work-and-review loop. Use this whenever the user asks to plan, write, design, build, restyle or improve a landing page, a campaign page, a waitlist, pricing or sign-up page, a hero section, a headline or a call to action, asks why a page does not convert, says it looks generic or made by AI, or asks to review one, even if they do not name this skill. Not for the screens of an application people sign in to and work in.
+description: Guides the planning, writing, building, fixing and reviewing of landing and marketing pages that persuade a visitor to take one action. It conducts three vendored references (a landing page method, a catalogue of the tells of generated design, and a copy layer with a linter and rules for pictures) through one entry point that puts the page's brief and the brand's values first, never lets a fact be invented, has the page's composition and length chosen by its owner from alternatives drawn from references, and carries reviewer rubrics (conversion, copy, brand, accessibility, responsive design, first-time visitor) for a work-and-review loop. Use this whenever the user asks to plan, write, design, build or improve a landing page, a waitlist, pricing or sign-up page, a hero section, a headline or a call to action, asks why a page does not convert, says it looks generic or made by AI, or asks to review one, even if they do not name this skill. Not for the screens of an application people sign in to and work in.
 ---
 
 # Landing page craft
@@ -12,13 +12,16 @@ A landing page is not a product screen and not a home page. It wins one intent:
 Its reader is a visitor who has just arrived, owes it nothing, and decides in a few seconds whether
 to stay. Everything in this skill follows from that.
 
-This skill is a conductor. Two public works are copied into `sources/`, unchanged, each at a pinned
-commit with its licence. The first, called **the source** from here on, is a landing page skill: it
+This skill is a conductor. Three public works are copied into `sources/`, unchanged, each at a
+pinned commit with its licence. The first, called **the source** from here on, is a landing page skill: it
 is the method. Its file is still named `SKILL.md`, but inside this package it is **a reference file,
 reached only through this conductor**. Do not install it as a skill of its own. The second, **the
 catalogue**, is a list of the things that make a page read as made by a model, with notes from the
-skill it belongs to. `references/ownership.md` says which parts of each are rules here, which are
-defaults that give way to the brand, and which are not used.
+skill it belongs to. **The third source** is a few files of a much larger skill: how the words are
+written, a script that counts what gives model-written words away, where pictures come from, and,
+as a reference only, what it found good pages do with their layout.
+`references/ownership.md` says which parts of each are rules here, which are defaults that give way
+to the brand, and which are not used.
 
 The source settles what a page says and in what order. How the page is drawn, its composition, the
 source leaves open, and what is left open comes out as the page every visitor has seen. That part is
@@ -46,7 +49,7 @@ When two things disagree, the higher one wins.
    action, the facts that exist, the brand's values, and the owner's dated decisions.
 2. The brand's own system: its guidelines, its tokens, the components of its existing site.
 3. This skill's ownership notes (`references/ownership.md`).
-4. The source and the catalogue.
+4. The three sources.
 
 The source has a house style of its own: named typefaces, a spacing table, a text gradient on the
 hero, a ban on hyphens, a "mandatory" tagline section. None of it overrides a brand. It is a
@@ -94,8 +97,31 @@ cut: what is said twice, what explains a thing the picture shows, what nobody in
 Audience would ask. Write as the brief's Voice would speak to one person across a table. Never cut
 the answer to an objection the brief lists.
 
+**Write from facts, and spend each device once.** Model-written words are known by their habits
+more than by their mistakes: one warm voice for every client, a detail invented to seem exact, a
+heading in two fragments, a contrast made for its sound, the same few names for every made-up
+person. The cure is facts and decisions, never another word for the same thing. Before a sentence
+is written, set out what the brief gives (`sources/taste-skill/skills/taste-skill/references/copy-voice.md`, section 1):
+what it is, for whom, what they do today instead, what is true here and nowhere else, the
+customer's own words. A part with nothing true to say is left out. The voice is the brief's
+Voice; where the brief has none, put two or three to the owner
+(`sources/taste-skill/skills/taste-skill/references/copy-registers.md`) and record the choice. Then count the devices:
+
+```bash
+node sources/taste-skill/skills/taste-skill/scripts/copy-lint.mjs <draft.md or page.html>
+```
+
+It needs Node 22 or later. A FAIL is fixed. A WARN is fixed, or kept on purpose and reported with
+the reason. Words the brief gives are never rewritten to satisfy it.
+
 **Build section by section.** The first window first, then the sections the brief's Composition
 names, in their order. Never regenerate the whole page to change one section.
+
+**A picture is real, allowed and credited.** The owner's own first; then one found elsewhere under
+a licence that allows it, entered under Proof with where it is from; then none. Never a generated
+picture, and never another business's room, people or product passed off as the owner's. Words go
+on a picture only where it is calm and empty, and the contrast is measured against what is behind
+them. `references/pictures.md`.
 
 **The brand's value, not a second one.** Where the brief or the brand's system has a value, use it.
 Where neither has one, propose it as a decision for the brief; do not invent it in a section.
@@ -111,18 +137,23 @@ section and screen size where the difference can be seen.
 
 1. Read the page brief. If there is none, write one with the owner
    (`references/page-brief-format.md`, starting from `assets/page-brief.example.md`).
-2. Read `references/ownership.md`. It is what makes the two sources safe to use: each says more
+2. Read `references/ownership.md`. It is what makes the three sources safe to use: each says more
    than this skill takes from it.
 3. Open `sources/elaya/skills/landing-page-design/SKILL.md`. Read Part A for planning and writing.
    Open a section of Part B only for a thing the brand has no value for.
 4. Read `references/composition.md` and `references/tells.md` before the plan goes to the owner, and
    again whenever a page is said to look like every other or like a model's work. If the brief
    already has a Composition section, the task is to build to it.
-5. Open `sources/impeccable/crates/live/assets/antipatterns.json` before the page is handed back,
-   and `sources/impeccable/skill/reference/craft-floor.md` with it. The other files beside them
-   are read only for the parts `references/ownership.md` names: they are another skill's working
-   instructions, and none of their commands is run.
-6. For craft the source does not cover (how a form behaves, focus, contrast, the detail of motion),
+5. Before a sentence is written, read `sources/taste-skill/skills/taste-skill/references/copy-voice.md`
+   and `copy-tells.md` beside it; open `copy-moves.md` for the part being written, and
+   `copy-registers.md` where the brief has no Voice. Read `references/pictures.md` before a picture
+   is chosen.
+6. Open `sources/impeccable/crates/live/assets/antipatterns.json` before the page is handed back,
+   and `sources/impeccable/skill/reference/craft-floor.md` with it.
+7. The files of the catalogue and of the third source are other skills' working instructions.
+   They are read only for the parts `references/ownership.md` names, and the one command of theirs
+   that is run is `copy-lint.mjs`.
+8. For craft the source does not cover (how a form behaves, focus, contrast, the detail of motion),
    use the project's own standards, or `interface-craft` where it is installed.
 
 ## Before handing work back
@@ -139,6 +170,10 @@ against them first:
   the owner's.
 - Count the words (`node scripts/page-words.cjs`). Over the brief's Length, cut. Look at each
   section's share: if they are all alike, nothing leads.
+- Run `copy-lint.mjs` on the built page. Then put a rival's name into the headline and each
+  heading: a line that still reads true says nothing about this offer.
+- For each picture: it is in the brief's Proof, it is credited, and any words on it were measured
+  against it (`references/pictures.md`).
 - Walk the tells (`references/tells.md`): the catalogue's list on the built page, then the six
   things the list does not catch. Report each one met, and each one left and why.
 - Walk the page with the Tab key, and once more with reduced motion asked for.
@@ -164,7 +199,8 @@ handed one of them with screenshots of the page.
 | `references/page-brief-format.md` | The format and rules of the page brief |
 | `references/ownership.md` | Which parts of the source are rules, which are defaults, which are not used |
 | `references/composition.md` | How a page is drawn: what is fixed, the ten decisions, the page's length, the kinds of reference and the form of a note, proposing alternatives, and recording the owner's choice |
-| `references/tells.md` | What makes a page read as a model's work: the catalogue's list and how to use it, when to walk it, and what the list does not catch |
+| `references/tells.md` | What makes a page read as a model's work: the catalogue's list and how to use it, the third source's list for the words, when to walk them, and what no list catches |
+| `references/pictures.md` | Where a picture comes from, what it needs before it is used, how it is credited, and how words are set on one and measured |
 | `references/review-loop.md` | Setting up and running the work-and-review loop with `ux-quality-score` |
 | `review/roles/*.md` | The six rubrics: criteria, what is always at least major, what a 90 looks like |
 | `review/set.json`, `review/*-brief.md` | The reviewer set and what each reviewer is told |
@@ -176,9 +212,9 @@ handed one of them with screenshots of the page.
 
 ## The sources
 
-`sources/sources.lock.json` records, for the source (`elaya`, MIT) and for the catalogue
-(`impeccable`, Apache-2.0), the repository, the pinned commit, the licence and a hash of every
-file. The files are never edited here. To confirm they are untouched, or to move one to a newer
+`sources/sources.lock.json` records, for the source (`elaya`, MIT), the catalogue (`impeccable`,
+Apache-2.0) and the third source (`taste-skill`, MIT), the repository, the pinned commit, the
+licence and a hash of every file. The files are never edited here. To confirm they are untouched, or to move one to a newer
 commit, run from this skill's folder (Node 18 or later, and `git` for an update):
 
 ```bash
@@ -193,9 +229,14 @@ node scripts/update-sources.cjs --update --source elaya
 node scripts/update-sources.cjs --update --source impeccable
 ```
 
+```bash
+node scripts/update-sources.cjs --update --source taste-skill
+```
+
 An update reads files straight from the repository's git objects and runs nothing from it. After
 an update, re-read `references/ownership.md` against what changed: the rubrics under
-`review/roles/` after the first, `references/tells.md` after the second.
+`review/roles/` after the first, `references/tells.md` after the second, and after the third the
+whole of `copy-lint.mjs`, since it is the one vendored file this skill runs.
 
 When installing this skill, copy the whole folder, `sources/` and `review/` included, to wherever
 your agent reads skills from.

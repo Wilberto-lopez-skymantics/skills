@@ -49,14 +49,14 @@ Ten decisions. The choices listed are the usual ones, not all of them.
 | Decision | It usually comes down to |
 |---|---|
 | **1. The skeleton** | Which of the visitor's questions get a section of their own and which share one; which one part leads and is given the room; what the page leaves out; how long it is (below). A section for each question, all about the same weight: the common one. One demonstration of the product at work that answers what changes and how it works together, with everything after it short. One customer's account, read down, that carries the proof and the answers to the objections. The first window, the terms of the offer, and nothing else. The brief's Layout type bounds it |
-| **2. The first window: words and picture** | Words beside the picture; words above and the picture below, running off the bottom of the window; words set large across the window with a small picture beside the action; a picture across the window with the words on a quiet part of it. And the action: a button, or the thing itself already begun (the field to fill, the dates to pick). The source's A2 puts a picture in the first window: a first window of words alone sets that rule aside, and needs the owner's dated decision in the brief |
-| **3. The picture** | The whole product on a screen; one detail of it, large; the product at work on one real case; the outcome instead of the product (the report, the paid invoice, the finished thing); a figure set as the picture; a diagram of how it works; a photograph of it in use. Only what the brief's Proof says exists |
+| **2. The first window: words and picture** | Words beside the picture; words above and the picture below, running off the bottom of the window; words set large across the window with a small picture beside the action; a picture across the window with the words on a quiet part of it; the headline itself as the picture, very large, on the bare ground; the thing to do across the window, with the words above it. And the action: a button, or the thing itself already begun (the field to fill, the dates to pick). The third source describes eleven first windows it has tested, with what each needs and how it is drawn on a phone (`sources/taste-skill/skills/taste-skill/references/layout-v4.md`, section 3). The source's A2 puts a picture in the first window: a first window of words alone sets that rule aside, and needs the owner's dated decision in the brief |
+| **3. The picture** | The whole product on a screen; one detail of it, large; the product at work on one real case; the outcome instead of the product (the report, the paid invoice, the finished thing); a figure set as the picture; a diagram of how it works; a photograph of it in use. Only what the brief's Proof says exists; where a picture comes from, and how words are set on one, is in `references/pictures.md` |
 | **4. The first proof** | Under the action; beside the headline; inside the picture; a line across the foot of the window |
 | **5. The benefits** | Statements set large, one under another; each beside the part of the product it is about; a before and an after; one annotated picture; a row of equal parts. As many as there are, which is seldom three |
 | **6. How it works** | The real screens, in order; one picture with the steps marked on it; a line down the page with the steps along it; steps in a row. As many steps as there are |
 | **7. The proof** | One quotation, large; a figure, large, with its source; a short account of one customer; a row of names |
 | **8. The questions** | The brief's objections and no others. All open, to be read down; folded, with the first open; each set beside the claim or the action it belongs to, with no list at all |
-| **9. The rhythm** | Which sections run the full width and which are a narrow column; which one is large and which are small; where the page is dense and where it rests; whether sections change ground or share one |
+| **9. The rhythm** | Which sections run the full width and which are a narrow column; which one is large and which are small; where the page is dense and where it rests; whether sections change ground or share one; or every section one window tall, so that each window shows one thing |
 | **10. What recurs** | The one thing that comes back down the page and makes it one page: the figure the page is about; the picture, returning in parts; one way of setting a date or a price. One, or none. Never a label over each heading or a number on each section: those are the two that come to hand first, and both are tells |
 
 Decisions 1 to 3 carry most of what a visitor remembers, and most of what makes two pages
@@ -86,11 +86,26 @@ Then write the page, count it, and cut it to the number.
 node scripts/page-words.cjs <the built page> --budget <the number>
 ```
 
-It counts the words a visitor reads, section by section, and each section's share. Cut what is
-said twice, what explains a thing the picture already shows, and what answers a question nobody in
-the brief's Audience asks (`sources/impeccable/skill/reference/distill.md`, "Content
-Simplification"). Never cut the answer to an objection the brief lists, or what the action costs
-and commits to.
+It counts the words a visitor reads, section by section, and each section's share.
+
+How the words fall is a second thing to know. A page can be within its length and still open on a
+wall of text. Where the page is captured with the `ux-quality-score` skill, the measurements give
+the words in the first window and in each window down the page (`words` in `facts/`). The third
+source sets a number for that, 34 to 80 words a window by the kind of business, for a layout of
+its own with one section and one large picture to a window. Take its numbers as a place to start
+and not as a rule. On this skill's first pages the count in a window did not follow what their
+owner found wordy: the page called wordy had 84 words a window and the one preferred had 99. The
+total, the number of sections and things said twice did. So the total is what is agreed, and the
+count in a window is looked at for one thing: a window that is all words.
+
+Whoever reviews the page holds it to the number: the copy rubric (`review/roles/copy.md`, W9) asks
+that the page be no more than a tenth over the length its brief records, and that no block of
+running text be over 40 words unless the Composition names it as an account to be read down.
+
+Cut what is said twice, what explains a thing the picture already shows, and what answers a
+question nobody in the brief's Audience asks (`sources/impeccable/skill/reference/distill.md`,
+"Content Simplification"). Never cut the answer to an objection the brief lists, or what the action
+costs and commits to.
 
 ## References
 
@@ -120,6 +135,15 @@ neither an offer nor an action. Hold everything you take against the fixed list 
 
 Do not use as a reference a generated page or a picture of a page that was never built.
 
+**What good pages of this kind do.** The third source holds a reading of several hundred real
+sites (`sources/taste-skill/skills/taste-skill/references/layout-v4.md`): what it measured in
+them (section 1), and eleven first windows it has built and tested (section 3). Use it as one
+more place to look, on these terms. A note taken from it is of the kind `same-category` and its
+`Seen` is `described by` that file: nobody looked at a page. It may be the start of one
+alternative, the common one, and that alternative is said to be the common one. It is never the
+only source of a composition. A great many pages are now built from that same description, which
+is the reason to know it and the reason not to stop at it.
+
 **A note.**
 
 ```markdown
@@ -135,8 +159,9 @@ Do not use as a reference a generated page or a picture of a page that was never
 - Leave: Its drawings and its wording.
 ```
 
-One thing a note, with where it can be seen. `Seen` is `looked at` and the day, or `from memory`:
-what is remembered of a page is the average of pages like it. `Does` is what you saw of the ten
+One thing a note, with where it can be seen. `Seen` is `looked at` and the day, `from memory`, or
+`described by` and who: what is remembered of a page is the average of pages like it, and a
+description is someone else's reading of it. `Does` is what you saw of the ten
 decisions: which parts it has and which one leads, how long it is, what the first window holds and
 how it is arranged, what the picture is, what form each section takes, how the page is paced.
 `Leave` starts with everything that is the thing's own.

@@ -43,6 +43,36 @@
         "skill/reference/mode-persuade.md": "b3f8b39cbf89392b62c07298361fb2a7e8e0b4ef13bbb38bac974ccd8fd835fd",
         "skill/reference/new-work.md": "e47b8584189d02f0ce8c8a0c390e5361b6a530766d75a776a283c115590fa0b6"
       }
+    },
+    {
+      "id": "taste-skill",
+      "repo": "https://github.com/Leonxlnx/taste-skill",
+      "commit": "6c0b5c78f5d31776e2210305abaa210cdc0030bf",
+      "commit_date": "2026-11-22T21:10:05+01:00",
+      "licence": "MIT",
+      "licence_file": "LICENSE",
+      "include": [
+        "skills/taste-skill/references/copy.md",
+        "skills/taste-skill/references/copy-voice.md",
+        "skills/taste-skill/references/copy-moves.md",
+        "skills/taste-skill/references/copy-registers.md",
+        "skills/taste-skill/references/copy-tells.md",
+        "skills/taste-skill/references/photos.md",
+        "skills/taste-skill/scripts/copy-lint.mjs",
+        "skills/taste-skill/references/layout-v4.md"
+      ],
+      "tree_sha256": "51f680832158c376ec9a8aad1f3050aee0f5edaa3b4fde889e977b9059b39f77",
+      "files": {
+        "LICENSE": "4575a543ab88dad12ccea7d97e563d0bce5b448b06072e65d3264497dad326df",
+        "skills/taste-skill/references/copy-moves.md": "6e5c7eb52ab5cbe61c07eb936c3d17d4432f02dbae2da1f1bbab5e9aef7b2400",
+        "skills/taste-skill/references/copy-registers.md": "8e2e6d5b9ef09e38bfdd2f1c9a32796bd91c1f3f99c6c51abbbe89d99119d6fd",
+        "skills/taste-skill/references/copy-tells.md": "e113d4f788f64e44e92cefa0823be4cf0662f2806ed87f91aa52d9cf8877d6ed",
+        "skills/taste-skill/references/copy-voice.md": "3a287b8f10384229aa52e6d75480fddc377aafd05f7d0ee9d1a180d2ebf44e8a",
+        "skills/taste-skill/references/copy.md": "607520bc4213e06e6635f4fa44915d3fb5482b5b2e3779faa0a5c9d2abcc9e69",
+        "skills/taste-skill/references/layout-v4.md": "6316217db46993977700cf4203cc29f96cad0d7bf3a97e877241b1be0901fd19",
+        "skills/taste-skill/references/photos.md": "b115cafc205ee20f19e6e90d061d24d31460966f1bd4315fb3434ca2d560c33e",
+        "skills/taste-skill/scripts/copy-lint.mjs": "1d9238959378867f24fdc232279c8526fe985aa09435d36ad745c0573b646bdb"
+      }
     }
   ]
 }

@@ -47,6 +47,27 @@ landing page meets most.
 Of the entries marked `quality`, one belongs with these: `repeated-container-text`, the same words
 set three times in one panel.
 
+For the words the catalogue is thin, and the third source goes much further:
+`sources/taste-skill/skills/taste-skill/references/copy-tells.md`. Read it whole. It sorts the tells
+of wording by age. The old ones (the worn words, the stock lines) are mostly avoided now. The ones
+that give a page away today look like good writing: one warm, wry voice for every client; a detail
+invented to seem specific; a heading in two fragments; a row of figures over one-word labels; a
+contrast made for its sound; a dry line closing each paragraph; the same few names for every
+made-up person. Its script counts the ones that can be counted, in a draft or in a built page:
+
+```bash
+node sources/taste-skill/skills/taste-skill/scripts/copy-lint.mjs <draft.md or page.html>
+```
+
+Given several pages at once it also sets their first headings side by side, which shows a habit
+that no single page shows.
+
+Two parts of that file matter more than its lists. "Over-correction" says what each rule breeds
+when it is obeyed everywhere: avoid threes and everything comes in pairs; ask for one section to
+lead and every page has one huge section and one tiny one. That holds for this file's rules as
+much as for its own. "Not tells" says what to leave alone: a list of three when there are three
+things, plain grammar, selling on a page whose job is to sell.
+
 **On the surface**
 
 Drawn: `overused-font`, `italic-serif-display`, `extreme-negative-tracking`, `gradient-text`,
@@ -66,10 +87,11 @@ assembled into a scene, a grid behind the words) is where they come back.
    not its picture, not the device that recurs. A device chosen to make a page distinct is the
    likeliest place to find one, because a model reaches for the same few devices when asked to be
    distinct. If the idea of a composition is "every section has a number", it has no idea yet.
-2. **While writing.** The rows under "In the words", and the rule in `SKILL.md` on saying it once.
+2. **While writing.** The rows under "In the words", the third source's list, and its script on
+   the draft before anything is built.
 3. **Before handing the page back.** The whole list, on the built page, at the smallest size and at
-   the widest. Report each entry met, and which you left and why: an advisory entry may stay where
-   the brief asks for the thing by name.
+   the widest, and the script on the built page. Report each entry met, and which you left and why:
+   an advisory entry may stay where the brief asks for the thing by name.
 
 A brand's own values are not tells. A typeface, a colour or a shape that the brief records is
 used, whatever list it is on. A structure is never a brand value: no brief earns a label above a

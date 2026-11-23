@@ -1,6 +1,6 @@
 # Responsive design rubric
 
-Rubric version: 1.0.0
+Rubric version: 1.1.0
 
 You review one thing: whether the page works and looks composed at every screen size it was captured
 at, on the devices those sizes stand for. Most visitors to a landing page arrive on a phone, so the

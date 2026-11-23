@@ -1,6 +1,7 @@
 # What the sources own here
 
-Two public sources are copied into `sources/`, unchanged, each at a pinned commit with its licence.
+Three public sources are copied into `sources/`, unchanged, each at a pinned commit with its
+licence.
 
 - **The source**, as it is called everywhere in this skill, is
   `sources/elaya/skills/landing-page-design/SKILL.md`. It has two halves. Part A decides what a page
@@ -11,13 +12,20 @@ Two public sources are copied into `sources/`, unchanged, each at a pinned commi
   a model, with four files of notes from the skill it belongs to. It decides nothing about what a
   page says. It is here because a page can follow the source to the letter and still be the page
   every model makes (`references/tells.md`).
+- **The third source** is `sources/taste-skill/`: seven files and one script out of a much larger
+  skill that builds whole websites from a kit of its own. Two things are taken from it as rules:
+  how the words are written and checked, and where pictures come from. Its account of layout is
+  taken as a reference only. Its kit and its way of choosing a look and a layout by dealing them
+  from a library are not here.
 
-Three words are used below.
+Four words are used below.
 
 - **Rule**: follow it. A dated decision in the page brief is the only thing that sets it aside.
 - **Default**: use it only where neither the page brief nor the brand's own system has a value for
   that thing. Where either has one, the source's value is not used and is not an argument.
 - **Not used**: do not follow it, whatever the source says about it being mandatory.
+- **Reference**: a description of what good pages do, or of what someone measured. It may be the
+  start of one alternative that is put to the owner, and it is never followed because it is there.
 
 ## Part A, strategy and structure
 
@@ -81,7 +89,42 @@ generated pictures of a page (sections 1 to 3 and 5 of `new-work.md`); and its f
 them. `{{scripts_path}}` and the like in those files are the catalogue's own unfilled placeholders,
 not markers of this skill.
 
-## What neither settles
+## The third source: the words and the pictures
+
+Paths are under `sources/taste-skill/skills/taste-skill/`. Where it and this skill disagree, this
+skill's rule stands and the part is marked not used.
+
+| File or part | Standing | Notes |
+|---|---|---|
+| `references/copy-tells.md` | Rule | What gives model-written words away, the fix for each, what over-correcting breeds, and what is not a tell. Walked with the catalogue (`references/tells.md`). |
+| `scripts/copy-lint.mjs` | Rule | Run on the draft and on the built page. A FAIL is fixed. A WARN is fixed, or reported with why it stays. A hit on words the brief gives (a customer's quotation, the brand's own name) is reported and never rewritten: the brief wins. It reads a marker such as `{{price}}` as a leftover and fails it, which is right: a page that holds a marker is not finished. Its `--kind` is the third source's own sorting of businesses and may be left out. Needs Node 22 or later. |
+| `references/copy-voice.md`, sections 1, 3, 4 and 5, and checks 1 to 5 of section 6 | Rule | The fact sheet, the page's shape from the reader's questions, drafting, the budget for each device, and the checks. The fact sheet is filled from the page brief and adds nothing to it: a field the brief cannot fill is a question for the owner, never a reason to write on. Its two allowances for invention (a coined name; plausible hours and prices) are not used. |
+| `references/copy-voice.md`, section 2, and `references/copy-registers.md` | Default | The brief's Voice decides. Where the brief has none, two or three registers are put to the owner and the choice is recorded. "Take the one least like the last page" is not used. |
+| `references/copy-moves.md` | Default | The move for each part of a page, with examples. Its table of heroes assumes the rule below on the headline. |
+| `references/copy.md`: rules 2 to 5, "Plain versions", "Headlines and text", "Banned" | Default | Where the source's A5 or a rubric under `review/roles/` says otherwise, they stand. |
+| `references/copy.md`, rule 1: the headline names the category | Not used | `review/roles/copy.md` W1 asks the headline for what the visitor gets and for whom. |
+| `references/copy.md`: the words allowed on a screen, and 900 words a page | Not used | The length is the composition's (`references/composition.md`, "Length"). They belong to the third source's own layout, one section to a screen. |
+| `references/copy.md`, "What may be assumed": "No invented proof" and "Each fact once" | Rule | |
+| `references/copy.md`, "What may be assumed": assumed hours and prices, "No sample notes", "No placeholders", "No caption" | Not used | "Facts" below stands: a missing fact is a marker a visitor can see, and sample material is marked where it stands. |
+| `references/copy.md`, "Contacts the brief does not give" | Not used | Contacts come from the brief. |
+| `references/photos.md`, "Where pictures come from": the order of sources | Rule | The owner's own first, then a picture found elsewhere under a licence that allows it, then none. Each one is entered under Proof in the brief before it is used (`references/pictures.md`). |
+| `references/photos.md`: its library of photographs and every `photos.mjs` command | Not used | Neither is carried here. |
+| `references/photos.md`, "Live search": which licences, and the look at full size | Rule | What a picture found elsewhere has to pass before it is used. |
+| `references/photos.md`: a stand-in shown with nothing on the page to say so, and the draft path | Not used | "Facts" below stands. |
+| `references/photos.md`, "Place them": one light and one grade across the set, no frame twice, words on a picture only where it is calm, in a solid box or off it, a crop for the phone | Rule | Its ratios, its column positions and its rules by kind of business are its own layout: not used. |
+| `references/photos.md`, "Show them": visible from the first paint, sizes set, no print, grade or effect on a photograph | Rule | Its file sizes are a default. Its hover rules are not used. |
+| `references/photos.md`, "Credits and words": one credit line in the footer and a list behind it | Rule | Its ban on any caption is not used. |
+| `references/photos.md`, "Never" | Rule | |
+| `references/layout-v4.md`, section 1: what a study of 327 sites found | Reference | How often the first window holds the first section alone, how tall sections are and how far apart. Evidence for decisions 1, 2 and 9 in `references/composition.md`. Its sample holds no local shops, as it says itself. |
+| `references/layout-v4.md`, section 2: one section to a window | Reference | One rhythm among those a composition may choose (decision 9). Its exact heights, its tables and its checker belong to its kit. |
+| `references/layout-v4.md`, section 3: the table of eleven first windows, and what a first window may hold | Reference | Forms for decision 2, each with what it needs from the brief and how it is drawn on a phone. That they are dealt and never chosen is not used: here the owner chooses. One of them may be the common alternative, and no more than one. |
+| `references/layout-v4.md`, sections 4 to 6: its grid, its type and its checker | Not used | They are its kit's. The look, type included, is the brand's. |
+
+The files name many things that are not here: the kit under `assets/`, the other scripts, the gate,
+the dealing of palettes and layouts, the other references. Nothing in this skill runs or expects
+them.
+
+## What none of them settles
 
 How the page is drawn. The source gives the questions a page answers and their order (A2), four
 types of page (A3) and one rule for the words in the first window (B5). It does not say what the
@@ -89,7 +132,7 @@ picture is, where the words sit against it, or what form any section takes, and 
 it alone takes the commonest form of each. The catalogue says what not to reach for, and nothing
 about what to do in its place for this offer. That is settled for each page with its owner, from
 references, as `references/composition.md` describes, and recorded in the brief. It ranks where the
-brief ranks: above the brand's general system, this file and both sources. It never sets aside a
+brief ranks: above the brand's general system, this file and all three sources. It never sets aside a
 rule of Part A: a composition decides how the page is drawn and which of its parts are sections of
 their own, never which questions the page answers, their order, or what the first window must
 hold.
@@ -130,3 +173,9 @@ version in all six files, which starts a new series of scores.
 After `node scripts/update-sources.cjs --update --source impeccable`, read the diff of the list. A
 new entry marked `slop` needs a place in `references/tells.md`, and `scripts/review-set.test.cjs`
 fails until it has one. A changed line under "Refuse" may change a row above.
+
+After `node scripts/update-sources.cjs --update --source taste-skill`, read the whole of
+`copy-lint.mjs` again before it is run: it is the one file among the sources that is executed, and
+a pin is only as good as the reading behind it. It should still do nothing but read the files it
+is given and print. Then read the diff of the six references against the rows above. That skill
+changes often, and a release may move a rule from one file to another.

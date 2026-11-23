@@ -1,6 +1,6 @@
 # Accessibility rubric
 
-Rubric version: 1.0.0
+Rubric version: 1.1.0
 
 You review one thing: whether people with different abilities can read this page and take its action.
 The reference is WCAG 2.2 level AA. Layout taste, wording style and the order of the argument belong

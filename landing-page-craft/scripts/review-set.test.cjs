@@ -91,7 +91,7 @@ test('the example brief has the sections the format names, in its order, and its
     assert.ok(kinds.includes(kind), `a note of kind ${kind}`);
     used.add(kind);
     for (const part of ['Where', 'Seen', 'Does', 'Take', 'Leave']) assert.match(b, new RegExp(`^- ${part}: \\S`, 'm'), `${b.split('\n')[0]} needs "${part}"`);
-    assert.match(b, /^- Seen: (looked at \d{4}-\d{2}-\d{2}|from memory)/m);
+    assert.match(b, /^- Seen: (looked at \d{4}-\d{2}-\d{2}|from memory|described by \S)/m);
   }
   assert.ok(used.size >= 3 && (used.has('other-craft') || used.has('own-world')));
   // The alternatives: each starts from notes that exist, one is named as the common form, and the brief's choice is one of them.
@@ -117,17 +117,43 @@ test('the list of tells names every tell in the catalogue, and nothing that is n
   const missing = catalogue.filter((e) => e.category === 'slop' && !named.includes(e.id)).map((e) => e.id);
   assert.deepStrictEqual(missing, [], 'every entry marked slop has a place in references/tells.md');
   // Every file the ownership notes and the entry file send a reader to is there.
-  const pointers = ['SKILL.md', 'references/ownership.md', 'references/tells.md', 'references/composition.md'].map((f) => fs.readFileSync(path.join(SKILL, f), 'utf8')).join('\n');
+  const pointers = ['SKILL.md', 'references/ownership.md', 'references/tells.md', 'references/composition.md', 'references/pictures.md'].map((f) => fs.readFileSync(path.join(SKILL, f), 'utf8')).join('\n');
   for (const m of pointers.matchAll(/`(sources\/[^`\s]+)`/g)) assert.ok(fs.existsSync(path.join(SKILL, m[1])), `${m[1]} is pointed at and is not there`);
   for (const f of ['craft-floor.md', 'mode-persuade.md', 'new-work.md', 'distill.md']) assert.ok(fs.existsSync(path.join(SKILL, 'sources', 'impeccable', 'skill', 'reference', f)), f);
 });
 
 test('the vendored sources are as their lock records them, each with its licence', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(SKILL, 'sources', 'sources.lock.json'), 'utf8'));
-  assert.deepStrictEqual(lock.sources.map((x) => [x.id, x.licence]), [['elaya', 'MIT'], ['impeccable', 'Apache-2.0']]);
+  assert.deepStrictEqual(lock.sources.map((x) => [x.id, x.licence]), [['elaya', 'MIT'], ['impeccable', 'Apache-2.0'], ['taste-skill', 'MIT']]);
   for (const source of lock.sources) assert.ok(fs.existsSync(path.join(SKILL, 'sources', source.id, source.licence_file)), `${source.id} has its licence`);
   const checked = spawnSync(process.execPath, [path.join(SKILL, 'scripts', 'update-sources.cjs'), '--check'], { encoding: 'utf8' });
   assert.strictEqual(checked.status, 0, checked.stdout + checked.stderr);
+});
+
+// The one vendored file this skill runs. It is pinned by its hash in the lock, and it is run here the way SKILL.md says.
+const oldNode = Number(process.versions.node.split('.')[0]) < 22 ? 'the copy linter needs Node 22 or later' : false;
+test('the vendored copy linter runs as the skill says, on a built page and on a draft', { skip: oldNode }, () => {
+  const lint = path.join(SKILL, 'sources', 'taste-skill', 'skills', 'taste-skill', 'scripts', 'copy-lint.mjs');
+  assert.ok(fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8').includes('node sources/taste-skill/skills/taste-skill/scripts/copy-lint.mjs <draft.md or page.html>'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'copy-lint-'));
+  try {
+    const run = (file) => spawnSync(process.execPath, [lint, file, '--json'], { encoding: 'utf8' });
+    // A worn word, a marker left for a missing fact, and a name every model picks for a made-up person.
+    const page = path.join(dir, 'page.html');
+    fs.writeFileSync(page, '<!doctype html><html lang="en"><head><title>Example Ledger</title></head><body><main><section><h1>Invoices for people who work alone</h1><p>A seamless way to send an invoice, checked by Priya before it goes out.</p><p>After the trial it costs {{price}} a month.</p></section></main></body></html>');
+    const built = run(page);
+    assert.strictEqual(built.status, 1, built.stdout + built.stderr);
+    const found = JSON.parse(built.stdout).files[0].findings.map((f) => `${f.sev} ${f.id}`);
+    for (const id of ['FAIL copy-slop-word', 'FAIL copy-residue', 'WARN copy-cast']) assert.ok(found.includes(id), `${id} among ${found.join(', ')}`);
+    // A plain draft passes, and its part labels are not read as copy.
+    const draft = path.join(dir, 'draft.md');
+    fs.writeFileSync(draft, '# Copy draft\n\n## Hero\n\nInvoices for people who work alone\n\nSend an invoice in a minute. Reminders go out on the due date and one and two weeks after.\n');
+    const written = run(draft);
+    assert.strictEqual(written.status, 0, written.stdout + written.stderr);
+    assert.deepStrictEqual(JSON.parse(written.stdout).files[0].findings.filter((f) => f.sev !== 'INFO'), []);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('the example files open a run with the review skill, and each reviewer is handed what its role is meant to see', { skip }, () => {
@@ -150,7 +176,7 @@ test('the example files open a run with the review skill, and each reviewer is h
     assert.strictEqual(opened.status, 0, opened.stderr);
     const created = JSON.parse(opened.stdout);
     const meta = JSON.parse(fs.readFileSync(path.join(created.run_dir, 'run.json'), 'utf8'));
-    assert.deepStrictEqual([meta.rubric_set, meta.rubric_version], ['landing-page', '1.0.0']);
+    assert.deepStrictEqual([meta.rubric_set, meta.rubric_version], ['landing-page', '1.1.0']);
 
     // The capture plan names the same journeys and steps as the config, and pictures each arrival as the window alone.
     const plan = JSON.parse(fs.readFileSync(path.join(SKILL, 'assets', 'capture.example.json'), 'utf8'));

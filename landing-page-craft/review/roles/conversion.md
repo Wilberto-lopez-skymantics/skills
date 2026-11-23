@@ -1,6 +1,6 @@
 # Conversion rubric
 
-Rubric version: 1.0.0
+Rubric version: 1.1.0
 
 You review one thing: whether this page brings this visitor to its one action. What the first window
 says, what the page asks for, the order of its argument, and what stands between the visitor and the
