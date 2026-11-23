@@ -433,6 +433,14 @@ marked in the text; report them as not verified unless the evidence happens to s
 
 - Every sentence on the screen helps with this step. Nothing repeats the heading in the body or
   explains what is already plain. `[eyes]`
+- The screen says no more than the step needs. Each of its longest blocks of running text
+  (`words.longest_blocks_of_running_text` in `facts/`) is one the person could not do the step
+  without, and a block of more than 40 words is either what they came to read (a message, an
+  article, terms to accept) or needed to do the step. `[script]` for the count, `[eyes]` for the
+  need.
+- On a screen for doing (a form, a list, a table, a dashboard), running text does not outnumber the
+  words of the controls and the values together (`words.of_which`), or every sentence of it is one
+  that no clearer label and no value would replace. `[script]` for the count, `[eyes]` for the need.
 - The most needed words come first: in the screen, in each paragraph and in each label. `[eyes]`
 - Help appears where the question arises, not gathered at the top or on another screen. `[eyes]`
 

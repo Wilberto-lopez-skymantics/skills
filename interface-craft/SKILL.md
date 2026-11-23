@@ -55,6 +55,16 @@ or the component, not each screen that shows it.
 **No second value.** Where the project has a value for something, do not introduce another. If
 none fits, propose a decision (below) rather than inventing one in a leaf.
 
+**Say less on the screen.** A screen that explains itself in sentences is a screen whose labels and
+controls do not. Before a line of description, a hint under a field or a paragraph in an empty
+state is added, try in this order: a clearer label; the value itself; nothing. A heading is not
+followed by a sentence that says it again. A hint stays only where the label cannot carry what the
+person needs before they type. Delete every word that does no work
+(`sources/jakub/skills/better-writing/SKILL.md`). Where the project captures its screens with
+`ux-quality-score`, the measurements count it for each screen: `words.of_which.running_text`, and
+the longest blocks of it. Its content rubric holds a screen to this under C8. Values in a table are
+not what this rule is about.
+
 **Say what you changed and where it shows.** Hand back a list: each change, the file, and the
 screens and states where the difference can be seen, so a reviewer can look there.
 
@@ -79,6 +89,9 @@ Check your own work against `references/review-standards.md`:
 - Read the tests for the criteria your change touches, and confirm each on the running screen,
   at each size the product supports, with the keyboard, and with reduced motion on.
 - Go through its "Major on sight" list once for every screen you touched. None may remain.
+- Read the running text of each screen you touched: every sentence the person could do the step
+  without is taken out. Where a capture exists from before your change, the count of running text
+  has not grown without a reason you can state.
 - Anything you could not check, report as not verified.
 
 ## Reviewing
