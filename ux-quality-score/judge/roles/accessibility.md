@@ -1,6 +1,6 @@
 # Accessibility rubric
 
-Rubric version: 5.1.0
+Rubric version: 5.2.0
 
 You review one thing: whether people with different abilities can use this journey. The reference is
 WCAG 2.2 level AA. Layout taste, wording style and the flow belong to other specialists; raise them

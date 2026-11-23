@@ -27,6 +27,12 @@
  * hovered, focused and pressed, what moves and for how long, and a strip of frames for the steps the
  * plan names under "motion_steps". Its results go to keyboard/, states/, motion/ and frames/ beside
  * the screenshots; it never touches the screenshots themselves. "probes": false in the plan turns it off.
+ *
+ * One more reading belongs to that pass and is taken only where someone reads it: each page a journey
+ * arrives at is loaded once more in a second tab with its scripts turned off, and measured the same
+ * way, into scripts_off/. It says what is there before any script has run, and what is left for
+ * someone whose scripts are off or fail. It is on when the reviewer set in use hands "scripts_off" to a
+ * role, or when the plan says "scripts_off": true.
  */
 const fs = require('fs');
 const path = require('path');
@@ -40,6 +46,8 @@ const MAX_HEIGHT = 12000;
 const ACTIONS = ['use', 'goto', 'click', 'hover', 'fill', 'select', 'press', 'wait_for', 'wait_gone', 'wait_ms', 'scroll', 'eval', 'plant'];
 const IF_FOUND = ['stop', 'hide'];
 const PROBES = ['keyboard', 'states', 'motion', 'frames'];
+const SCRIPTS_OFF = 'scripts_off'; // read in the probe pass, and only when asked for (see probesFor)
+const PROBE_FOLDERS = [...PROBES, SCRIPTS_OFF];
 const MOVERS = ['click', 'press', 'hover', 'select'];
 const MAX_STOPS = 60; // of the keyboard walk, unless the plan says otherwise (keyboard_stops)
 const MOST_STOPS = 400;
@@ -323,8 +331,12 @@ function loadPlan(file) {
   const checkStops = (value, where) => {
     if (value !== undefined && !(Number.isInteger(value) && value >= 1 && value <= MOST_STOPS)) problems.push(`${where}: keyboard_stops must be a whole number from 1 to ${MOST_STOPS}`);
   };
+  const checkScriptsOff = (value, where) => {
+    if (value !== undefined && typeof value !== 'boolean') problems.push(`${where}: scripts_off must be true or false`);
+  };
   checkProbes(plan.probes, 'plan');
   checkStops(plan.keyboard_stops, 'plan');
+  checkScriptsOff(plan.scripts_off, 'plan');
   for (const [name, list] of Object.entries(plan.flows || {})) checkList(list, `flow ${name}`);
   for (const [unit, u] of Object.entries(plan.units || {})) {
     if (u.start !== undefined) checkList(u.start, `unit ${unit} start`);
@@ -332,6 +344,7 @@ function loadPlan(file) {
     for (const [step, list] of Object.entries(u.steps || {})) checkList(list, `unit ${unit} step ${step}`);
     checkProbes(u.probes, `unit ${unit}`);
     checkStops(u.keyboard_stops, `unit ${unit}`);
+    checkScriptsOff(u.scripts_off, `unit ${unit}`);
     if (u.window_steps !== undefined) {
       if (!Array.isArray(u.window_steps)) problems.push(`unit ${unit}: window_steps must be a list of step ids`);
       else for (const step of u.window_steps) if (!Array.isArray((u.steps || {})[step])) problems.push(`unit ${unit}: window_steps names "${step}", which has no actions in the plan`);
@@ -524,9 +537,13 @@ async function captureStep(page, viewport, outDir, stepId, factsSource, windowOn
 //              last click, key, hover or selection plays out
 const SHIFT_OBSERVER = `(() => { try { window.__uxqShifts = []; new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__uxqShifts.push({ value: e.value, recent_input: e.hadRecentInput, nodes: (e.sources || []).slice(0, 3).map((s) => s.node) }); }).observe({ type: 'layout-shift', buffered: true }); } catch (_) { /* this browser does not report layout shifts */ } })();`;
 
-function probesFor(plan, unitPlan) {
+// The load with scripts off is taken when the plan asks for it (for the journey, else for every journey),
+// and otherwise whenever the probe pass runs and some role of the reviewer set in use is handed it.
+function probesFor(plan, unitPlan, handedScriptsOff = false) {
   const kinds = (v) => (v === undefined ? null : v === true ? PROBES : v === false ? [] : v);
-  return kinds(unitPlan.probes) || kinds(plan.probes) || PROBES;
+  const base = kinds(unitPlan.probes) || kinds(plan.probes) || PROBES;
+  const asked = unitPlan.scripts_off !== undefined ? unitPlan.scripts_off : plan.scripts_off;
+  return (asked === undefined ? handedScriptsOff && base.length > 0 : asked) ? [...base, SCRIPTS_OFF] : base;
 }
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`); };
 const examples = (list) => ({ count: list.length, examples: list.slice(0, 8) });
@@ -661,6 +678,58 @@ async function probeMotion(page, settled) {
   };
 }
 
+// The page of a step, loaded once more in a second tab with its scripts turned off, at the same size and
+// in the same browser context (so signed in as the journey is), and measured with page-facts.js as the
+// page with its scripts on is. No timer runs in a page whose scripts are off, so every wait is made from
+// here: for the page to load, for its typefaces, and for what its styles animate on arrival to finish.
+const PICTURES_DRAWN = `[...document.images].filter((i) => { const r = i.getBoundingClientRect(); const cs = getComputedStyle(i); return r.width > 1 && r.height > 1 && cs.visibility !== 'hidden' && cs.display !== 'none' && i.complete && i.naturalWidth > 2; }).map((i) => ({ src: (i.currentSrc || i.src || '').split('#')[0], alt: (i.getAttribute('alt') || '').replace(/\\s+/g, ' ').trim().slice(0, 60) }))`;
+const STILL_ARRIVING = `document.getAnimations ? document.getAnimations().some((a) => { if (a.playState !== 'running' || !a.effect || !a.effect.getComputedTiming) return false; const t = a.effect.getComputedTiming(); return Number.isFinite(t.endTime) && t.endTime < 6000; }) : false`;
+async function probeScriptsOff(page, o, address) {
+  const { cdp, browserContextId, viewport } = o;
+  const measure = async (p) => ({ facts: await p.evaluate(`window.__uxqFirstWindow = ${viewport.height};\n${o.factsSource}`), pictures: await p.evaluate(PICTURES_DRAWN) });
+  const on = await measure(page);
+  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', browserContextId });
+  try {
+    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+    const bare = createPage(cdp, sessionId, o.timeoutMs);
+    await bare.send('Page.enable', {});
+    await bare.send('Runtime.enable', {});
+    await bare.send('Emulation.setUserAgentOverride', { userAgent: o.userAgent });
+    await bare.send('Emulation.setDeviceMetricsOverride', { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: Boolean(viewport.touch) });
+    if (viewport.touch) await bare.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    await bare.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await bare.send('Emulation.setScriptExecutionDisabled', { value: true });
+    await bare.send('Page.navigate', { url: address });
+    await sleep(150);
+    await bare.until(() => bare.evaluate("document.readyState === 'complete'"), 'the page to load with its scripts off');
+    for (let waited = 0; waited < 3000 && !(await bare.evaluate("!document.fonts || document.fonts.status === 'loaded'")); waited += 100) await sleep(100);
+    for (let waited = 0; waited < 4000 && (await bare.evaluate(STILL_ARRIVING)); waited += 200) await sleep(200);
+    await sleep(o.settleMs);
+    if (!o.unitPlan.keep_not_product) await setAsideNotProduct(bare, o.notProduct);
+    const off = await measure(bare);
+    const said = (list) => new Set(list.map((h) => h.text));
+    const firstOff = said(off.facts.first_window.headings);
+    const everyOff = said(off.facts.structure.headings);
+    const actionsOff = new Set(off.facts.first_window.buttons_and_links.examples.map((a) => a.element));
+    const drawnOff = new Set(off.pictures.map((pic) => pic.src));
+    const named = (pic) => `${pic.alt ? `"${pic.alt}" ` : ''}(${/^data:/i.test(pic.src) ? 'embedded in the page' : (pic.src.split('?')[0].split('/').pop() || pic.src).slice(-50)})`;
+    return {
+      how_to_read: 'The address of this step was loaded once more, in a second tab, with the page\'s scripts turned off, at the same screen size, and measured the same way as the page with its scripts on. What is listed as missing is there with scripts and not without: a script puts it on the page, so it is not there until that script has run, and never for someone whose scripts are off or fail. "takes_room_but_is_not_drawn" lists words that keep their room on the page and are not painted; under "without_scripts" they stay unseen unless a script reveals them. What a page offers in a noscript element shows only in the reading without scripts.',
+      words: { with_scripts: on.facts.words.on_the_screen, without_scripts: off.facts.words.on_the_screen },
+      first_window: {
+        headings_missing_without_scripts: on.facts.first_window.headings.filter((h) => !firstOff.has(h.text)).map((h) => h.text),
+        buttons_and_links_missing_without_scripts: on.facts.first_window.buttons_and_links.examples.filter((a) => !actionsOff.has(a.element)).map((a) => a.element)
+      },
+      headings_missing_without_scripts: examples(on.facts.structure.headings.filter((h) => !everyOff.has(h.text)).map((h) => h.text)),
+      pictures: { drawn_with_scripts: on.pictures.length, drawn_without_scripts: off.pictures.length, missing_without_scripts: examples(on.pictures.filter((pic) => !drawnOff.has(pic.src)).map(named)) },
+      takes_room_but_is_not_drawn: { with_scripts: on.facts.layout.takes_room_but_is_not_drawn, without_scripts: off.facts.layout.takes_room_but_is_not_drawn },
+      page_height: { with_scripts: on.facts.layout.page_height, without_scripts: off.facts.layout.page_height }
+    };
+  } finally {
+    await cdp.send('Target.closeTarget', { targetId }).catch(() => {});
+  }
+}
+
 // Runs a step's actions, taking pictures while its last click, key, hover or selection plays out.
 async function runWithFrames(page, list, ctx) {
   const acts = flatten(list, ctx.plan);
@@ -718,9 +787,10 @@ function writeFrames(outDir, name, filmed) {
 async function probePass(page, ctx, o) {
   const { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, keyboardStops } = o;
   const seen = new Set();
-  for (const kind of PROBES) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true });
+  for (const kind of PROBE_FOLDERS) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true });
   const measuredAt = { size: viewport.id, viewport: { width: viewport.width, height: viewport.height }, motion: 'on' };
   let steps = 0;
+  let lastAddress = null; // the page last read with its scripts off: a step that stays on it is not read again
   await runActions(page, unitPlan.start || [], ctx);
   for (const step of unit.steps) {
     current.step = step.id;
@@ -739,6 +809,15 @@ async function probePass(page, ctx, o) {
     await page.settle(o.settleMs);
     if (!unitPlan.keep_not_product) await setAsideNotProduct(page, o.notProduct);
     if (filmed) { await filmed.grab('settled'); await attempt('frames', () => writeFrames(outDir, name, filmed)); }
+    if (kinds.includes(SCRIPTS_OFF)) {
+      // Before the other probes, which move the focus and the pointer about.
+      const address = await page.evaluate("location.href.split('#')[0]");
+      if (address !== lastAddress) {
+        lastAddress = address;
+        const bare = await attempt(SCRIPTS_OFF, () => probeScriptsOff(page, o, address));
+        if (bare) writeJson(path.join(outDir, SCRIPTS_OFF, `${name}.json`), { measured_at: { ...measuredAt, url_path: new URL(address).pathname + new URL(address).search }, ...bare });
+      }
+    }
     if (kinds.includes('motion')) {
       const motion = await attempt('motion', () => probeMotion(page, settled));
       if (motion) writeJson(path.join(outDir, 'motion', `${name}.json`), { measured_at: measuredAt, ...motion });
@@ -852,9 +931,9 @@ async function main() {
     const sizes = cfg.viewports.filter((v) => expected.some((x) => x.size === v.id));
     for (const viewport of sizes) todo.push({ unit, unitPlan, viewport, outDir, expected });
     // The probe pass: once per journey, after its screenshots, at its first size without touch.
-    const kinds = study ? [] : probesFor(plan, unitPlan);
+    const kinds = study ? [] : probesFor(plan, unitPlan, Object.values(uxq.EVIDENCE_KINDS).some((handed) => handed.includes(SCRIPTS_OFF)));
     if (kinds.length && sizes.length) todo.push({ unit, unitPlan, viewport: sizes.find((v) => !v.touch) || sizes[0], outDir, expected, kinds });
-    else for (const kind of PROBES) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true }); // nothing stale stays beside new screens
+    else for (const kind of PROBE_FOLDERS) fs.rmSync(path.join(outDir, kind), { recursive: true, force: true }); // nothing stale stays beside new screens
   }
 
   if (todo.length) {
@@ -897,7 +976,7 @@ async function main() {
           await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
           if (kinds) {
             await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
-            await probePass(page, ctx, { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, probesSource, settleMs, notProduct: plan.not_product || [], keyboardStops: unitPlan.keyboard_stops || plan.keyboard_stops || MAX_STOPS });
+            await probePass(page, ctx, { unit, unitPlan, viewport, outDir, expected, kinds, current, summary, probesSource, settleMs, notProduct: plan.not_product || [], keyboardStops: unitPlan.keyboard_stops || plan.keyboard_stops || MAX_STOPS, cdp, browserContextId, userAgent, factsSource, timeoutMs });
             continue;
           }
           if (plan.reduce_motion !== false) await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -914,7 +993,7 @@ async function main() {
           for (const p of ctx.planted) summary.planted.push({ unit: unit.id, size: viewport.id, ...p });
         } catch (e) {
           // The screenshots are already saved: a probe pass that cannot follow the plan is noted, not a failed capture.
-          if (kinds) { summary.probe_notes.push({ unit: unit.id, size: viewport.id, step: current.step || 'start', action: e.action || null, error: e.message, note: 'the probe pass stopped here; later steps have no keyboard, states, motion or frames evidence' }); continue; }
+          if (kinds) { summary.probe_notes.push({ unit: unit.id, size: viewport.id, step: current.step || 'start', action: e.action || null, error: e.message, note: 'the probe pass stopped here; later steps have none of its evidence (keyboard, states, motion, frames, scripts off)' }); continue; }
           // Keep a picture of where it stopped, outside the evidence, so the plan can be put right.
           let debug = null;
           try {

@@ -133,9 +133,104 @@ h1{margin:0;height:50px}
 <script>document.getElementById('grid').scrollLeft = innerWidth * 0.6;</script>
 </body></html>`;
 
+// A sixth page, for what is worked out from where things lie: lines of text and controls that cross, and
+// beside each the look-alike that is there on purpose; small controls with and without room; a banner
+// pinned over the end of the page; words that keep their room and are not painted; several looks of one
+// kind of thing; and pictures that are missing, enlarged, stretched or given no size.
+const FAULTS_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Faults desk</title>
+<style>
+@font-face{font-family:"Gone Face";src:url("/gone.woff2") format("woff2")}
+body{font-family:sans-serif;margin:0;color:#111;background:#fff;font-size:16px}
+main{padding:16px 16px 0}
+h1{font-family:"Gone Face",sans-serif;font-size:32px;margin:0 0 16px}
+h2{font-size:24px;margin:24px 0 8px} h2.big{font-size:28px}
+p{margin:0 0 8px}
+.row{display:flex;gap:16px} .col{width:80px}
+#stack{position:relative;height:60px} #stack p{margin:0;line-height:24px} #over{position:absolute;left:0;top:4px}
+#menu{position:relative} #panel{position:absolute;left:0;top:0;background:#fff;border:1px solid #888;padding:2px 8px;z-index:5}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+#tight{font-size:40px;line-height:.9;margin:0}
+#twice{position:relative;height:30px} #twice p{position:absolute;left:0;top:0;margin:0}
+#deck{display:grid} #deck p{grid-area:1/1;margin:0} #deck .off{opacity:0}
+.b{font:inherit;min-height:44px;padding:0 16px;border:0;background:#0b5fff;color:#fff;border-radius:8px}
+.b.alt{border-radius:4px}
+.ghost{font:inherit;min-height:44px;padding:0 16px;border:1px solid #888;background:none;color:#111;border-radius:8px}
+#field{position:relative;width:240px} #field input{display:block;width:100%;box-sizing:border-box;height:44px;font-size:16px} #field button{position:absolute;right:4px;bottom:10px;width:24px;height:24px;padding:0;border:0;background:#ddd}
+.icons{margin:8px 0} .icons button{width:20px;height:20px;padding:0;border:0;background:#333;margin-right:4px;vertical-align:top} .icons.close button{margin-right:2px}
+#help{display:block;width:20px;height:20px;padding:0;border:0;background:#333;margin:40px}
+#spillrow{display:flex;gap:8px;align-items:center} #spill{width:60px;white-space:nowrap;margin:0}
+.reveal{opacity:0;padding:16px 0} .ghosted{visibility:hidden}
+.card{border:1px solid #bbb;border-radius:12px;padding:16px;width:420px;box-shadow:0 1px 3px rgba(0,0,0,.2)} .well{background:#eef;border-radius:6px;padding:12px} .inner{border:1px solid #99c;padding:8px;min-height:60px}
+img{display:block;margin:8px 0}
+#bar{position:fixed;left:0;right:0;bottom:0;height:60px;background:#222;color:#fff;padding:8px 16px;box-sizing:border-box}
+</style></head>
+<body><main>
+<h1>Faults desk</h1>
+<h2>Crossing</h2>
+<div id="stack"><p id="under">These words are written in the flow of the page.</p><p id="over">A note laid straight over them.</p></div>
+<div class="row"><div class="col" id="narrow">Pneumonoultramicroscopicsilicovolcanoconiosis</div><div class="col" id="beside">Words of the next column.</div></div>
+<h2 class="big">Not crossing</h2>
+<div id="menu"><p id="covered">Words that an open menu covers.</p><div id="panel">Menu item one</div></div>
+<p><a href="/more">Read more<span class="sr"> about the faults desk and everything on it</span></a> and some words after it.</p>
+<p id="tight">Tight <em>leading</em> on two lines of one block</p>
+<div id="twice"><p>The same words twice</p><p>The same words twice</p></div>
+<div id="deck"><p id="shows">The slide that shows now.</p><p class="off" id="waits">The slide that waits its turn.</p></div>
+<h2>Controls</h2>
+<p><button class="b" id="save">Save the order</button><button class="b alt" id="send" style="margin-left:-24px">Send</button></p>
+<div id="field"><label for="q">Search</label><input id="q"><button aria-label="Clear">x</button></div>
+<p><button class="ghost">Cancel</button> <a href="/plain">A plain link</a> <a href="/styled" style="color:#0b5fff;text-decoration:none;font-weight:700">A styled link</a></p>
+<div class="icons"><button aria-label="Edit"></button><button aria-label="Delete"></button></div>
+<div class="icons close"><button aria-label="Up"></button><button aria-label="Down"></button></div>
+<button id="help" aria-label="Help"></button>
+<div id="spillrow"><p id="spill">Words that run on past their box and over</p><button class="b" id="pay">Pay now</button></div>
+<h2>Hidden</h2>
+<section class="reveal" id="late"><p>Seven words wait here to be revealed.</p></section>
+<p class="ghosted" id="ghost">Three ghost words</p>
+<h2>Boxes</h2>
+<div class="card" id="c1"><div class="well" id="c2"><div class="inner" id="c3">Three boxes deep</div></div></div>
+<h2>Pictures</h2>
+<img alt="Enlarged" width="200" height="150" src="/pic.png">
+<img alt="Stretched" style="width:300px;height:100px" src="/pic.png">
+<img alt="No size given" style="width:120px" src="/pic.png">
+<img alt="At its own size" width="40" height="30" src="/pic.png">
+<img alt="Missing" width="120" height="80" src="/gone.png">
+<img alt="" width="100" height="100" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+<p style="height:120px">Room, so that the page ends with words under the banner.</p>
+<p id="last">The last line of the page.</p>
+</main>
+<div id="bar">A banner pinned to the bottom <button class="ghost" style="color:#fff">Accept</button></div>
+</body></html>`;
+
+// A seventh page: one that needs its scripts. A section a script reveals, a heading, a button and a
+// picture a script puts in, and a line for someone whose scripts are off.
+const BARE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bare desk</title>
+<style>body{font-family:sans-serif;margin:0;padding:16px;color:#111;background:#fff} .reveal{opacity:0} .reveal.in{opacity:1} a.go{display:inline-block;min-height:44px;line-height:44px;padding:0 16px;background:#0b5fff;color:#fff}</style></head>
+<body><main><h1>One offer, there on arrival</h1><p>These words are in the page itself.</p><a class="go" href="/start">Start now</a>
+<section class="reveal" id="proof"><h2>What people say</h2><p>Five words wait for a script.</p></section>
+<div id="made"></div><img id="late" alt="Set by a script" width="40" height="30" data-src="/pic.png">
+<noscript><p>Shown only without scripts.</p></noscript></main>
+<script>document.getElementById('proof').classList.add('in'); document.getElementById('made').innerHTML = '<h2>Made by a script</h2><a class="go" href="/more">See more</a>'; var late = document.getElementById('late'); late.src = late.getAttribute('data-src');</script>
+</body></html>`;
+
+// A small picture to serve: 40 by 30 pixels of one colour.
+function png(width, height, rgb = [40, 90, 200]) {
+  const table = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf) => { let c = 0xffffffff; for (const b of buf) c = table[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const body = Buffer.concat([Buffer.from(type), data]); const sum = Buffer.alloc(4); sum.writeUInt32BE(crc(body)); return Buffer.concat([len, body, sum]); };
+  const head = Buffer.alloc(13); head.writeUInt32BE(width, 0); head.writeUInt32BE(height, 4); head[8] = 8; head[9] = 2;
+  const row = Buffer.alloc(1 + width * 3); for (let i = 0; i < width * 3; i += 1) row[1 + i] = rgb[i % 3];
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', head), chunk('IDAT', require('zlib').deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))), chunk('IEND', Buffer.alloc(0))]);
+}
+const PICTURE = png(40, 30);
+
 function startServer() {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/words') ? WORDS_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : req.url.startsWith('/grid') ? GRID_PAGE : PAGE); });
+    const server = http.createServer((req, res) => {
+      if (req.url.startsWith('/pic.png')) { res.writeHead(200, { 'content-type': 'image/png', 'content-length': PICTURE.length }); res.end(PICTURE); return; }
+      if (req.url.startsWith('/gone')) { res.writeHead(404, { 'content-type': 'text/plain' }); res.end('not here'); return; }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(req.url.startsWith('/probe') ? PROBE_PAGE : req.url.startsWith('/words') ? WORDS_PAGE : req.url.startsWith('/long') ? LONG_PAGE : req.url.startsWith('/mixed') ? MIXED_PAGE : req.url.startsWith('/grid') ? GRID_PAGE : req.url.startsWith('/faults') ? FAULTS_PAGE : req.url.startsWith('/bare') ? BARE_PAGE : PAGE);
+    });
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
@@ -791,6 +886,184 @@ test('a window already grown is pictured as it stands: a grid scrolled sideways 
       }
     }
     assert.strictEqual(pngSize(path.join(ev, 'screens', '01-form.desktop.png')).height, 1800);
+  } finally {
+    server.close();
+    fs.rmSync(t.root, { recursive: true, force: true });
+  }
+});
+
+// One page, one step, one size: the least a test of the measurements needs.
+function onePage(port, address, plan = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uxq-page-'));
+  const home = path.join(root, 'quality', 'ux');
+  fs.mkdirSync(home, { recursive: true });
+  const config = {
+    app: { name: 'Sample desk', description: 'A sample page for the test.' },
+    viewports: [{ id: 'desktop', width: 1000, height: 700 }],
+    personas: [{ id: 'member', description: 'Someone at a desk.', viewport: 'desktop' }],
+    units: [{ id: 'visit', persona: 'member', goal: 'Read the page.', steps: [{ id: '01-page', do: 'Opens the page.' }, { id: '02-still', do: 'Stays on it.' }] }]
+  };
+  const full = { base_url: `http://127.0.0.1:${port}`, settle_ms: 50, probes: false, ...plan, units: { visit: { steps: { '01-page': [{ goto: address }, { wait_for: 'h1' }], '02-still': [] } } } };
+  const configFile = path.join(home, 'config.json');
+  const writeConfig = () => fs.writeFileSync(configFile, JSON.stringify(config));
+  const writePlan = () => fs.writeFileSync(path.join(home, 'capture.json'), JSON.stringify(full));
+  writeConfig();
+  writePlan();
+  const newRun = () => JSON.parse(spawnSync(process.execPath, [UXQ, 'new-run', '--config', configFile, '--commit', 'abc1234', '--date', '2026-01-15'], { encoding: 'utf8' }).stdout).run_dir;
+  return { root, home, config, plan: full, configFile, writeConfig, writePlan, newRun };
+}
+
+test('what lies on what, small controls with no room, the looks of one kind of thing, and the pictures: each fault beside its look-alike', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const t = onePage(server.address().port, '/faults');
+  try {
+    const runDir = t.newRun();
+    const first = await run(CAPTURE, ['--config', t.configFile, '--run', runDir]);
+    assert.strictEqual(first.status, 0, first.stderr + first.stdout);
+    const facts = JSON.parse(fs.readFileSync(path.join(runDir, 'evidence', 'visit', 'facts', '01-page.desktop.json'), 'utf8'));
+    const ids = (list, ...keys) => list.examples.map((e) => keys.map((k) => e[k].split(' ')[0]).join(' + '));
+
+    // Lines that cross where both still show. Not: a menu in front of words, words kept for a screen reader,
+    // the lines of one block, the same words drawn twice, a slide waiting behind the one that shows.
+    const lies = facts.layout.lies_on_something_else;
+    assert.deepStrictEqual(ids(lies.text_on_text, 'one', 'other').sort(), ['div#narrow + div#beside', 'p#under + p#over']);
+    assert.match(lies.text_on_text.examples[0].by_px, /^\d+x\d+$/);
+    assert.ok(lies.text_on_text.examples.every((e) => e.where.top > 0 && e.where.left > 0), 'each with where it is on the page');
+    // Two buttons half on each other. Not: the cross set inside the field it clears.
+    assert.deepStrictEqual(ids(lies.control_on_control, 'one', 'other'), ['button#save + button#send']);
+    // Words that run over a button they do not belong to.
+    assert.deepStrictEqual(ids(lies.text_and_control, 'text', 'control'), ['p#spill + button#pay']);
+    assert.ok(lies.lines_of_text_compared > 20 && !lies.not_every_line_was_compared);
+
+    // Small controls. A pair 4 px apart has the room a near miss needs (their 24 px circles only touch);
+    // a pair 2 px apart has not. Both pairs are closer than 8 px; the one that stands alone is not.
+    const names = (list) => list.examples.map((e) => e.element);
+    assert.deepStrictEqual(names(facts.targets.smaller_than_24px_with_no_room_around), ['button "Up"', 'button "Down"']);
+    assert.strictEqual(facts.targets.smaller_than_24px_with_no_room_around.examples[0].beside, 'button "Down"');
+    assert.deepStrictEqual(facts.targets.under_44px_and_closer_than_8px_to_another.examples.map((e) => [e.element, e.gap_px]), [['button "Up"', 2], ['button "Down"', 2], ['button "Edit"', 4], ['button "Delete"', 4]]);
+    assert.ok(names(facts.targets.smaller_than_24px).includes('button#help "Help"'), 'small, and with room');
+
+    // The end of the page lies under a banner that no scrolling moves; the banner's own button does not.
+    assert.deepStrictEqual(facts.layout.under_a_pinned_bar_wherever_the_page_is_scrolled, { count: 1, examples: [{ element: 'p#last "The last line of the page."', under: 'div#bar "A banner pinned to the bottom Accept"' }] });
+
+    // Words that keep their room and are not painted. Not the slide that waits where another shows.
+    assert.deepStrictEqual(facts.layout.takes_room_but_is_not_drawn, { count: 2, words: 10, examples: [
+      { element: 'section#late "Seven words wait here to be revealed."', words: 7, why: 'opacity 0' },
+      { element: 'p#ghost "Three ghost words"', words: 3, why: 'visibility hidden' }] });
+
+    // One system: the looks of the buttons and links, the corners, the shadows, the sizes, the boxes.
+    const styles = facts.styles;
+    const blue = styles.button_looks.examples.filter((b) => b.look.startsWith('fill #0b5fff, text #ffffff'));
+    assert.deepStrictEqual(blue.map((b) => b.look.match(/corners \w+/)[0]).sort(), ['corners 4px', 'corners 8px'], 'one colour of button, drawn with two corners');
+    assert.ok(blue.every((b) => /44px tall, 16px weight 400, 16px of room at each side$/.test(b.look)), blue.map((b) => b.look).join(' | '));
+    assert.strictEqual(styles.button_looks.count, styles.button_looks.examples.length);
+    assert.deepStrictEqual(styles.link_looks.examples.map((l) => [l.look, l.links]), [["colour #0000ee (the browser's own blue), underlined, 16px weight 400", 2], ['colour #0b5fff, not underlined, 16px weight 700', 1]]);
+    assert.deepStrictEqual(styles.corners.used.map((c) => c.corners).sort(), ['12px', '4px', '6px', '8px']);
+    assert.strictEqual(styles.corners.different, 4);
+    assert.deepStrictEqual([styles.shadows.different, styles.shadows.used[0].elements], [1, 1]);
+    for (const size of [40, 32, 28, 24, 16]) assert.ok(styles.text_sizes_px.includes(size), `${size} px is among ${styles.text_sizes_px}`);
+    assert.deepStrictEqual(styles.text_weights, [400, 700]);
+    assert.deepStrictEqual(styles.heading_levels_drawn_at_more_than_one_size, [{ level: 2, sizes_px: [28, 24] }]);
+    assert.deepStrictEqual(styles.boxes_inside_boxes, { boxes: 3, deepest: 3, three_or_more_deep: { count: 1, examples: ['div#c3 "Three boxes deep" (3 deep)'] } });
+    // A typeface the page brings and whose file never came is named, with what is drawn in its place.
+    const gone = styles.typefaces.find((f) => f.family === 'Gone Face');
+    assert.deepStrictEqual([gone.drawn, gone.comes_with_the_page, gone.its_files, typeof gone.drawn_instead], [false, true, 'failed to load', 'string']);
+    assert.deepStrictEqual(styles.typefaces[0], { family: "the device's own face", text_elements: styles.typefaces[0].text_elements, drawn: true });
+
+    // Pictures: one that never came, one that is a dot standing in, and of the four from one file the
+    // three drawn larger than it, the one out of proportion, the one given no size, and the use of it twice.
+    const pictures = facts.pictures;
+    assert.strictEqual(pictures.count, 6);
+    assert.deepStrictEqual(pictures.did_not_load, { count: 1, examples: ['"Missing" (gone.png)'] });
+    assert.strictEqual(pictures.one_pixel_stand_ins, 1);
+    assert.deepStrictEqual(pictures.drawn_larger_than_the_file.examples, [
+      { picture: '"Enlarged" (pic.png)', file_px: '40x30', drawn_px: '200x150', enlarged: '5 times' },
+      { picture: '"Stretched" (pic.png)', file_px: '40x30', drawn_px: '300x100', enlarged: '7.5 times' },
+      { picture: '"No size given" (pic.png)', file_px: '40x30', drawn_px: '120x90', enlarged: '3 times' }]);
+    assert.deepStrictEqual(pictures.out_of_proportion.examples, [{ picture: '"Stretched" (pic.png)', file_px: '40x30', drawn_px: '300x100' }]);
+    assert.deepStrictEqual(pictures.no_size_in_the_markup.examples, ['"No size given" (pic.png)']);
+    assert.deepStrictEqual(pictures.used_more_than_once.examples, [{ picture: '"Enlarged" (pic.png)', times: 2 }], 'twice at a size a person takes for a picture');
+    assert.strictEqual(pictures.heaviest.length, 1);
+    assert.ok(pictures.heaviest[0].kilobytes > 0 && pictures.total_kilobytes === pictures.heaviest[0].kilobytes && pictures.weight_not_known_for === 0, JSON.stringify(pictures.heaviest));
+
+    // The counts are among those compared from one capture to the next.
+    const again = t.newRun();
+    fs.cpSync(path.join(runDir, 'evidence'), path.join(again, 'evidence'), { recursive: true });
+    const clean = path.join(runDir, 'evidence', 'visit', 'facts', '01-page.desktop.json');
+    const fewer = JSON.parse(fs.readFileSync(clean, 'utf8'));
+    fewer.layout.lies_on_something_else.text_on_text = { count: 0, examples: [] };
+    fewer.pictures.did_not_load = { count: 0, examples: [] };
+    fs.writeFileSync(clean, JSON.stringify(fewer));
+    fs.utimesSync(path.join(runDir, 'run.json'), new Date('2026-01-14'), new Date('2026-01-14'));
+    const regress = spawnSync(process.execPath, [UXQ, 'regress', '--config', t.configFile, '--run', again, '--against', runDir], { encoding: 'utf8' });
+    assert.strictEqual(regress.status, 2, regress.stderr + regress.stdout);
+    assert.deepStrictEqual(JSON.parse(regress.stdout).regressions.filter((r) => r.step === '01-page').map((r) => [r.what, r.before, r.after]), [['text lying on other text', 0, 2], ['pictures that did not load', 0, 1]]);
+  } finally {
+    server.close();
+    fs.rmSync(t.root, { recursive: true, force: true });
+  }
+});
+
+test('a page read once more with its scripts off: what a script puts in is listed as missing, and what waits for a script as not drawn', { skip: browser ? false : 'no Chrome or Edge installed' }, async () => {
+  const server = await startServer();
+  const t = onePage(server.address().port, '/bare', { probes: ['keyboard'], scripts_off: true });
+  try {
+    const runDir = t.newRun();
+    const args = ['--config', t.configFile, '--run', runDir];
+    const first = await run(CAPTURE, args);
+    assert.strictEqual(first.status, 0, first.stderr + first.stdout);
+    const out = JSON.parse(first.stdout);
+    assert.deepStrictEqual(out.probes, [{ unit: 'visit', size: 'desktop', steps: 2, kinds: ['keyboard', 'scripts_off'] }]);
+    assert.deepStrictEqual(out.probe_notes, []);
+    const ev = path.join(runDir, 'evidence', 'visit');
+    assert.deepStrictEqual(fs.readdirSync(path.join(ev, 'scripts_off')), ['01-page.desktop.json'], 'a step that stays on the same page is not read again');
+    const bare = JSON.parse(fs.readFileSync(path.join(ev, 'scripts_off', '01-page.desktop.json'), 'utf8'));
+    assert.deepStrictEqual(bare.measured_at, { size: 'desktop', viewport: { width: 1000, height: 700 }, motion: 'on', url_path: '/bare' });
+    assert.match(bare.how_to_read, /scripts turned off/);
+    // With its scripts the page says 29 words; without, the 6 a script writes are gone and the 4 kept for that case show.
+    assert.deepStrictEqual(bare.words, { with_scripts: 29, without_scripts: 27 });
+    assert.deepStrictEqual(bare.first_window, { headings_missing_without_scripts: ['Made by a script'], buttons_and_links_missing_without_scripts: ['a "See more"'] });
+    assert.deepStrictEqual(bare.headings_missing_without_scripts, { count: 1, examples: ['Made by a script'] });
+    assert.deepStrictEqual(bare.pictures, { drawn_with_scripts: 1, drawn_without_scripts: 0, missing_without_scripts: { count: 1, examples: ['"Set by a script" (pic.png)'] } });
+    // The section a script reveals is in the page either way; without the script it keeps its room and is never painted.
+    assert.deepStrictEqual(bare.takes_room_but_is_not_drawn.with_scripts, { count: 0, words: 0, examples: [] });
+    assert.deepStrictEqual(bare.takes_room_but_is_not_drawn.without_scripts, { count: 1, words: 9, examples: [{ element: 'section#proof "What people say Five words wait for a script."', words: 9, why: 'opacity 0' }] });
+    assert.ok(bare.page_height.with_scripts > 0 && bare.page_height.without_scripts > 0);
+    // The page with its scripts on was measured as ever, and the picture a script set is one of its pictures.
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(ev, 'facts', '01-page.desktop.json'), 'utf8')).pictures.count, 1);
+
+    // Nobody reads it in the shipped set, so it is not taken unless the plan asks; what an earlier capture left goes.
+    delete t.plan.scripts_off;
+    t.writePlan();
+    const plain = JSON.parse((await run(CAPTURE, args)).stdout);
+    assert.deepStrictEqual(plain.probes[0].kinds, ['keyboard']);
+    assert.ok(!fs.existsSync(path.join(ev, 'scripts_off')));
+    t.plan.scripts_off = 'yes';
+    t.writePlan();
+    assert.match((await run(CAPTURE, args)).stderr, /scripts_off must be true or false/);
+    delete t.plan.scripts_off;
+    t.writePlan();
+
+    // A reviewer set that hands it to a role has it taken without being asked, and that role is handed it.
+    const setDir = path.join(t.home, 'rubric-set');
+    fs.mkdirSync(path.join(setDir, 'roles'), { recursive: true });
+    fs.writeFileSync(path.join(setDir, 'set.json'), JSON.stringify({ name: 'sample-set', specialists: { look: ['screens', 'facts', 'scripts_off'], words: ['screens', 'pages'] } }));
+    const body = (title, letter) => `# ${title}\n\nRubric version: 0.1.0\n\n## Criteria\n\n- **${letter}1** The first thing.\n- **${letter}2** The second thing.\n`;
+    for (const [role, title, letter] of [['look', 'Look rubric', 'L'], ['words', 'Words rubric', 'W'], ['user', 'What to report', 'P']]) fs.writeFileSync(path.join(setDir, 'roles', `${role}.md`), body(title, letter));
+    t.config.rubric_set = 'rubric-set';
+    t.writeConfig();
+    const ownRun = t.newRun();
+    const own = await run(CAPTURE, ['--config', t.configFile, '--run', ownRun]);
+    assert.strictEqual(own.status, 0, own.stderr + own.stdout);
+    assert.deepStrictEqual(JSON.parse(own.stdout).probes[0].kinds, ['keyboard', 'scripts_off']);
+    const bundles = JSON.parse(spawnSync(process.execPath, [UXQ, 'bundle', '--config', t.configFile, '--run', ownRun, '--tmp', path.join(t.root, 'tmp')], { encoding: 'utf8' }).stdout);
+    const handed = (role) => fs.readdirSync(bundles.find((b) => b.role === role).dir);
+    assert.ok(handed('look').includes('scripts_off') && fs.existsSync(path.join(bundles.find((b) => b.role === 'look').dir, 'scripts_off', '01-page.desktop.json')));
+    assert.ok(!handed('words').includes('scripts_off'));
+    // And the plan can still say no.
+    t.plan.scripts_off = false;
+    t.writePlan();
+    assert.deepStrictEqual(JSON.parse((await run(CAPTURE, ['--config', t.configFile, '--run', ownRun])).stdout).probes[0].kinds, ['keyboard']);
   } finally {
     server.close();
     fs.rmSync(t.root, { recursive: true, force: true });

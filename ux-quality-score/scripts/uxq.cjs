@@ -66,7 +66,10 @@ const BRIEF_FILES = ['reviewer-brief.md', 'user-brief.md', 'check-brief.md'];
 // What a specialist is handed: the screenshots, the page text, the measured facts, and of the rest
 // (the keyboard walk, the states of controls, the motion, the frames of a change) only the kinds its
 // rubric asks about. The target user is handed the screenshots alone, as a person would be.
-const EVIDENCE_ALL = ['screens', 'pages', 'facts', 'keyboard', 'states', 'motion', 'frames'];
+// "scripts_off" (each page loaded once more with its scripts turned off) is read by no role of the
+// shipped set: a product that is an application shows nothing without its scripts, and that is no
+// fault. A set of its own may hand it to a role, and the capture then takes it.
+const EVIDENCE_ALL = ['screens', 'pages', 'facts', 'keyboard', 'states', 'motion', 'frames', 'scripts_off'];
 let EVIDENCE_KINDS = {
   accessibility: ['screens', 'pages', 'facts', 'keyboard', 'motion', 'states'],
   visual: ['screens', 'pages', 'facts', 'states', 'frames', 'motion'],
@@ -1378,10 +1381,21 @@ const MEASURES = {
   facts: [
     ['the page scrolls sideways', (f) => count(at(f, 'layout.scrolls_sideways'))],
     ['elements wider than the page', (f) => count(at(f, 'layout.overflowing_elements'))],
+    ['text lying on other text', (f) => count(at(f, 'layout.lies_on_something_else.text_on_text'))],
+    ['controls lying on other controls', (f) => count(at(f, 'layout.lies_on_something_else.control_on_control'))],
+    ['text and a control crossing', (f) => count(at(f, 'layout.lies_on_something_else.text_and_control'))],
+    ['text or controls that a pinned bar always covers', (f) => count(at(f, 'layout.under_a_pinned_bar_wherever_the_page_is_scrolled'))],
+    ['blocks of words that keep their room and are not drawn', (f) => count(at(f, 'layout.takes_room_but_is_not_drawn'))],
     ['controls smaller than 24 px', (f) => count(at(f, 'targets.smaller_than_24px'))],
+    ['controls smaller than 24 px with no room around them', (f) => count(at(f, 'targets.smaller_than_24px_with_no_room_around'))],
     ['form fields without a label', (f) => count(at(f, 'labels.fields_without_label'))],
     ['controls without a name', (f) => count(at(f, 'labels.controls_without_name'))],
     ['images without a text alternative', (f) => count(at(f, 'labels.images_without_alt'))],
+    ['pictures that did not load', (f) => count(at(f, 'pictures.did_not_load'))],
+    ['pictures drawn larger than their file', (f) => count(at(f, 'pictures.drawn_larger_than_the_file'))],
+    ['pictures out of proportion', (f) => count(at(f, 'pictures.out_of_proportion'))],
+    ['typefaces the page brings that are not drawn', (f) => (Array.isArray(at(f, 'styles.typefaces')) ? f.styles.typefaces.filter((t) => t.drawn === false && t.comes_with_the_page).length : undefined)],
+    ['different looks of button', (f) => count(at(f, 'styles.button_looks'))],
     ['text below the required contrast', (f) => count(at(f, 'text.below_required_contrast'))],
     ['text smaller than 12 px', (f) => count(at(f, 'text.smaller_than_12px'))],
     ['text that was never filled in', (f) => count(at(f, 'text.never_filled_in'))],

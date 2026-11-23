@@ -135,7 +135,11 @@ agent for each major or blocker that one reviewer alone reported, usually a hand
   capture plan. `scripts/capture.test.cjs` tests it against a local page.
 - `scripts/page-facts.js`: measurements of a page (contrast, control sizes, overflow, labels,
   headings, field types, what the first window holds, links that lead nowhere, text that was never
-  filled in, the title, description and sharing card). The capture script runs it on every screen; specialists read it.
+  filled in, the title, description and sharing card, how many words it says), and five readings
+  worked out from where things lie: text and controls that cross, what a pinned bar always covers,
+  words that keep their room and are not painted, small controls with no room around them, how many
+  looks one kind of thing has, and what the pictures are (missing, enlarged, out of proportion,
+  heavy). The capture script runs it on every screen; specialists read it.
 - `scripts/page-probes.js`: what a still picture cannot show: where the Tab key goes and what shows
   focus, how the main controls look hovered, focused and pressed, what the page moves and for how
   long. The capture script's probe pass runs it; the roles that can judge it read the results.
@@ -295,8 +299,9 @@ Work in three stages, because a full run of every journey after each fix is the 
 get there:
 
 1. **Fix what the measurements already show, with no reviewers.** The capture measures contrast,
-   sideways overflow, control sizes, text sizes, labels and heading structure on every screen
-   (`facts/*.json`), and its probe pass records keyboard stops that show no focus, controls the
+   sideways overflow, control sizes, text sizes, labels and heading structure on every screen, lists
+   text and controls that cross, pictures that did not load or are drawn larger than their file, and
+   a typeface that never arrived (`facts/*.json`), and its probe pass records keyboard stops that show no focus, controls the
    keyboard never reaches, controls that look the same in every state, and movement that ignores the
    reduced-motion preference (`keyboard/`, `states/`, `motion/`). Capture every journey, fix what those
    files show product-wide, capture again and confirm with `UXQ regress`, which lists what the new

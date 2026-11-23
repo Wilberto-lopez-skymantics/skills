@@ -1,6 +1,6 @@
 # Content rubric
 
-Rubric version: 5.1.0
+Rubric version: 5.2.0
 
 You review one thing: the words. Whether they are clear to this person, whether they tell the truth,
 and whether they help or get in the way. How the screens look and how the flow behaves belong to other

@@ -183,10 +183,15 @@ runs/<run-id>/evidence/<unit-id>/      (controls/<unit-id>/ for a control unit)
                                 reduced-motion preference; layout shifts; whether the screen settles
   frames/<step>.<size>.json     optional; for the steps under motion_steps: the times of the pictures
                                 taken while the step's last action played out, <step>.<size>.<nn>.png
+  scripts_off/<step>.<size>.json  optional; each page a journey arrives at, loaded once more with its
+                                scripts turned off: what is missing then, and what keeps its room
+                                and is never painted
 ```
 
-The last four come from the capture's probe pass (section 11) and exist at one screen size per
-journey. Every `.json` file among them starts with a line on how to read it. Who is handed what:
+The last five come from the capture's probe pass (section 11) and exist at one screen size per
+journey. Every `.json` file among them starts with a line on how to read it. `scripts_off/` is taken
+only where a role reads it or the capture plan asks for it: no shipped role does, because an
+application shows nothing without its scripts and that is no fault. Who is handed what:
 
 | Role | Handed |
 |---|---|
@@ -234,6 +239,67 @@ page marks `data-words="off"` (a picture made of words, such as a demonstration 
 material): `outside_navigation_footer_and_samples`, the count to hold against a length that was
 agreed for a page.
 
+Five more readings are worked out from where things lie on the screen, not read off one element.
+Each is a reason to look at the picture, never a verdict, and each leaves things out on purpose.
+They were tried on public pages and narrowed until they stopped listing what was there on purpose;
+what they still cannot tell is said with each.
+
+- **What lies on what** (`layout.lies_on_something_else`). Lines of text from two different blocks
+  that cross where both still show (`text_on_text`), two controls that cross without one being set
+  inside the other (`control_on_control`), and a line of text that crosses a control it does not
+  belong to (`text_and_control`), each with the two things, where on the page, and by how many
+  pixels. Left out: what a menu, a tip or a card with a fill of its own covers; anything pinned to
+  the window, or inside something an animation is moving; a control laid over a strip that slides
+  sideways (the arrows of a carousel); the lines of one block, however tight; the same words drawn
+  twice in one place; a control that paints nothing; and text cut out of sight for a screen
+  reader's sake. Which of two things is painted above the other is worked out from their styles,
+  and asked of the browser only for a point inside the window, so further down a long page a
+  crossing can be listed although a third thing covers both. A stack of faces, each overlapping
+  the next, is listed: it is on purpose, and the picture says so.
+- **What a pinned bar always covers** (`layout.under_a_pinned_bar_wherever_the_page_is_scrolled`).
+  The lines and controls that a filled bar fixed to the window covers at every scroll position: the
+  first lines under a header that stays, the last lines under a banner along the bottom. A bar with
+  no fill is not looked at.
+- **Words that keep their room and are not painted** (`layout.takes_room_but_is_not_drawn`). A
+  block that is laid out in the page's flow, with words in it, and is not painted because it or
+  something above it is at opacity 0 or set not to show: a section waiting for a script or an
+  animation to reveal it. Left out: what is laid over the page (a tip, a closed menu) and what
+  waits its turn where something else is showing (the other slides of a carousel). A row's actions
+  that show only on hover are listed. The words of such a block are still counted under `words`.
+- **How close small controls are** (`targets`). `smaller_than_24px_with_no_room_around` lists the
+  controls under 24 px whose 24 px circle, centred on them, touches another control or another
+  small control's circle: the ones the clear-space exception does not excuse.
+  `under_44px_and_closer_than_8px_to_another` lists every control under 44 px with another less
+  than 8 px away, the nearest first, each with its neighbour and the gap. A small control set
+  inside a field (the cross that clears it) is taken as part of the field, and a control under
+  4 px, cut down to a dot for a screen reader, is in none of the lists.
+- **How many looks one kind of thing has** (`styles`). Every look of button and of link on the
+  screen, in words (fill, text colour, border, corners, height, the size and weight of its words,
+  the room at its sides), with how many carry it and one example; the corner sizes and the shadows
+  in use; the sizes and weights of text; each typeface with whether it is the one drawn, whether the
+  page brings it, and what is drawn in its place; heading levels drawn at more than one size; and
+  how deep boxes sit inside boxes. The counts are per screen: read them across the screens of a
+  journey. A typeface is "drawn" when one of the files the page brings for it has arrived, or when
+  text set in it measures unlike the generic faces on the machine that took the capture, so a face
+  named first in a list of a device's own faces can read as not drawn on another machine. A box is
+  something drawn round its content (three edges or more, a shadow, or a fill unlike what is behind
+  it), at least 120 by 60 px and narrower than the page.
+- **The pictures** (`pictures`). Each `img` that did not load, that is drawn more than a fifth
+  larger than its file, that is out of proportion, that the markup gives no size, or that is used
+  twice at a size a person takes for a picture; the three heaviest and the total, in kilobytes; and
+  how many are a one-pixel stand-in or were still arriving. Pictures drawn as backgrounds are
+  counted and not measured. The capture runs at one device pixel per pixel, so a picture that is
+  sharp here can still be soft on a phone's denser screen. "No size" reads the markup and
+  `aspect-ratio` only: a stylesheet may still fix the size, and the layout shift in `motion/` says
+  whether anything jumped.
+
+A size 320 px wide among the config's `viewports` has the narrowest phones measured like any other
+size.
+
+The shipped visual rubric reads `styles`, `pictures` and what lies on what under V2, V4, V6, V7 and
+V9, and the responsive rubric reads what lies on what, the pinned bars and the small controls under
+R1 and R3.
+
 The shipped content rubric uses these under C8: a reviewer reads the longest blocks and quotes
 their counts, a block of more than 40 words has to be what the person came to read or something
 the step cannot be done without, and a screen for doing on which running text outnumbers controls
@@ -245,8 +311,11 @@ needed is still the reviewer's judgement.
 earlier run that measured the same journey, and prints, per journey, step and screen size, what rose
 (`regressions`), what fell (`fixed`) and what could not be compared (`not_compared`: a journey or a
 step the earlier capture does not hold). Control units are left out: they never change. It counts: sideways scrolling, elements wider than the page,
-controls under 24 px, fields without a label, controls without a name, images without a text
-alternative, text below the required contrast, text under 12 px, text that was never filled in, links that lead
+text lying on text, controls lying on controls, text and a control crossing, what a pinned bar
+always covers, blocks of words that keep their room and are not drawn,
+controls under 24 px and those of them with no room around, fields without a label, controls without a name, images without a text
+alternative, pictures that did not load, are drawn larger than their file or are out of proportion,
+typefaces the page brings that are not drawn, the number of looks of button, text below the required contrast, text under 12 px, text that was never filled in, links that lead
 nowhere, skipped heading levels, a missing or
 repeated top-level heading, a missing main landmark, dialogs larger than the screen; keyboard stops
 that show no focus, controls the keyboard never reached, stops covered by something else; and things
@@ -450,6 +519,8 @@ orchestrator-side: no reviewer ever sees it.
 | `reduce_motion` | Default true: asks the page for reduced motion so animations do not blur a picture. The probe pass always runs with motion on. |
 | `probes` | Default true: after its screenshots, each journey is replayed once more for what a still picture cannot show (below). `false` turns the probe pass off; a list picks kinds: `["keyboard", "states", "motion", "frames"]`. |
 | `units.<id>.probes` | The same, for one journey; it overrides the plan's. |
+| `scripts_off` | Whether each page a journey arrives at is loaded once more with its scripts turned off (`scripts_off/`, below). Without it, this is done when the probe pass runs and some role of the reviewer set in use is handed `scripts_off`; `true` has it done in any case, `false` never. |
+| `units.<id>.scripts_off` | The same, for one journey; it overrides the plan's. |
 | `keyboard_stops` | How many stops the walk with the Tab key records at a step before it gives up. Default 60, at most 400. Raise it for a screen with more controls than that (a grid, a long table with a control in every row): a walk that ends with "stopped after 60 stops; there are more" never reached the rest, and the keyboard criteria were judged on the part it did reach. |
 | `units.<id>.keyboard_stops` | The same, for one journey; it overrides the plan's. |
 | `units.<id>.motion_steps` | Step ids of this journey where something moves that matters. While the last click, key, hover or selection of such a step plays out, pictures are taken for up to 600 ms (at most seven kept, identical ones dropped) and saved under `frames/`. |
@@ -515,7 +586,13 @@ Things to know:
   the journey runs one more time than it has sizes. At each step it records the walk with the Tab key
   (`keyboard/`, at most 60 stops unless `keyboard_stops` says otherwise), the looks of up to four main controls not yet pictured in the
   journey at rest, hovered, focused and pressed, and of disabled ones (`states/`), the movement the
-  page declares (`motion/`), and frames for the `motion_steps` (`frames/`). It never changes a
+  page declares (`motion/`), and frames for the `motion_steps` (`frames/`). Where it is asked for
+  (`scripts_off`, above), each page the journey arrives at is also loaded once more in a second tab
+  of the same private window, so signed in as the journey is, with its scripts turned off, and
+  measured as the page with its scripts on is: the headings, the buttons and links of the first
+  window and the pictures that are there with scripts and not without, the words on the page each
+  way, and what keeps its room and is not painted (`scripts_off/`). A step that stays on the page
+  of the step before is not read again. It never changes a
   screenshot. A probe that fails is listed under `probe_notes` in the output and in
   `capture-notes.json`, and the capture goes on; if the replay itself stops at an action, later steps
   have no probe files. Control units are probed like any other journey, with their planted defects.
@@ -536,6 +613,11 @@ Things to know:
     frame differ;
   - while frames are taken the pointer stays where it clicked, so a control under it shows its
     hovered look;
+  - the load with scripts off says what the page holds before any script has run, not how long a
+    visitor waits for the scripts: nothing here measures a network. A picture that waits to be near
+    the window loads at once when scripts are off, so more pictures can be drawn without scripts
+    than with them. Headings and buttons are matched by their words, so one whose words a script
+    changes reads as missing;
   - everything is measured at one screen size, in one browser, without a screen reader or any other
     assistive technology.
 - **An overflowing page is recorded, not refused.** The picture stays at the configured width, and
@@ -571,7 +653,7 @@ rubric-set/
   "name": "landing-page",
   "specialists": {
     "conversion": ["screens", "pages", "facts"],
-    "brand": ["screens", "pages", "facts", "states", "motion", "frames"]
+    "brand": ["screens", "pages", "facts", "states", "motion", "frames", "scripts_off"]
   }
 }
 ```
@@ -580,8 +662,9 @@ rubric-set/
 - **`arrangement`**, optional: the ids of the criteria that are about how a screen is arranged, from
   any of the set's rubrics. `progress` uses them to say when a layout study is due (section 13).
 - **`specialists`**: each role id (lowercase letters only) with the kinds of evidence it is handed.
-  `screens` is always among them; the others are `pages`, `facts`, `keyboard`, `states`, `motion` and
-  `frames` (section 6). `user` cannot be listed: it is the person, in every set, and is handed its own
+  `screens` is always among them; the others are `pages`, `facts`, `keyboard`, `states`, `motion`,
+  `frames` and `scripts_off` (section 6). A set that hands `scripts_off` to a role has the capture
+  take it (section 11). `user` cannot be listed: it is the person, in every set, and is handed its own
   device's screenshots one step at a time.
 - **A rubric** opens with `# <Title> rubric`: the title without the word "rubric", in lowercase, is
   what the reviewer is told its specialism is. It carries a line `Rubric version: X.Y.Z`, the same in

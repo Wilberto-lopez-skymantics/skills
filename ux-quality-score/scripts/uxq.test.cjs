@@ -93,7 +93,7 @@ function readAllMarkdown(dir) {
 const FORBIDDEN = ['adversarial', 'iteration', 'ledger', 'previous review', 'other reviewers', 'another reviewer', 'other judges', 'loop', 'baseline', 'planted', 'earlier run', 'round'];
 
 test('six rubrics, one version, each with its own criteria; reviewer material never mentions the process', () => {
-  assert.strictEqual(rubric.version, '5.1.0');
+  assert.strictEqual(rubric.version, '5.2.0');
   assert.deepStrictEqual(Object.keys(rubric.roles), ROLES);
   assert.deepStrictEqual(SPECIALISTS.map((r) => rubric.roles[r].ids.length), [10, 9, 12, 9, 8]);
   // Each specialist rubric says where its evidence is, what is a major whenever it is seen, and what 90 looks like.
