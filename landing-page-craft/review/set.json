@@ -3,7 +3,7 @@
   "specialists": {
     "conversion": ["screens", "pages", "facts"],
     "copy": ["screens", "pages", "facts"],
-    "brand": ["screens", "pages", "facts", "states", "motion", "frames"],
+    "brand": ["screens", "pages", "facts", "states", "motion", "frames", "scripts_off"],
     "accessibility": ["screens", "pages", "facts", "keyboard", "states", "motion"],
     "responsive": ["screens", "pages", "facts"]
   },

@@ -176,7 +176,7 @@ test('the example files open a run with the review skill, and each reviewer is h
     assert.strictEqual(opened.status, 0, opened.stderr);
     const created = JSON.parse(opened.stdout);
     const meta = JSON.parse(fs.readFileSync(path.join(created.run_dir, 'run.json'), 'utf8'));
-    assert.deepStrictEqual([meta.rubric_set, meta.rubric_version], ['landing-page', '1.1.0']);
+    assert.deepStrictEqual([meta.rubric_set, meta.rubric_version], ['landing-page', '1.2.0']);
 
     // The capture plan names the same journeys and steps as the config, and pictures each arrival as the window alone.
     const plan = JSON.parse(fs.readFileSync(path.join(SKILL, 'assets', 'capture.example.json'), 'utf8'));

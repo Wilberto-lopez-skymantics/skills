@@ -1,6 +1,6 @@
 # Accessibility rubric
 
-Rubric version: 1.1.0
+Rubric version: 1.2.0
 
 You review one thing: whether people with different abilities can read this page and take its action.
 The reference is WCAG 2.2 level AA. Layout taste, wording style and the order of the argument belong
@@ -61,7 +61,7 @@ tests: an issue is a test that fails in a file.
   - A menu or a dialog that opens keeps the focus inside it and gives it back when closed.
 - **X10** Reduced motion honoured: someone who has asked for less motion gets less motion, and still gets the whole page.
   - With the preference set, sections that slide or fade in on scrolling, moving backgrounds and text that reveals word by word are shown at rest: `elements_that_can_still_move` is nil or holds only brief press feedback.
-  - Nothing the visitor needs stays hidden because its animation never ran.
+  - Nothing the visitor needs stays hidden because its animation never ran. The pictures and `facts/` are taken with the preference set unless the journey says otherwise, so what `layout.takes_room_but_is_not_drawn` lists stayed hidden with it.
   - Anything that keeps moving by itself (a film, a carousel, a row of logos that slides) has a visible control to pause it.
 
 ## Major on sight

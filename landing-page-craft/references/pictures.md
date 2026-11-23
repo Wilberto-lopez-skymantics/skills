@@ -69,3 +69,12 @@ read.
 - No effect is put on it: no duotone, grain, halftone or blend. One light and one grade across the
   set, and no frame twice on a page.
 - Its text alternative says what is in it, in the page's own words.
+- It weighs no more than its place needs. By default, the third source's caps: about 400 kilobytes
+  for the picture in the first window, about 250 for any other.
+
+Where the page is captured for review, the capture measures most of this (`pictures` in `facts/`,
+and `scripts_off/`): a picture that never came, one drawn larger than its file, one out of
+proportion, one the markup gives no size, one used twice, what the heaviest weigh, and what is
+missing when the page is loaded with its scripts off. The brand rubric reads them under B5 and B8.
+It cannot tell whether a picture is the owner's, real or allowed. That is what the brief's Proof
+is for.

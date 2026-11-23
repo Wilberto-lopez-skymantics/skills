@@ -78,9 +78,13 @@ they stay, so the first step of each journey is a picture one window tall, at ev
    `{ "scroll": "through" }`: it goes down the page a window at a time and back to the top, so
    sections that appear on scrolling have appeared and pictures that load late have loaded before
    the whole page is photographed. Name under `motion_steps` any step where something moves that
-   matters.
+   matters. Nothing in the plan is needed for the load with scripts off: this set hands
+   `scripts_off` to the brand reviewer, so the capture loads each page once more with its scripts
+   turned off and records what is missing then (`"scripts_off": false` in the plan turns it off).
 8. **Screen sizes.** A phone, a tablet and a desktop size. Give each persona the device the brief
-   says most of that audience uses; the visitor reviewer sees only that one.
+   says most of that audience uses; the visitor reviewer sees only that one. Add a size 320 px wide
+   where the narrowest phones matter: what crosses, what runs off the screen and what a pinned bar
+   covers are measured there as at any other size.
 9. **Show the owner** the journeys, personas, sizes and the threshold before the first run. They
    define what the scores mean.
 
@@ -151,8 +155,11 @@ so read the first strictness numbers with that in mind.
   role and still be known at a glance for a generated one, by its skeleton, its labels and its
   wording. `references/tells.md` is the check for that, and it is made by whoever builds the page,
   before the page is captured.
-- **Speed on a real network.** The capture runs against a local server. Layout shift is measured;
-  time to load is not.
+- **Speed on a real network.** The capture runs against a local server. Layout shift is measured,
+  and so are the weight of the pictures and what the page holds before any script has run; time to
+  load is not.
+- **Whether a picture is the owner's, real and allowed.** The capture says that a picture came,
+  how large its file is and how it is drawn. Where it is from is in the brief's Proof.
 - **A screen reader, a real phone, a real thumb.** The measurements stand in for them. The
   accessibility and responsive rubrics say what they could not see.
 - **Search ranking.** The conversion rubric checks that the title, description and sharing card

@@ -1,6 +1,6 @@
 # Responsive design rubric
 
-Rubric version: 1.1.0
+Rubric version: 1.2.0
 
 You review one thing: whether the page works and looks composed at every screen size it was captured
 at, on the devices those sizes stand for. Most visitors to a landing page arrive on a phone, so the
@@ -11,9 +11,12 @@ belong to other specialists; raise them only where a screen size causes the prob
 
 - `screens/`: every step at every size. Put the sizes of one step side by side. A step whose picture
   is one window tall shows what that device shows before any scrolling.
-- `facts/`: sideways scrolling and what overflows (`layout`), how many windows tall the page is
-  (`layout.screens_tall`), control sizes (`targets`), font sizes (`text`), field types
-  (`labels.field_types`), and what the first window holds at each size (`first_window`).
+- `facts/`: sideways scrolling and what overflows (`layout`), text and controls that cross
+  (`layout.lies_on_something_else`), what a bar pinned to the window covers wherever the page is
+  scrolled (`layout.under_a_pinned_bar_wherever_the_page_is_scrolled`), how many windows tall the
+  page is (`layout.screens_tall`), control sizes and how close small controls are to the next one
+  (`targets`), font sizes (`text`), field types (`labels.field_types`), and what the first window
+  holds at each size (`first_window`).
 - `journey.md`: which sizes are touch screens.
 
 The files cannot show the on-screen keyboard, the browser's own bars or a real finger: leave those out
@@ -27,7 +30,7 @@ tests: an issue is a test that fails in a file.
 - **S1** Fits: at every size nothing is cut off, nothing overlaps, and the page does not scroll sideways.
   - `scrolls_sideways` is false at every size, and nothing a visitor needs is listed as overflowing.
   - A long headline wraps; a button keeps its words inside it; a picture stays inside its section.
-  - Nothing sits on top of something else: a header that stays at the top, a chat bubble or a consent banner does not cover the headline, the action or a field.
+  - Nothing sits on top of something else: a header that stays at the top, a chat bubble or a consent banner does not cover the headline, the action or a field. At each size, find on the screen what `layout.lies_on_something_else` lists as crossing, and leave out what is laid there on purpose; nothing a visitor needs is listed under `layout.under_a_pinned_bar_wherever_the_page_is_scrolled`.
 - **S2** The first window at the smallest size: it still holds the promise and the action.
   - At the smallest size the headline, the line under it and the main action are in the first window, the action whole (`first_window`).
   - The header takes no more of a phone's window than it needs: about a tenth of its height.
@@ -36,9 +39,9 @@ tests: an issue is a test that fails in a file.
   - No section, proof or answer is dropped for small screens.
   - What is folded away (a menu, a list of questions) can be opened, and shows that it can.
 - **S4** Touch targets: on touch sizes controls are large enough and far enough apart to press without error.
-  - Every control is at least 24 by 24 px, or has enough clear space around it that a near miss presses nothing else.
+  - Every control is at least 24 by 24 px, or has enough clear space around it that a near miss presses nothing else: `targets.smaller_than_24px_with_no_room_around` lists the small ones that have not.
   - The main action is at least 44 px tall on touch sizes, and on a phone close to the full width of its column.
-  - Links in the footer and the menu are far enough apart for a thumb.
+  - Links in the footer and the menu are far enough apart for a thumb (`targets.under_44px_and_closer_than_8px_to_another` names each small control and the one beside it).
 - **S5** Readable without zooming: text can be read at every size as it is.
   - No text a visitor needs is smaller than 12 px, and running text on phone sizes is at least 16 px.
   - The text in fields on phone sizes is at least 16 px.
@@ -64,7 +67,7 @@ taking the action. A recorded decision does not excuse them.
 - The headline, the main action or a form field clipped, covered or out of reach at a captured size (S1).
 - A first window at the smallest size with no main action in it (S2).
 - A section, a proof or the form missing at the smallest size (S3).
-- On a touch size, a control smaller than 24 by 24 px with another control close beside it (S4).
+- On a touch size, a control smaller than 24 by 24 px with another control close beside it (S4; `targets.smaller_than_24px_with_no_room_around`).
 
 ## What 90 looks like here
 

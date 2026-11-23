@@ -1,6 +1,6 @@
 # What to report
 
-Rubric version: 1.1.0
+Rubric version: 1.2.0
 
 You report what happened to you at each step, in the terms below, and at the end you give the page a
 score and say why. You do not say how the page should be designed.

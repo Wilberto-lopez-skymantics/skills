@@ -177,6 +177,8 @@ against them first:
 - Walk the tells (`references/tells.md`): the catalogue's list on the built page, then the six
   things the list does not catch. Report each one met, and each one left and why.
 - Walk the page with the Tab key, and once more with reduced motion asked for.
+- Open the page once with scripts turned off. The headline, the action and every picture are
+  there, and no section is a gap waiting for a script to reveal it (`brand.md` B8).
 - Press the action. Does it do what its label says, and does the page say what happens next?
 - Anything you could not check, report as not verified.
 

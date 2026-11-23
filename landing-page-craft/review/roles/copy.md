@@ -1,6 +1,6 @@
 # Copy rubric
 
-Rubric version: 1.1.0
+Rubric version: 1.2.0
 
 You review one thing: the words. Whether this visitor understands them at reading speed, believes
 them, and finds in them a reason to act; and whether every fact among them is true. Where the words

@@ -34,6 +34,8 @@ Everything you need is in this folder.
   changing, named `<step>.<size>.json`.
 - `frames/`: where present, pictures taken while a step's action played out, in order, with the time
   of each in `<step>.<size>.json`.
+- `scripts_off/`: where present, what is missing, and what keeps its room and is not painted, when
+  the page of a step is loaded once more with its scripts turned off, named `<step>.<size>.json`.
 - `decisions.md`: where present, the page brief: what the people who own the page have decided it
   offers, to whom, where its visitors come from, the one action it asks for, the facts that exist to
   prove it, the doubts it must answer, the brand's type, colour, shape, motion and voice, and a list
